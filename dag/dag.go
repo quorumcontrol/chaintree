@@ -72,7 +72,7 @@ func (bn *bidirectionalNode) Resolve(tree *BidirectionalTree, path []string) (in
 	val, remaining, err := bn.node.Resolve(path)
 	if err != nil {
 		//fmt.Printf("error resolving: %v", err)
-		return nil, nil, fmt.Errorf("error resolving: %v", err)
+		return nil, nil, &ErrorCode{Code: ErrMissingPath, Memo: fmt.Sprintf("error resolving: %v", err)}
 	}
 	//spew.Dump("resolved on node", val)
 
@@ -89,20 +89,20 @@ func (bn *bidirectionalNode) Resolve(tree *BidirectionalTree, path []string) (in
 	}
 }
 
-func (bt *BidirectionalTree) Initialize(nodes ...*cbornode.Node) {
+func (bt *BidirectionalTree) AddNodes(nodes ...*cbornode.Node) {
 	bt.mutex.Lock()
 	defer bt.mutex.Unlock()
 
 	for i,node := range nodes {
 		bidiNode := &bidirectionalNode{
 			node: node,
-			id: nodeId(i),
+			id: nodeId(bt.counter + i),
 			parents: make([]nodeId,0),
 		}
-		bt.nodesByStaticId[nodeId(i)] = bidiNode
+		bt.nodesByStaticId[bidiNode.id] = bidiNode
 		bt.nodesByCid[node.Cid().KeyString()] = bidiNode
 	}
-	bt.counter = len(nodes)
+	bt.counter += len(nodes)
 
 	for _,bidiNode := range bt.nodesByStaticId {
 		links := bidiNode.node.Links()
@@ -134,13 +134,72 @@ func (bt *BidirectionalTree) Resolve(path []string) (interface{}, []string, erro
 	return root.Resolve(bt, path)
 }
 
+func (bt *BidirectionalTree) createLinks(path []string, node *cbornode.Node) error {
+
+	var idx int
+
+	for i := len(path);i >= 0; i-- {
+		fmt.Printf("resolving: %v\n", path[0:i])
+		_,_,err := bt.Resolve(path[0:i])
+		if err == nil {
+			 idx = i
+			 break
+		} else {
+			if err.(*ErrorCode).Code != ErrMissingPath {
+				return &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("unkown error: %v", err)}
+			}
+		}
+	}
+	fmt.Printf("idx: %d\n", idx)
+
+
+	var last *cbornode.Node
+	last = node
+
+	nodes := []*cbornode.Node{node}
+
+	sw := &SafeWrap{}
+	for i := len(path)-1;i > idx; i-- {
+		obj := make(map[string]*cid.Cid)
+		obj[path[i]] = last.Cid()
+		newNode := sw.WrapObject(obj)
+		nodes = append(nodes, newNode)
+		last = newNode
+	}
+	if sw.Err != nil {
+		return &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error wrapping: %v", sw.Err)}
+	}
+
+	bt.AddNodes(nodes...)
+
+	if idx == 0 {
+		bt.Set([]string{"/"}, path[idx+1], last.Cid())
+	} else {
+		fmt.Printf("calling set: %v, %v\n", path[0:idx], path[idx])
+		bt.Set(path[0:idx], path[idx], last.Cid())
+	}
+
+	return nil
+
+}
+
 func (bt *BidirectionalTree) Set(path []string, key string, val interface{}) error {
 	//fmt.Printf("setting %v\n", path)
 
 	existing, remaining, err := bt.Resolve(path)
 	if err != nil {
-		fmt.Printf("error resolving: %v\n", path)
-		return err
+		if err.(*ErrorCode).Code == ErrMissingPath {
+			newObj := map[string]interface{}{key: val}
+			sw := &SafeWrap{}
+			wrapped := sw.WrapObject(newObj)
+			if sw.Err != nil {
+				return err
+			}
+			return bt.createLinks(path, wrapped)
+		} else {
+			fmt.Printf("error resolving: %v\n", path)
+			return err
+		}
 	}
 
 	//spew.Dump("existing: ", existing)

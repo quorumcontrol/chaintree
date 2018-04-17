@@ -29,7 +29,7 @@ func TestCreating(t *testing.T) {
 	assert.Nil(t, sw.Err)
 
 	tree := NewBidirectionalTree()
-	tree.Initialize(root,child)
+	tree.AddNodes(root,child)
 	tree.Tip = root.Cid()
 }
 
@@ -47,7 +47,7 @@ func TestBidirectionalTree_Resolve(t *testing.T) {
 	assert.Nil(t, sw.Err)
 
 	tree := NewBidirectionalTree()
-	tree.Initialize(root,child)
+	tree.AddNodes(root,child)
 	tree.Tip = root.Cid()
 
 	val,remaining,err := tree.Resolve([]string{"child", "name"})
@@ -79,7 +79,7 @@ func TestBidirectionalTree_Swap(t *testing.T) {
 	assert.Nil(t, sw.Err)
 
 	tree := NewBidirectionalTree()
-	tree.Initialize(root,child)
+	tree.AddNodes(root,child)
 	tree.Tip = root.Cid()
 
 	newChild := sw.WrapObject(map[string]interface{} {
@@ -118,6 +118,10 @@ func TestBidirectionalTree_Set(t *testing.T) {
 		"name": "child",
 	})
 
+	unlinked := sw.WrapObject(map[string]interface{}{
+		"unlinked": true,
+	})
+
 	root := sw.WrapObject(map[string]interface{}{
 		"child": child.Cid(),
 	})
@@ -125,7 +129,7 @@ func TestBidirectionalTree_Set(t *testing.T) {
 	assert.Nil(t, sw.Err)
 
 	tree := NewBidirectionalTree()
-	tree.Initialize(root,child)
+	tree.AddNodes(root,child)
 	tree.Tip = root.Cid()
 
 	err := tree.Set([]string{}, "test", "bob")
@@ -136,6 +140,29 @@ func TestBidirectionalTree_Set(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "bob", val)
 
+	// test works with a CID
+	tree.AddNodes(unlinked)
+
+	err = tree.Set([]string{}, "test", unlinked.Cid())
+	assert.Nil(t, err)
+
+	val,_,err = tree.Resolve([]string{"test", "unlinked"})
+
+	assert.Nil(t, err)
+	assert.Equal(t, true, val)
+
+
+
+	// test works in non-existant path
+
+	path := []string{"child", "non-existant-nested", "objects"}
+	err = tree.Set(path, "test", "bob")
+	assert.Nil(t, err)
+
+	val,_,err = tree.Resolve(append(path, "test"))
+
+	assert.Nil(t, err)
+	assert.Equal(t, "bob", val)
 }
 
 func BenchmarkBidirectionalTree_Swap(b *testing.B) {
@@ -149,7 +176,7 @@ func BenchmarkBidirectionalTree_Swap(b *testing.B) {
 	})
 
 	tree := NewBidirectionalTree()
-	tree.Initialize(root,child)
+	tree.AddNodes(root,child)
 	tree.Tip = root.Cid()
 
 	newChild := sw.WrapObject(map[string]interface{} {
@@ -180,7 +207,7 @@ func BenchmarkBidirectionalTree_Set(b *testing.B) {
 	})
 
 	tree := NewBidirectionalTree()
-	tree.Initialize(root,child)
+	tree.AddNodes(root,child)
 	tree.Tip = root.Cid()
 
 	swapper := []*cbornode.Node{sw.WrapObject("key"), sw.WrapObject("key2")}
