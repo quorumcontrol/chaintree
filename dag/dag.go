@@ -15,6 +15,7 @@ import (
 	"errors"
 	"encoding/json"
 	"bytes"
+	"github.com/davecgh/go-spew/spew"
 )
 
 type nodeId int
@@ -41,6 +42,7 @@ const (
 	ErrMissingPath = 1
 	ErrInvalidInput = 2
 	ErrEncodingError = 3
+	ErrBadInput = 4
 	ErrUnknown = 99
 )
 
@@ -139,7 +141,6 @@ func (bt *BidirectionalTree) createLinks(path []string, node *cbornode.Node) err
 	var idx int
 
 	for i := len(path);i >= 0; i-- {
-		fmt.Printf("resolving: %v\n", path[0:i])
 		_,_,err := bt.Resolve(path[0:i])
 		if err == nil {
 			 idx = i
@@ -150,8 +151,6 @@ func (bt *BidirectionalTree) createLinks(path []string, node *cbornode.Node) err
 			}
 		}
 	}
-	fmt.Printf("idx: %d\n", idx)
-
 
 	var last *cbornode.Node
 	last = node
@@ -172,19 +171,34 @@ func (bt *BidirectionalTree) createLinks(path []string, node *cbornode.Node) err
 
 	bt.AddNodes(nodes...)
 
-	if idx == 0 {
-		bt.Set([]string{"/"}, path[idx+1], last.Cid())
-	} else {
-		fmt.Printf("calling set: %v, %v\n", path[0:idx], path[idx])
-		bt.Set(path[0:idx], path[idx], last.Cid())
-	}
-
-	return nil
-
+	//fmt.Printf("calling set with: %v\n", path[0:idx+1])
+	return bt.Set(path[0:idx+1], last.Cid())
 }
 
-func (bt *BidirectionalTree) Set(path []string, key string, val interface{}) error {
-	//fmt.Printf("setting %v\n", path)
+func (bt *BidirectionalTree) Set(pathAndKey []string, val interface{}) error {
+	return bt.set(pathAndKey, val, false)
+}
+
+func (bt *BidirectionalTree) SetAsLink(pathAndKey []string, val interface{}) error {
+	return bt.set(pathAndKey, val, true)
+}
+
+func (bt *BidirectionalTree) set(pathAndKey []string, val interface{}, asLink bool) error {
+
+	var path []string
+	var key string
+
+	switch len(pathAndKey) {
+	case 0:
+		return &ErrorCode{Code: ErrBadInput, Memo: "must pass in a key"}
+	case 1:
+		path = []string{}
+		key = pathAndKey[0]
+	default:
+		path = pathAndKey[0:len(pathAndKey)-1]
+		key = pathAndKey[len(pathAndKey)-1]
+	}
+	//fmt.Printf("setting %v, key: %v\n", path, key)
 
 	existing, remaining, err := bt.Resolve(path)
 	if err != nil {
@@ -217,7 +231,16 @@ func (bt *BidirectionalTree) Set(path []string, key string, val interface{}) err
 
 	existingCid := existingCbor.Cid()
 
-	existing.(map[string]interface{})[key] = val
+	if asLink {
+		newNode,err := fromJsonish(val)
+		if err != nil {
+			return &ErrorCode{Code: ErrBadInput, Memo: fmt.Sprintf("error converting val: %v", err)}
+		}
+		bt.AddNodes(newNode)
+		existing.(map[string]interface{})[key] = newNode.Cid()
+	} else {
+		existing.(map[string]interface{})[key] = val
+	}
 
 	wrappedModified,err := fromJsonish(existing)
 	if err != nil {
@@ -259,7 +282,7 @@ func (bt *BidirectionalTree) Swap(oldCid *cid.Cid, newNode *cbornode.Node) error
 		for _,parentId := range existing.parents {
 			parent := bt.nodesByStaticId[parentId]
 			//fmt.Println("parent")
-			parent.dump()
+			//parent.dump()
 			newParentJsonish := make(map[string]interface{})
 			err := cbornode.DecodeInto(parent.node.RawData(), &newParentJsonish)
 			if err != nil {
@@ -296,22 +319,22 @@ func (bt *BidirectionalTree) Swap(oldCid *cid.Cid, newNode *cbornode.Node) error
 
 
 	//fmt.Println("after tree")
-	bt.dump()
+	//bt.dump()
 
 	return nil
 }
 
 func (bn *bidirectionalNode) dump() {
-	//spew.Dump(bn)
+	spew.Dump(bn)
 	obj := make(map[string]interface{})
 	cbornode.DecodeInto(bn.node.RawData(), &obj)
-	//spew.Dump(obj)
+	spew.Dump(obj)
 }
 
 func (bt *BidirectionalTree) dump() {
-	//spew.Dump(bt)
+	spew.Dump(bt)
 	for _,n := range bt.nodesByStaticId {
-		//fmt.Printf("node: %d", n.id)
+		fmt.Printf("node: %d", n.id)
 		n.dump()
 	}
 }

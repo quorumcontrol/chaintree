@@ -132,7 +132,7 @@ func TestBidirectionalTree_Set(t *testing.T) {
 	tree.AddNodes(root,child)
 	tree.Tip = root.Cid()
 
-	err := tree.Set([]string{}, "test", "bob")
+	err := tree.Set([]string{"test"}, "bob")
 	assert.Nil(t, err)
 
 	val,_,err := tree.Resolve([]string{"test"})
@@ -143,7 +143,7 @@ func TestBidirectionalTree_Set(t *testing.T) {
 	// test works with a CID
 	tree.AddNodes(unlinked)
 
-	err = tree.Set([]string{}, "test", unlinked.Cid())
+	err = tree.Set([]string{"test"}, unlinked.Cid())
 	assert.Nil(t, err)
 
 	val,_,err = tree.Resolve([]string{"test", "unlinked"})
@@ -155,14 +155,44 @@ func TestBidirectionalTree_Set(t *testing.T) {
 
 	// test works in non-existant path
 
-	path := []string{"child", "non-existant-nested", "objects"}
-	err = tree.Set(path, "test", "bob")
+	path := []string{"child", "non-existant-nested", "objects", "test"}
+	err = tree.Set(path, "bob")
 	assert.Nil(t, err)
 
-	val,_,err = tree.Resolve(append(path, "test"))
+	val,_,err = tree.Resolve(path)
 
 	assert.Nil(t, err)
 	assert.Equal(t, "bob", val)
+}
+
+func TestBidirectionalTree_SetAsLink(t *testing.T) {
+	sw := &SafeWrap{}
+
+	child := sw.WrapObject(map[string]interface{} {
+		"name": "child",
+	})
+
+	unlinked := sw.WrapObject(map[string]interface{}{
+		"unlinked": true,
+	})
+
+	root := sw.WrapObject(map[string]interface{}{
+		"child": child.Cid(),
+	})
+
+	assert.Nil(t, sw.Err)
+
+	tree := NewBidirectionalTree()
+	tree.AddNodes(root,child)
+	tree.Tip = root.Cid()
+
+	err := tree.SetAsLink([]string{"child", "key"}, unlinked)
+	assert.Nil(t, err)
+
+	val,_,err := tree.Resolve([]string{"child", "key", "unlinked"})
+
+	assert.Nil(t, err)
+	assert.Equal(t, true, val)
 }
 
 func BenchmarkBidirectionalTree_Swap(b *testing.B) {
@@ -217,7 +247,7 @@ func BenchmarkBidirectionalTree_Set(b *testing.B) {
 	// run the Fib function b.N times
 	for n := 0; n < b.N; n++ {
 		idx := n % 2
-		err = tree.Set([]string{"child"}, "key", swapper[(idx + 1) %2])
+		err = tree.Set([]string{"child", "key"}, swapper[(idx + 1) %2])
 	}
 
 	assert.Nil(b, err)
