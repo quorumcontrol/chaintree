@@ -28,9 +28,8 @@ func TestCreating(t *testing.T) {
 
 	assert.Nil(t, sw.Err)
 
-	tree := NewBidirectionalTree()
-	tree.AddNodes(root,child)
-	tree.Tip = root.Cid()
+	tree := NewBidirectionalTree(root.Cid(), root, child)
+	assert.NotNil(t, tree)
 }
 
 func TestBidirectionalTree_Resolve(t *testing.T) {
@@ -46,9 +45,7 @@ func TestBidirectionalTree_Resolve(t *testing.T) {
 
 	assert.Nil(t, sw.Err)
 
-	tree := NewBidirectionalTree()
-	tree.AddNodes(root,child)
-	tree.Tip = root.Cid()
+	tree := NewBidirectionalTree(root.Cid(), root, child)
 
 	val,remaining,err := tree.Resolve([]string{"child", "name"})
 	assert.Nil(t, err)
@@ -78,9 +75,7 @@ func TestBidirectionalTree_Swap(t *testing.T) {
 
 	assert.Nil(t, sw.Err)
 
-	tree := NewBidirectionalTree()
-	tree.AddNodes(root,child)
-	tree.Tip = root.Cid()
+	tree := NewBidirectionalTree(root.Cid(), root, child)
 
 	newChild := sw.WrapObject(map[string]interface{} {
 		"name": "newChild",
@@ -128,9 +123,7 @@ func TestBidirectionalTree_Set(t *testing.T) {
 
 	assert.Nil(t, sw.Err)
 
-	tree := NewBidirectionalTree()
-	tree.AddNodes(root,child)
-	tree.Tip = root.Cid()
+	tree := NewBidirectionalTree(root.Cid(), root, child)
 
 	err := tree.Set([]string{"test"}, "bob")
 	assert.Nil(t, err)
@@ -182,9 +175,7 @@ func TestBidirectionalTree_SetAsLink(t *testing.T) {
 
 	assert.Nil(t, sw.Err)
 
-	tree := NewBidirectionalTree()
-	tree.AddNodes(root,child)
-	tree.Tip = root.Cid()
+	tree := NewBidirectionalTree(root.Cid(), root, child)
 
 	err := tree.SetAsLink([]string{"child", "key"}, unlinked)
 	assert.Nil(t, err)
@@ -193,6 +184,25 @@ func TestBidirectionalTree_SetAsLink(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.Equal(t, true, val)
+}
+
+func TestBidirectionalTree_Copy(t *testing.T) {
+	sw := &SafeWrap{}
+
+	child := sw.WrapObject(map[string]interface{} {
+		"name": "child",
+	})
+
+	root := sw.WrapObject(map[string]interface{}{
+		"child": child.Cid(),
+	})
+
+	assert.Nil(t, sw.Err)
+	tree := NewBidirectionalTree(root.Cid(), root, child)
+
+	newTree := tree.Copy()
+
+	assert.Equal(t, tree, newTree)
 }
 
 func BenchmarkBidirectionalTree_Swap(b *testing.B) {
@@ -205,9 +215,7 @@ func BenchmarkBidirectionalTree_Swap(b *testing.B) {
 		"child": child.Cid(),
 	})
 
-	tree := NewBidirectionalTree()
-	tree.AddNodes(root,child)
-	tree.Tip = root.Cid()
+	tree := NewBidirectionalTree(root.Cid(), root, child)
 
 	newChild := sw.WrapObject(map[string]interface{} {
 		"name": "newChild",
@@ -236,9 +244,8 @@ func BenchmarkBidirectionalTree_Set(b *testing.B) {
 		"child": child.Cid(),
 	})
 
-	tree := NewBidirectionalTree()
-	tree.AddNodes(root,child)
-	tree.Tip = root.Cid()
+	tree := NewBidirectionalTree(root.Cid(), root, child)
+
 
 	swapper := []*cbornode.Node{sw.WrapObject("key"), sw.WrapObject("key2")}
 	assert.Nil(b, sw.Err)
@@ -251,4 +258,28 @@ func BenchmarkBidirectionalTree_Set(b *testing.B) {
 	}
 
 	assert.Nil(b, err)
+}
+
+func BenchmarkBidirectionalTree_Copy(b *testing.B) {
+	sw := &SafeWrap{}
+	child := sw.WrapObject(map[string]interface{} {
+		"name": "child",
+	})
+
+	root := sw.WrapObject(map[string]interface{}{
+		"child": child.Cid(),
+	})
+
+	tree := NewBidirectionalTree(root.Cid(), root, child)
+
+	assert.Nil(b, sw.Err)
+	// run the Fib function b.N times
+
+	var newTree *BidirectionalTree
+
+	for n := 0; n < b.N; n++ {
+		newTree = tree.Copy()
+	}
+
+	assert.Equal(b, tree, newTree)
 }

@@ -1,23 +1,27 @@
-package chaintree
+package typecaster
 
 import (
 	"github.com/polydawn/refmt/obj/atlas"
 	"github.com/polydawn/refmt/obj"
 	"github.com/polydawn/refmt/shared"
+	"sync"
 )
 
-var defaultAtlas atlas.Atlas
+var currentAtlas atlas.Atlas
+var atlasMutex sync.Mutex
+var entries []*atlas.AtlasEntry
 
-
-func init() {
-	defaultAtlas = atlas.MustBuild(
-		atlas.BuildEntry(Transaction{}).StructMap().Autogenerate().Complete(),
-	)
+func AddType(typeHint interface{}) {
+	atlasMutex.Lock()
+	defer atlasMutex.Unlock()
+	entry := atlas.BuildEntry(typeHint).StructMap().Autogenerate().Complete()
+	entries = append(entries, entry)
+	currentAtlas = atlas.MustBuild(entries...)
 }
 
 
 func ToType(src, dst interface{}) error {
-	return ToTypeAtlasted(src, dst, defaultAtlas)
+	return ToTypeAtlasted(src, dst, currentAtlas)
 }
 
 func ToTypeAtlasted(src, dst interface{}, atl atlas.Atlas) error {

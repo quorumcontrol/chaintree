@@ -42,11 +42,12 @@ func (e *ErrorCode) Error() string {
 }
 
 const (
-	ErrMissingRoot = 0
-	ErrMissingPath = 1
-	ErrInvalidInput = 2
-	ErrEncodingError = 3
-	ErrBadInput = 4
+	Success = 0
+	ErrMissingRoot = 1
+	ErrMissingPath = 2
+	ErrInvalidInput = 3
+	ErrEncodingError = 4
+	ErrBadInput = 5
 	ErrUnknown = 99
 )
 
@@ -57,12 +58,25 @@ type bidirectionalNode struct {
 	node    *cbornode.Node
 }
 
-func NewBidirectionalTree() *BidirectionalTree {
-	return &BidirectionalTree{
+func NewEmptyBidirectionalTree() *BidirectionalTree {
+	return NewBidirectionalTree(nil, nil)
+}
+
+func NewBidirectionalTree(root *cid.Cid, nodes ...*cbornode.Node) *BidirectionalTree {
+	tree := &BidirectionalTree{
 		counter: 0,
 		nodesByStaticId: make(map[nodeId]*bidirectionalNode),
 		nodesByCid: make(map[string]*bidirectionalNode),
 	}
+
+	if len(nodes) > 0 {
+		tree.AddNodes(nodes...)
+	}
+	if root != nil {
+		tree.Tip = root
+	}
+
+	return tree
 }
 
 func (bn *bidirectionalNode) asJsonish() (map[string]interface{}, error) {
@@ -93,6 +107,25 @@ func (bn *bidirectionalNode) Resolve(tree *BidirectionalTree, path []string) (in
 	default:
 		return val, remaining, err
 	}
+}
+
+
+func (bt *BidirectionalTree) Copy() *BidirectionalTree {
+	newNodes := make([]*cbornode.Node, len(bt.nodesByStaticId))
+	for i,oldNode := range bt.nodesByStaticId {
+		newNode, err := cbornode.Decode(oldNode.node.RawData(), multihash.SHA2_256, -1)
+		if err != nil {
+			panic(fmt.Sprintf("this encoded, it should never fail to decode: %v", err))
+		}
+		newNodes[i] = newNode
+	}
+
+	newCid,err := cid.Cast(bt.Tip.Bytes())
+	if err != nil {
+		panic(fmt.Sprintf("this encoded, it should never fail to decode: %v", err))
+	}
+
+	return NewBidirectionalTree(newCid, newNodes...)
 }
 
 func (bt *BidirectionalTree) AddNodes(nodes ...*cbornode.Node) {

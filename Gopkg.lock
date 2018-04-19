@@ -80,6 +80,12 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/polydawn/refmt"
+  packages = ["obj","obj/atlas","shared","tok"]
+  revision = "a1d2f05ac1bca2f4b4eed0d0fff736e8360cd32a"
+
+[[projects]]
   name = "github.com/spaolacci/murmur3"
   packages = ["."]
   revision = "9f5d223c60793748f04a9d5b4b4eacddfc1f755d"
@@ -112,6 +118,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b59f951b9adfe84c023ae743da566e2cd4c7ea8854120c148943bd8644d91a37"
+  inputs-digest = "7800da087c418f1a5bc07ac1f965915ad3ce9f62459a24b0635d3783a4817038"
   solver-name = "gps-cdcl"
   solver-version = 1
