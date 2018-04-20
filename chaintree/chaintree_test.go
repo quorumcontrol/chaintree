@@ -44,17 +44,19 @@ func setData(tree *dag.BidirectionalTree, transaction *Transaction) (valid bool,
 	return true, nil
 }
 
-func TestIsSigned(t *testing.T) {
+func TestBlockProcessing(t *testing.T) {
 	sw := &dag.SafeWrap{}
 
 
-	data := sw.WrapObject(map[string]string{
+	tree := sw.WrapObject(map[string]string{
 		"hithere": "hothere",
 	})
 
+	chain := sw.WrapObject(make(map[string]string))
+
 	root := sw.WrapObject(map[string]interface{}{
-		"something": "ishere",
-		"data": data.Cid(),
+		"chain": chain.Cid(),
+		"tree": tree.Cid(),
 	})
 
 	assert.Nil(t, sw.Err)
@@ -73,7 +75,7 @@ func TestIsSigned(t *testing.T) {
 			block: &BlockWithHeaders{
 				Block: Block{
 					Transactions: []*Transaction{
-						&Transaction{
+						{
 							Type: "SET_DATA",
 							Payload: map[string]string{
 								"path": "down/in/the/thing",
@@ -87,7 +89,7 @@ func TestIsSigned(t *testing.T) {
 				},
 			},
 			validator: func(tree *ChainTree) {
-				val,_,err := tree.Dag.Resolve(strings.Split("down/in/the/thing", "/"))
+				val,_,err := tree.Dag.Resolve(strings.Split("tree/down/in/the/thing", "/"))
 				assert.Nil(t, err, "valid data set resolution")
 				assert.Equal(t, "hi", val)
 			},
@@ -99,7 +101,7 @@ func TestIsSigned(t *testing.T) {
 			block: &BlockWithHeaders{
 				Block: Block{
 					Transactions: []*Transaction{
-						&Transaction{
+						{
 							Type: "SET_DATA",
 							Payload: map[string]string{
 								"path": "down/in/the/thing",
@@ -113,18 +115,18 @@ func TestIsSigned(t *testing.T) {
 				},
 			},
 			validator: func(tree *ChainTree) {
-				_,_,err := tree.Dag.Resolve(strings.Split("down/in/the/thing", "/"))
+				_,_,err := tree.Dag.Resolve(strings.Split("tree/down/in/the/thing", "/"))
 				assert.Equal(t, dag.ErrMissingPath, err.(*dag.ErrorCode).Code)
 			},
 		},
 		{
-			description: "a block that fails a validation",
+			description: "a block that has a bad transaction",
 			shouldValid: false,
-			shouldErr: false,
+			shouldErr: true,
 			block: &BlockWithHeaders{
 				Block: Block{
 					Transactions: []*Transaction{
-						&Transaction{
+						{
 							Type: "SET_DATA",
 							Payload: "broken payload",
 						},
@@ -135,18 +137,19 @@ func TestIsSigned(t *testing.T) {
 				},
 			},
 			validator: func(tree *ChainTree) {
-				_,_,err := tree.Dag.Resolve(strings.Split("down/in/the/thing", "/"))
+				_,_,err := tree.Dag.Resolve(strings.Split("tree/down/in/the/thing", "/"))
 				assert.Equal(t, dag.ErrMissingPath, err.(*dag.ErrorCode).Code)
 			},
 		},
 	} {
-		tree := &ChainTree{
-			Dag: dag.NewBidirectionalTree(root.Cid(), root,data),
-			BlockValidators: []BlockValidatorFunc{hasCoolHeader},
-			Transactors: map[string]TransactorFunc{
+		tree,err := NewChainTree(
+			dag.NewBidirectionalTree(root.Cid(), root,tree,chain),
+			[]BlockValidatorFunc{hasCoolHeader},
+			map[string]TransactorFunc{
 				"SET_DATA": setData,
 			},
-		}
+		)
+		assert.Nil(t, err)
 		valid,err := tree.ProcessBlock(test.block)
 		if !test.shouldErr {
 			assert.Nil(t, err, test.description)

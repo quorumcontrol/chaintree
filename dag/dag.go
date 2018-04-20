@@ -23,8 +23,8 @@ type nodeId int
 type BidirectionalTree struct {
 	Tip             *cid.Cid
 	counter         int
-	nodesByStaticId map[nodeId]*bidirectionalNode
-	nodesByCid      map[string]*bidirectionalNode
+	nodesByStaticId map[nodeId]*BidirectionalNode
+	nodesByCid      map[string]*BidirectionalNode
 	mutex           sync.Mutex
 }
 
@@ -52,21 +52,17 @@ const (
 )
 
 
-type bidirectionalNode struct {
-	parents []nodeId
-	id nodeId
-	node    *cbornode.Node
-}
-
-func NewEmptyBidirectionalTree() *BidirectionalTree {
-	return NewBidirectionalTree(nil, nil)
+type BidirectionalNode struct {
+	Parents []nodeId
+	id      nodeId
+	Node    *cbornode.Node
 }
 
 func NewBidirectionalTree(root *cid.Cid, nodes ...*cbornode.Node) *BidirectionalTree {
 	tree := &BidirectionalTree{
 		counter: 0,
-		nodesByStaticId: make(map[nodeId]*bidirectionalNode),
-		nodesByCid: make(map[string]*bidirectionalNode),
+		nodesByStaticId: make(map[nodeId]*BidirectionalNode),
+		nodesByCid: make(map[string]*BidirectionalNode),
 	}
 
 	if len(nodes) > 0 {
@@ -79,22 +75,34 @@ func NewBidirectionalTree(root *cid.Cid, nodes ...*cbornode.Node) *Bidirectional
 	return tree
 }
 
-func (bn *bidirectionalNode) asJsonish() (map[string]interface{}, error) {
+func (bn *BidirectionalNode) AsJSONish() (map[string]interface{}, error) {
 	newParentJsonish := make(map[string]interface{})
-	err := cbornode.DecodeInto(bn.node.RawData(), &newParentJsonish)
+	err := cbornode.DecodeInto(bn.Node.RawData(), &newParentJsonish)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding: %v", err)
 	}
 	return newParentJsonish, nil
 }
 
-func (bn *bidirectionalNode) Resolve(tree *BidirectionalTree, path []string) (interface{}, []string, error) {
-	val, remaining, err := bn.node.Resolve(path)
+func (bn *BidirectionalNode) AsMap() (map[string]interface{}, error) {
+	jsonish,err := bn.AsJSONish()
+	if err != nil {
+		return nil, fmt.Errorf("error converting to jsonish: %v", err)
+	}
+	obj, err := convertToCborIshObj(jsonish)
+	if err != nil {
+		return nil, fmt.Errorf("error converting CIDs: %v", err)
+	}
+	return obj.(map[string]interface{}), nil
+}
+
+func (bn *BidirectionalNode) Resolve(tree *BidirectionalTree, path []string) (interface{}, []string, error) {
+	val, remaining, err := bn.Node.Resolve(path)
 	if err != nil {
 		//fmt.Printf("error resolving: %v", err)
 		return nil, nil, &ErrorCode{Code: ErrMissingPath, Memo: fmt.Sprintf("error resolving: %v", err)}
 	}
-	//spew.Dump("resolved on node", val)
+	//spew.Dump("resolved on Node", val)
 
 	switch val.(type) {
 	case *format.Link:
@@ -109,11 +117,18 @@ func (bn *bidirectionalNode) Resolve(tree *BidirectionalTree, path []string) (in
 	}
 }
 
+func (bt *BidirectionalTree) Get(id *cid.Cid) (*BidirectionalNode) {
+	node,ok := bt.nodesByCid[id.KeyString()]
+	if ok {
+		return node
+	}
+	return nil
+}
 
 func (bt *BidirectionalTree) Copy() *BidirectionalTree {
 	newNodes := make([]*cbornode.Node, len(bt.nodesByStaticId))
 	for i,oldNode := range bt.nodesByStaticId {
-		newNode, err := cbornode.Decode(oldNode.node.RawData(), multihash.SHA2_256, -1)
+		newNode, err := cbornode.Decode(oldNode.Node.RawData(), multihash.SHA2_256, -1)
 		if err != nil {
 			panic(fmt.Sprintf("this encoded, it should never fail to decode: %v", err))
 		}
@@ -133,10 +148,10 @@ func (bt *BidirectionalTree) AddNodes(nodes ...*cbornode.Node) {
 	defer bt.mutex.Unlock()
 
 	for i,node := range nodes {
-		bidiNode := &bidirectionalNode{
-			node: node,
-			id: nodeId(bt.counter + i),
-			parents: make([]nodeId,0),
+		bidiNode := &BidirectionalNode{
+			Node:    node,
+			id:      nodeId(bt.counter + i),
+			Parents: make([]nodeId,0),
 		}
 		bt.nodesByStaticId[bidiNode.id] = bidiNode
 		bt.nodesByCid[node.Cid().KeyString()] = bidiNode
@@ -144,11 +159,11 @@ func (bt *BidirectionalTree) AddNodes(nodes ...*cbornode.Node) {
 	bt.counter += len(nodes)
 
 	for _,bidiNode := range bt.nodesByStaticId {
-		links := bidiNode.node.Links()
+		links := bidiNode.Node.Links()
 		for _,link := range links {
 			existing,ok := bt.nodesByCid[link.Cid.KeyString()]
 			if ok {
-				existing.parents = append(existing.parents, bidiNode.id)
+				existing.Parents = append(existing.Parents, bidiNode.id)
 			}
 		}
 	}
@@ -163,7 +178,7 @@ func (bt *BidirectionalTree) Resolve(path []string) (interface{}, []string, erro
 	}
 	if len(path) == 0 || len(path) == 1 && path[0] == "/" {
 		//fmt.Printf("path length == 1\n")
-		rootMap, err := root.asJsonish()
+		rootMap, err := root.AsJSONish()
 		if err != nil {
 			return nil, nil, &ErrorCode{Code: ErrEncodingError, Memo: fmt.Sprintf("error encoding: %v", err)}
 		}
@@ -217,6 +232,20 @@ func (bt *BidirectionalTree) Set(pathAndKey []string, val interface{}) error {
 }
 
 func (bt *BidirectionalTree) SetAsLink(pathAndKey []string, val interface{}) error {
+	tree,ok := val.(*BidirectionalTree)
+	if ok {
+		nodes := make([]*cbornode.Node, len(tree.nodesByStaticId))
+		for i,node := range tree.nodesByStaticId {
+			nodes[i] = node.Node
+		}
+		bt.AddNodes(nodes...)
+		rootMap,err := tree.Get(tree.Tip).AsMap()
+		if err != nil {
+			return &ErrorCode{Code: ErrBadInput, Memo: "bad map"}
+		}
+		val = rootMap
+	}
+
 	return bt.set(pathAndKey, val, true)
 }
 
@@ -284,7 +313,6 @@ func (bt *BidirectionalTree) set(pathAndKey []string, val interface{}, asLink bo
 		return &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting object: %v", err)}
 	}
 
-
 	//fmt.Printf("swapping: %v for %v\n", existingCid.String(), wrappedModified.Cid().String())
 	err = bt.Swap(existingCid, wrappedModified)
 	if err != nil {
@@ -303,10 +331,10 @@ func (bt *BidirectionalTree) Swap(oldCid *cid.Cid, newNode *cbornode.Node) error
 		return &ErrorCode{Code:ErrMissingPath, Memo: fmt.Sprintf("cannot find %s", oldCid.String())}
 	}
 	//fmt.Println("existing:")
-	//existing.dump()
+	//existing.Dump()
 
-	existingCid := existing.node.Cid()
-	existing.node = newNode
+	existingCid := existing.Node.Cid()
+	existing.Node = newNode
 	delete(bt.nodesByCid, existingCid.KeyString())
 
 	bt.nodesByCid[newNode.Cid().KeyString()] = existing
@@ -316,12 +344,12 @@ func (bt *BidirectionalTree) Swap(oldCid *cid.Cid, newNode *cbornode.Node) error
 	if bt.Tip.KeyString() == oldCid.KeyString() {
 		bt.Tip = newNode.Cid()
 	} else {
-		for _,parentId := range existing.parents {
+		for _,parentId := range existing.Parents {
 			parent := bt.nodesByStaticId[parentId]
 			//fmt.Println("parent")
-			//parent.dump()
+			//parent.Dump()
 			newParentJsonish := make(map[string]interface{})
-			err := cbornode.DecodeInto(parent.node.RawData(), &newParentJsonish)
+			err := cbornode.DecodeInto(parent.Node.RawData(), &newParentJsonish)
 			if err != nil {
 				return fmt.Errorf("error decoding: %v", err)
 			}
@@ -339,40 +367,40 @@ func (bt *BidirectionalTree) Swap(oldCid *cid.Cid, newNode *cbornode.Node) error
 
 			newParentNode,err := fromJsonish(newParentJsonish)
 			if err != nil {
-				return fmt.Errorf("error getting node: %v", err)
+				return fmt.Errorf("error getting Node: %v", err)
 			}
-			//fmt.Println("new parent node")
+			//fmt.Println("new parent Node")
 			obj := make(map[string]interface{})
 			cbornode.DecodeInto(newParentNode.RawData(), &obj)
 			//spew.Dump(obj)
 
-			if parent.node.Cid() == bt.Tip {
+			if parent.Node.Cid() == bt.Tip {
 				bt.Tip = newParentNode.Cid()
 			}
 
-			bt.Swap(parent.node.Cid(), newParentNode)
+			bt.Swap(parent.Node.Cid(), newParentNode)
 		}
 	}
 
 
 	//fmt.Println("after tree")
-	//bt.dump()
+	//bt.Dump()
 
 	return nil
 }
 
-func (bn *bidirectionalNode) dump() {
+func (bn *BidirectionalNode) Dump() {
 	spew.Dump(bn)
 	obj := make(map[string]interface{})
-	cbornode.DecodeInto(bn.node.RawData(), &obj)
+	cbornode.DecodeInto(bn.Node.RawData(), &obj)
 	spew.Dump(obj)
 }
 
-func (bt *BidirectionalTree) dump() {
+func (bt *BidirectionalTree) Dump() {
 	spew.Dump(bt)
 	for _,n := range bt.nodesByStaticId {
-		fmt.Printf("node: %d", n.id)
-		n.dump()
+		fmt.Printf("Node: %d", n.id)
+		n.Dump()
 	}
 }
 
@@ -443,6 +471,53 @@ func updateLinks(obj interface{}, oldCid *cid.Cid, newCid *cid.Cid) error {
 		default:
 			return nil
 		}
+}
+
+
+
+
+func convertMapSIToCbor(from map[string]interface{}) (map[string]interface{}, error) {
+	to := make(map[string]interface{})
+	for k, v := range from {
+		out, err := convertToCborIshObj(v)
+		if err != nil {
+			return nil, err
+		}
+		to[k] = out
+	}
+
+	return to, nil
+}
+
+func convertToCborIshObj(i interface{}) (interface{}, error) {
+	switch v := i.(type) {
+	case map[string]interface{}:
+		if lnk, ok := v["/"]; ok && len(v) == 1 {
+			// special case for links
+			vstr, ok := lnk.(string)
+			if !ok {
+				return nil, fmt.Errorf("link should have been a string")
+			}
+
+			return cid.Decode(vstr)
+		}
+
+		return convertMapSIToCbor(v)
+	case []interface{}:
+		var out []interface{}
+		for _, o := range v {
+			obj, err := convertToCborIshObj(o)
+			if err != nil {
+				return nil, err
+			}
+
+			out = append(out, obj)
+		}
+
+		return out, nil
+	default:
+		return v, nil
+	}
 }
 
 

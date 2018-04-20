@@ -1,20 +1,11 @@
 package dag
 
 import (
-	"github.com/ipfs/go-cid"
 	"testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/ipfs/go-ipld-cbor"
+	"github.com/ipfs/go-cid"
 )
-
-type TestStruct struct {
-	Name string
-	Bar *cid.Cid
-}
-
-type TestLinks struct {
-	Linkies []*cid.Cid
-}
 
 func TestCreating(t *testing.T) {
 	sw := &SafeWrap{}
@@ -205,6 +196,43 @@ func TestBidirectionalTree_Copy(t *testing.T) {
 	assert.Equal(t, tree, newTree)
 }
 
+func TestBidirectionalTree_Get(t *testing.T) {
+	sw := &SafeWrap{}
+
+	child := sw.WrapObject(map[string]interface{} {
+		"name": "child",
+	})
+
+	root := sw.WrapObject(map[string]interface{}{
+		"child": child.Cid(),
+	})
+
+	assert.Nil(t, sw.Err)
+	tree := NewBidirectionalTree(root.Cid(), root, child)
+
+	assert.Equal(t, child, tree.Get(child.Cid()).Node)
+}
+
+func TestBidirectionalNode_AsMap(t *testing.T) {
+	sw := &SafeWrap{}
+
+	child := sw.WrapObject(map[string]interface{} {
+		"name": "child",
+	})
+
+	root := sw.WrapObject(map[string]interface{}{
+		"child": child.Cid(),
+	})
+
+	assert.Nil(t, sw.Err)
+	tree := NewBidirectionalTree(root.Cid(), root, child)
+
+	rootAsMap,err := tree.Get(root.Cid()).AsMap()
+	assert.Nil(t, err)
+
+	assert.Equal(t, child.Cid().String(), rootAsMap["child"].(*cid.Cid).String())
+}
+
 func BenchmarkBidirectionalTree_Swap(b *testing.B) {
 	sw := &SafeWrap{}
 	child := sw.WrapObject(map[string]interface{} {
@@ -282,4 +310,28 @@ func BenchmarkBidirectionalTree_Copy(b *testing.B) {
 	}
 
 	assert.Equal(b, tree, newTree)
+}
+
+func BenchmarkBidirectionalNode_AsMap(b *testing.B) {
+	sw := &SafeWrap{}
+	child := sw.WrapObject(map[string]interface{} {
+		"name": "child",
+	})
+
+	root := sw.WrapObject(map[string]interface{}{
+		"child": child.Cid(),
+	})
+
+	tree := NewBidirectionalTree(root.Cid(), root, child)
+
+	assert.Nil(b, sw.Err)
+	// run the Fib function b.N times
+
+	var rootMap map[string]interface{}
+
+	for n := 0; n < b.N; n++ {
+		rootMap,_ = tree.Get(root.Cid()).AsMap()
+	}
+
+	assert.Equal(b, child.Cid(), rootMap["child"])
 }

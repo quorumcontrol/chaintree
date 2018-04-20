@@ -19,7 +19,6 @@ func AddType(typeHint interface{}) {
 	currentAtlas = atlas.MustBuild(entries...)
 }
 
-
 func ToType(src, dst interface{}) error {
 	return ToTypeAtlasted(src, dst, currentAtlas)
 }
