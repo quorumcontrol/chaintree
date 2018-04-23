@@ -23,6 +23,34 @@ func TestCreating(t *testing.T) {
 	assert.NotNil(t, tree)
 }
 
+func TestBidirectionalTree_Prune(t *testing.T) {
+	sw := &SafeWrap{}
+	child := sw.WrapObject(map[string]interface{} {
+		"name": "child",
+	})
+
+	orphan := sw.WrapObject(map[string]interface{} {
+		"name": "orphan",
+	})
+
+	root := sw.WrapObject(map[string]interface{}{
+		"child": child.Cid(),
+		"key": "value",
+	})
+
+
+	assert.Nil(t, sw.Err)
+
+	tree := NewBidirectionalTree(root.Cid(), root, child, orphan)
+
+	assert.Len(t, tree.nodesByStaticId, 3)
+
+	tree.Prune()
+
+	assert.Len(t, tree.nodesByStaticId, 2)
+
+}
+
 func TestBidirectionalTree_Resolve(t *testing.T) {
 	sw := &SafeWrap{}
 	child := sw.WrapObject(map[string]interface{} {
@@ -231,6 +259,37 @@ func TestBidirectionalNode_AsMap(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, child.Cid().String(), rootAsMap["child"].(*cid.Cid).String())
+}
+
+func TestSafeWrap_WrapObject(t *testing.T) {
+	sw := &SafeWrap{}
+	for _,test := range []struct{
+		description string
+		obj interface{}
+	} {
+		{
+			description: "an object with an empty cid",
+			obj: struct{
+				NilPointer interface{}
+				Other string
+			}{Other: "something"},
+		},
+		{
+			description: "an object with an array of CIDs",
+			obj: struct{
+				Cids []*cid.Cid
+			} {
+				Cids: []*cid.Cid{sw.WrapObject(map[string]string{"test":"test"}).Cid()},
+			},
+		},
+	} {
+		node := sw.WrapObject(test.obj)
+		j,err := node.MarshalJSON()
+		assert.Nil(t, err, test.description)
+
+		t.Log(string(j))
+		assert.Nil(t, sw.Err, test.description)
+	}
 }
 
 func BenchmarkBidirectionalTree_Swap(b *testing.B) {

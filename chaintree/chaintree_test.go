@@ -7,6 +7,8 @@ import (
 	"github.com/quorumcontrol/chaintree/typecaster"
 	"fmt"
 	"strings"
+	"github.com/ipfs/go-cid"
+	"github.com/davecgh/go-spew/spew"
 )
 
 const errInvalidPayload = 999
@@ -42,6 +44,125 @@ func setData(tree *dag.BidirectionalTree, transaction *Transaction) (valid bool,
 	}
 
 	return true, nil
+}
+
+func TestBuildingUpAChain(t *testing.T) {
+	sw := &dag.SafeWrap{}
+
+
+	treeNode := sw.WrapObject(map[string]string{
+		"hithere": "hothere",
+	})
+
+	chainNode := sw.WrapObject(make(map[string]string))
+
+	root := sw.WrapObject(map[string]interface{}{
+		"chain": chainNode.Cid(),
+		"tree": treeNode.Cid(),
+	})
+
+	assert.Nil(t, sw.Err)
+	tree,err := NewChainTree(
+		dag.NewBidirectionalTree(root.Cid(), root,treeNode,chainNode),
+		[]BlockValidatorFunc{hasCoolHeader},
+		map[string]TransactorFunc{
+			"SET_DATA": setData,
+		},
+	)
+	assert.Nil(t, err)
+
+	block := &BlockWithHeaders{
+		Block: Block{
+			Transactions: []*Transaction{
+				{
+					Type: "SET_DATA",
+					Payload: map[string]string{
+						"path": "down/in/the/thing",
+						"value": "hi",
+					},
+				},
+			},
+		},
+		Headers: map[string]interface{}{
+			"cool": "cool",
+		},
+	}
+
+	valid,err := tree.ProcessBlock(block)
+	assert.Nil(t, err)
+	assert.True(t,valid)
+
+	blockCid := sw.WrapObject(block).Cid()
+	assert.Nil(t, sw.Err)
+
+	//tree.Dag.Dump()
+
+	entry,_,err := tree.Dag.Resolve([]string{"chain", "end", "blocksWithHeaders"})
+	assert.Nil(t, err)
+	assert.Equal(t, blockCid, entry.([]interface{})[0].(*cid.Cid))
+
+	currAndOldTip := tree.Dag.Tip.String()
+
+	block2 := &BlockWithHeaders{
+		Block: Block{
+			PreviousTip: currAndOldTip,
+			Transactions: []*Transaction{
+				{
+					Type: "SET_DATA",
+					Payload: map[string]string{
+						"path": "down/in/the/thing",
+						"value": "hi",
+					},
+				},
+			},
+		},
+		Headers: map[string]interface{}{
+			"cool": "cool",
+		},
+	}
+
+	valid,err = tree.ProcessBlock(block2)
+	assert.Nil(t, err)
+	assert.True(t,valid)
+
+	block2Cid := sw.WrapObject(block2).Cid()
+	assert.Nil(t, sw.Err)
+	defer func() {
+		if r := recover(); r != nil {
+			t.Log(spew.Sdump(entry))
+			t.Logf("Recovered in f: %v", r)
+			t.Log(tree.Dag.Dump())
+		}
+	}()
+	entry,_,err = tree.Dag.Resolve([]string{"chain", "end", "blocksWithHeaders"})
+	assert.Nil(t, err)
+	t.Log(spew.Sdump(entry.([]interface{})))
+	assert.Equal(t, block2Cid, entry.([]interface{})[0].(*cid.Cid))
+
+
+	// you can build on the same segment of the chain
+	block3 := &BlockWithHeaders{
+		Block: Block{
+			PreviousTip: currAndOldTip,
+			Transactions: []*Transaction{
+				{
+					Type: "SET_DATA",
+					Payload: map[string]string{
+						"path": "down/in/the/thing",
+						"value": "hi",
+					},
+				},
+			},
+		},
+		Headers: map[string]interface{}{
+			"cool": "cool",
+		},
+	}
+
+	valid,err = tree.ProcessBlock(block3)
+	assert.Nil(t, err)
+	assert.True(t,valid)
+
 }
 
 func TestBlockProcessing(t *testing.T) {

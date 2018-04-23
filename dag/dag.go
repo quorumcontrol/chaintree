@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"bytes"
 	"github.com/davecgh/go-spew/spew"
+	"log"
 )
 
 type nodeId int
@@ -53,7 +54,7 @@ const (
 
 
 type BidirectionalNode struct {
-	Parents []nodeId
+	Parents map[nodeId]bool
 	id      nodeId
 	Node    *cbornode.Node
 }
@@ -127,12 +128,15 @@ func (bt *BidirectionalTree) Get(id *cid.Cid) (*BidirectionalNode) {
 
 func (bt *BidirectionalTree) Copy() *BidirectionalTree {
 	newNodes := make([]*cbornode.Node, len(bt.nodesByStaticId))
-	for i,oldNode := range bt.nodesByStaticId {
+
+	i := 0
+	for _,oldNode := range bt.nodesByStaticId {
 		newNode, err := cbornode.Decode(oldNode.Node.RawData(), multihash.SHA2_256, -1)
 		if err != nil {
 			panic(fmt.Sprintf("this encoded, it should never fail to decode: %v", err))
 		}
 		newNodes[i] = newNode
+		i++
 	}
 
 	newCid,err := cid.Cast(bt.Tip.Bytes())
@@ -140,21 +144,28 @@ func (bt *BidirectionalTree) Copy() *BidirectionalTree {
 		panic(fmt.Sprintf("this encoded, it should never fail to decode: %v", err))
 	}
 
+	log.Printf("copying tree")
+
 	return NewBidirectionalTree(newCid, newNodes...)
 }
 
 func (bt *BidirectionalTree) AddNodes(nodes ...*cbornode.Node) {
 	bt.mutex.Lock()
 	defer bt.mutex.Unlock()
+	log.Printf("Adding nodes: %d", len(nodes))
 
 	for i,node := range nodes {
-		bidiNode := &BidirectionalNode{
-			Node:    node,
-			id:      nodeId(bt.counter + i),
-			Parents: make([]nodeId,0),
+		_,ok := bt.nodesByCid[node.Cid().KeyString()]
+		if !ok {
+			bidiNode := &BidirectionalNode{
+				Node:    node,
+				id:      nodeId(bt.counter + i),
+				Parents: make(map[nodeId]bool),
+			}
+			log.Printf("adding bidiNode: %v, %s", bidiNode.id, node.Cid().String())
+			bt.nodesByStaticId[bidiNode.id] = bidiNode
+			bt.nodesByCid[node.Cid().KeyString()] = bidiNode
 		}
-		bt.nodesByStaticId[bidiNode.id] = bidiNode
-		bt.nodesByCid[node.Cid().KeyString()] = bidiNode
 	}
 	bt.counter += len(nodes)
 
@@ -163,7 +174,7 @@ func (bt *BidirectionalTree) AddNodes(nodes ...*cbornode.Node) {
 		for _,link := range links {
 			existing,ok := bt.nodesByCid[link.Cid.KeyString()]
 			if ok {
-				existing.Parents = append(existing.Parents, bidiNode.id)
+				existing.Parents[bidiNode.id] = true
 			}
 		}
 	}
@@ -186,6 +197,37 @@ func (bt *BidirectionalTree) Resolve(path []string) (interface{}, []string, erro
 	}
 	//fmt.Printf("resolving to root\n")
 	return root.Resolve(bt, path)
+}
+
+func (bt *BidirectionalTree) keepWalker(node *BidirectionalNode) map[string]*BidirectionalNode {
+	toKeep := map[string]*BidirectionalNode{node.Node.Cid().KeyString(): node}
+
+	links := node.Node.Links()
+	for _,l := range links {
+		linkNode,ok := bt.nodesByCid[l.Cid.KeyString()]
+		if ok {
+			toKeep[node.Node.Cid().KeyString()] = linkNode
+			decedents := bt.keepWalker(linkNode)
+			for k,v := range decedents {
+				toKeep[k] = v
+			}
+		}
+	}
+	return toKeep
+}
+
+func (bt *BidirectionalTree) Prune() {
+	bt.mutex.Lock()
+	defer bt.mutex.Unlock()
+
+	toKeep := bt.keepWalker(bt.Get(bt.Tip))
+	for cid,node := range bt.nodesByCid {
+		_,ok := toKeep[cid]
+		if !ok {
+			delete(bt.nodesByCid, cid)
+			delete(bt.nodesByStaticId, node.id)
+		}
+	}
 }
 
 func (bt *BidirectionalTree) createLinks(path []string, node *cbornode.Node) error {
@@ -234,11 +276,13 @@ func (bt *BidirectionalTree) Set(pathAndKey []string, val interface{}) error {
 func (bt *BidirectionalTree) SetAsLink(pathAndKey []string, val interface{}) error {
 	tree,ok := val.(*BidirectionalTree)
 	if ok {
-		nodes := make([]*cbornode.Node, len(tree.nodesByStaticId))
-		for i,node := range tree.nodesByStaticId {
-			nodes[i] = node.Node
+		newNodes := make([]*cbornode.Node, len(tree.nodesByStaticId))
+		i := 0
+		for _,node := range tree.nodesByStaticId {
+			newNodes[i] = node.Node
+			i++
 		}
-		bt.AddNodes(nodes...)
+		bt.AddNodes(newNodes...)
 		rootMap,err := tree.Get(tree.Tip).AsMap()
 		if err != nil {
 			return &ErrorCode{Code: ErrBadInput, Memo: "bad map"}
@@ -323,13 +367,16 @@ func (bt *BidirectionalTree) set(pathAndKey []string, val interface{}, asLink bo
 }
 
 func (bt *BidirectionalTree) Swap(oldCid *cid.Cid, newNode *cbornode.Node) error {
-	//fmt.Printf("swapping: %s \n", oldCid.String())
-
 	existing,ok := bt.nodesByCid[oldCid.KeyString()]
 	if !ok {
-		//fmt.Printf("existing not found")
+		log.Printf("existing not found")
 		return &ErrorCode{Code:ErrMissingPath, Memo: fmt.Sprintf("cannot find %s", oldCid.String())}
 	}
+
+	newMapped,_ := (&BidirectionalNode{Node: newNode}).AsMap()
+	oldMapped,_ := existing.AsMap()
+	log.Printf("swapping: %s from: \n %v \nto:\n %v with CID: %v", oldCid.String(), oldMapped, newMapped, newNode.Cid())
+
 	//fmt.Println("existing:")
 	//existing.Dump()
 
@@ -344,7 +391,7 @@ func (bt *BidirectionalTree) Swap(oldCid *cid.Cid, newNode *cbornode.Node) error
 	if bt.Tip.KeyString() == oldCid.KeyString() {
 		bt.Tip = newNode.Cid()
 	} else {
-		for _,parentId := range existing.Parents {
+		for parentId := range existing.Parents {
 			parent := bt.nodesByStaticId[parentId]
 			//fmt.Println("parent")
 			//parent.Dump()
@@ -389,19 +436,46 @@ func (bt *BidirectionalTree) Swap(oldCid *cid.Cid, newNode *cbornode.Node) error
 	return nil
 }
 
-func (bn *BidirectionalNode) Dump() {
-	spew.Dump(bn)
-	obj := make(map[string]interface{})
-	cbornode.DecodeInto(bn.Node.RawData(), &obj)
-	spew.Dump(obj)
+func (bn *BidirectionalNode) Dump(bt *BidirectionalTree, isLink bool) map[string]interface{} {
+	nodeMap,_ := bn.AsMap()
+	for k,v := range nodeMap {
+		switch v := v.(type) {
+		case *cid.Cid:
+			node := bt.Get(v)
+			if node == nil {
+				nodeMap[k] = fmt.Sprintf("non existant link: %s", v.String())
+			} else {
+				nodeMap[k] = node.Dump(bt, true)
+			}
+		default:
+			continue
+		}
+	}
+	if isLink {
+		nodeMap["_isLink"] = true
+	}
+	return nodeMap
 }
 
-func (bt *BidirectionalTree) Dump() {
-	spew.Dump(bt)
-	for _,n := range bt.nodesByStaticId {
-		fmt.Printf("Node: %d", n.id)
-		n.Dump()
+func (bt *BidirectionalTree) Dump() string {
+	rootNode := bt.Get(bt.Tip)
+	nodes := make([]string, len(bt.nodesByCid))
+	i := 0
+	for _,node := range bt.nodesByCid {
+		nodes[i] = node.Node.Cid().String()
+		i++
 	}
+	return fmt.Sprintf(`
+Tip: %s,
+Tree:	
+%s
+
+Nodes: %v
+
+	`,
+		bt.Tip.String(),
+		spew.Sdump(rootNode.Dump(bt, false)),
+		nodes)
 }
 
 
@@ -413,6 +487,7 @@ func (sf *SafeWrap) WrapObject(obj interface{}) *cbornode.Node {
 	if sf.Err != nil {
 		return nil
 	}
+
 	node,err := cbornode.WrapObject(obj, multihash.SHA2_256, -1)
 	sf.Err = err
 	return node
