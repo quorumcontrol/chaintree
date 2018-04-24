@@ -5,7 +5,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"fmt"
 	"github.com/quorumcontrol/chaintree/typecaster"
-	"log"
+	"github.com/ipfs/go-ipld-cbor"
 )
 
 const (
@@ -168,7 +168,7 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("invalid previous tip: %v, expecting nil", tip)}
 		}
 
-		log.Printf("wrapped block Cid: %v", wrappedBlock.Cid())
+		//log.Printf("wrapped block Cid: %v", wrappedBlock.Cid())
 
 		lastEntry := &ChainEntry{
 			PreviousTip: "",
@@ -182,27 +182,25 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		ct.Dag.Swap(chainNode.Node.Cid(), newChainNode)
 
 	} else {
-		log.Println("we have an end")
+		//log.Println("we have an end")
 		endNode := ct.Dag.Get(endLink.(*cid.Cid))
 		if endNode == nil {
 			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("missing end node in chain tree")}
 		}
 
-		endMap,err := endNode.AsMap()
-		if err != nil {
-			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting map: %v", err)}
-		}
-
 		lastEntry := &ChainEntry{}
 
-		err = typecaster.ToType(endMap, lastEntry)
+		err = cbornode.DecodeInto(endNode.Node.RawData(), lastEntry)
+
+		//err = typecaster.ToType(endMap, lastEntry)
 		if err != nil {
 			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error casting lastEntry: %v", err)}
 		}
 
+
 		switch tip := blockWithHeaders.PreviousTip; tip{
 		case rootNode.Node.Cid().String():
-			log.Printf("previous tip of block == rootNode")
+			//log.Printf("previous tip of block == rootNode")
 			newEntry := &ChainEntry{
 				PreviousTip: ct.Dag.Tip.String(),
 				BlocksWithHeaders: []*cid.Cid{wrappedBlock.Cid()},
@@ -213,7 +211,7 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 
 			chainMap["end"] = entryNode.Cid()
 			ct.Dag.AddNodes(entryNode)
-			log.Printf("setting end to: %v", entryNode.Cid().String())
+			//log.Printf("setting end to: %v", entryNode.Cid().String())
 
 			wrappedChainMap := sw.WrapObject(chainMap)
 
@@ -221,24 +219,28 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 				return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error wrapping object: %v", err)}
 			}
 
-			log.Printf("chain map: %v", chainMap)
+			//log.Printf("chain map: %v", chainMap)
 
 			err = ct.Dag.Swap(chainNode.Node.Cid(), wrappedChainMap)
 			if err != nil {
 				return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error swapping object: %v", err)}
 			}
-			log.Printf("after swap of chain map")
-		case endMap["previousTip"].(string):
-			log.Printf("previous tip of block == ending previousTip")
+			//log.Printf("after swap of chain map")
+		case lastEntry.PreviousTip:
+			//log.Printf("previous tip of block == ending previousTip")
 
 			lastEntry.BlocksWithHeaders = append(lastEntry.BlocksWithHeaders, wrappedBlock.Cid())
+
 			entryNode := sw.WrapObject(lastEntry)
+			if sw.Err != nil {
+				return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error decoding: %v", sw.Err)}
+			}
 			err = ct.Dag.Swap(endNode.Node.Cid(), entryNode)
 			if err != nil {
 				return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error swapping object: %v", err)}
 			}
 		default:
-			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error, tip must be either current tip or same previousTip as last ChainEntry, tip: %v endMap: %v, rootNode: %v", tip, endMap["previousTip"], rootNode.Node.Cid())}
+			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error, tip must be either current tip or same previousTip as last ChainEntry, tip: %v endMap: %v, rootNode: %v", tip, lastEntry.PreviousTip, rootNode.Node.Cid())}
 		}
 	}
 

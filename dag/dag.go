@@ -16,7 +16,6 @@ import (
 	"encoding/json"
 	"bytes"
 	"github.com/davecgh/go-spew/spew"
-	"log"
 )
 
 type nodeId int
@@ -144,7 +143,7 @@ func (bt *BidirectionalTree) Copy() *BidirectionalTree {
 		panic(fmt.Sprintf("this encoded, it should never fail to decode: %v", err))
 	}
 
-	log.Printf("copying tree")
+	//log.Printf("copying tree")
 
 	return NewBidirectionalTree(newCid, newNodes...)
 }
@@ -152,7 +151,7 @@ func (bt *BidirectionalTree) Copy() *BidirectionalTree {
 func (bt *BidirectionalTree) AddNodes(nodes ...*cbornode.Node) {
 	bt.mutex.Lock()
 	defer bt.mutex.Unlock()
-	log.Printf("Adding nodes: %d", len(nodes))
+	//log.Printf("Adding nodes: %d", len(nodes))
 
 	for i,node := range nodes {
 		_,ok := bt.nodesByCid[node.Cid().KeyString()]
@@ -162,7 +161,7 @@ func (bt *BidirectionalTree) AddNodes(nodes ...*cbornode.Node) {
 				id:      nodeId(bt.counter + i),
 				Parents: make(map[nodeId]bool),
 			}
-			log.Printf("adding bidiNode: %v, %s", bidiNode.id, node.Cid().String())
+			//log.Printf("adding bidiNode: %v, %s", bidiNode.id, node.Cid().String())
 			bt.nodesByStaticId[bidiNode.id] = bidiNode
 			bt.nodesByCid[node.Cid().KeyString()] = bidiNode
 		}
@@ -369,13 +368,13 @@ func (bt *BidirectionalTree) set(pathAndKey []string, val interface{}, asLink bo
 func (bt *BidirectionalTree) Swap(oldCid *cid.Cid, newNode *cbornode.Node) error {
 	existing,ok := bt.nodesByCid[oldCid.KeyString()]
 	if !ok {
-		log.Printf("existing not found")
+		//log.Printf("existing not found")
 		return &ErrorCode{Code:ErrMissingPath, Memo: fmt.Sprintf("cannot find %s", oldCid.String())}
 	}
 
-	newMapped,_ := (&BidirectionalNode{Node: newNode}).AsMap()
-	oldMapped,_ := existing.AsMap()
-	log.Printf("swapping: %s from: \n %v \nto:\n %v with CID: %v", oldCid.String(), oldMapped, newMapped, newNode.Cid())
+	//newMapped,_ := (&BidirectionalNode{Node: newNode}).AsMap()
+	//oldMapped,_ := existing.AsMap()
+	//log.Printf("swapping: %s from: \n %v \nto:\n %v with CID: %v", oldCid.String(), oldMapped, newMapped, newNode.Cid())
 
 	//fmt.Println("existing:")
 	//existing.Dump()

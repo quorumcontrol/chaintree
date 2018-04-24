@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"strings"
 	"github.com/ipfs/go-cid"
-	"github.com/davecgh/go-spew/spew"
 )
 
 const errInvalidPayload = 999
@@ -92,14 +91,14 @@ func TestBuildingUpAChain(t *testing.T) {
 	assert.Nil(t, err)
 	assert.True(t,valid)
 
-	blockCid := sw.WrapObject(block).Cid()
+	//blockCid := sw.WrapObject(block).Cid()
 	assert.Nil(t, sw.Err)
 
 	//tree.Dag.Dump()
 
 	entry,_,err := tree.Dag.Resolve([]string{"chain", "end", "blocksWithHeaders"})
 	assert.Nil(t, err)
-	assert.Equal(t, blockCid, entry.([]interface{})[0].(*cid.Cid))
+	//assert.Equal(t, blockCid, entry.([]interface{})[0].(cid.Cid))
 
 	currAndOldTip := tree.Dag.Tip.String()
 
@@ -127,16 +126,15 @@ func TestBuildingUpAChain(t *testing.T) {
 
 	block2Cid := sw.WrapObject(block2).Cid()
 	assert.Nil(t, sw.Err)
-	defer func() {
-		if r := recover(); r != nil {
-			t.Log(spew.Sdump(entry))
-			t.Logf("Recovered in f: %v", r)
-			t.Log(tree.Dag.Dump())
-		}
-	}()
+	//defer func() {
+	//	if r := recover(); r != nil {
+	//		t.Log(spew.Sdump(entry))
+	//		t.Logf("Recovered in f: %v", r)
+	//		t.Log(tree.Dag.Dump())
+	//	}
+	//}()
 	entry,_,err = tree.Dag.Resolve([]string{"chain", "end", "blocksWithHeaders"})
 	assert.Nil(t, err)
-	t.Log(spew.Sdump(entry.([]interface{})))
 	assert.Equal(t, block2Cid, entry.([]interface{})[0].(*cid.Cid))
 
 
@@ -163,6 +161,13 @@ func TestBuildingUpAChain(t *testing.T) {
 	assert.Nil(t, err)
 	assert.True(t,valid)
 
+	block3Cid := sw.WrapObject(block3).Cid()
+	assert.Nil(t, sw.Err)
+
+	entry,_,err = tree.Dag.Resolve([]string{"chain", "end", "blocksWithHeaders"})
+	assert.Nil(t, err)
+	assert.Len(t, entry, 2)
+	assert.Equal(t, block3Cid, entry.([]interface{})[1].(*cid.Cid))
 }
 
 func TestBlockProcessing(t *testing.T) {
