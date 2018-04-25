@@ -244,7 +244,7 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		}
 	}
 
-	//ct.Dag.Prune()
+	ct.Dag.Prune()
 
 	return true, nil
 }
