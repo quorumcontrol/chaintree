@@ -1,0 +1,151 @@
+digraph G {
+graph [
+    label="Example Chaintree";
+]
+
+rankdir="LR";
+
+subgraph entries {
+    rank="same";
+    ChainEntry1 [group=1 shape=none label=<
+            <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+                <tr><td colspan="2">Chain Entry</td></tr>
+                <tr><td>previousTip</td><td>nil</td></tr>
+                <tr><td>blocksWithHeaders</td><td>[[ipld-link]...]</td></tr>
+            </TABLE>>];
+
+    ChainEntry2 [group=1 shape=none label=<
+                       <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+                               <tr><td colspan="2">Chain Entry</td></tr>
+                           <tr><td>previousTip</td><td>zdpu...4dFFW</td></tr>
+                           <tr><td>blocksWithHeaders</td><td>[[ipld-link]...]</td></tr>
+                       </TABLE>>];
+
+    IntermediateChainEntry [group=1 shape=none label=<
+                    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+                            <tr><td colspan="2">Chain Entry</td></tr>
+                        <tr><td>previousTip</td><td>zdL7...AB77</td></tr>
+                        <tr><td>blocksWithHeaders</td><td>[[ipld-link]...]</td></tr>
+                    </TABLE>>];
+}
+
+subgraph blocks {
+   rank="same";
+   
+
+        Block4 [shape=none label=<
+                   <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+                           <tr><td colspan="2">Block</td></tr>
+                       <tr><td>headers</td><td>{signatures go here}</td></tr>
+                       <tr><td>transactions</td>
+                           <td>[[ipld-link]...]</td>
+                       </tr>
+                   </TABLE>>];
+
+  Block2 [shape=rectangle]
+  Block3 [shape=rectangle]
+
+  Block1 [shape=none label=<
+                   <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+                           <tr><td colspan="2">Block</td></tr>
+                       <tr><td>headers</td><td>{signatures go here}</td></tr>
+                       <tr><td>transactions</td>
+                           <td>[[ipld-link]...]</td>
+                       </tr>
+                   </TABLE>>];
+}
+
+subgraph transactions {
+    rank="same";
+
+
+        Transaction2 [shape=none label=<
+                                     <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+                                             <tr><td colspan="2">Transaction</td></tr>
+                                         <tr>
+                                            <td>type</td>
+                                            <td>SET_DATA</td>
+                                         </tr>
+                                         <tr>
+                                            <td>payload</td>
+                                            <td>
+                                                <table BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+                                                <tr>
+                                                  <td>path</td>
+                                                  <td>myKey</td>
+                                                </tr>
+                                                <tr>
+                                                  <td>value</td>
+                                                  <td>otherValue</td>
+                                                </tr>
+                                                </table>
+                                            </td>
+                                         </tr>
+                                     </TABLE>>];
+
+
+
+        Transaction1 [shape=none label=<
+                                     <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+                                         <tr><td colspan="2">Transaction</td></tr>
+                                         <tr>
+                                            <td>type</td>
+                                            <td>SET_DATA</td>
+                                         </tr>
+                                         <tr>
+                                            <td>payload</td>
+                                            <td>
+                                                <table BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+                                                <tr>
+                                                  <td>path</td>
+                                                  <td>myKey</td>
+                                                </tr>
+                                                <tr>
+                                                  <td>value</td>
+                                                  <td>initialValue</td>
+                                                </tr>
+                                                </table>
+                                            </td>
+                                         </tr>
+                                     </TABLE>>];
+}
+
+
+
+Tip [shape=none label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+             <tr><td colspan="2">Tip</td></tr>
+
+            <tr><td>chain</td><td>[ipld-link]</td></tr>
+            <tr><td>tree</td><td>[ipld-link]</td></tr>
+        </TABLE>>];
+
+Chain [shape=none label=<
+              <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+                  <tr><td colspan="2">Chain</td></tr>
+                  <tr><td>genesis</td><td>[ipld-link]</td></tr>
+                  <tr><td>end</td><td>[ipld-link]</td></tr>
+              </TABLE>>];
+
+Tree[shape=none label=<
+                    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+                        <tr><td colspan="2">Tree</td></tr>
+                        <tr><td>myKey</td><td>otherValue</td></tr>
+                    </TABLE>>];
+
+Tip -> Chain [label="chain"];
+
+ChainEntry2 -> Block4 [label="Block4"];
+Block4 -> Transaction2 [label="transaction"];
+
+ChainEntry1 -> Block1 [label="block1"];
+ChainEntry1 -> Block2 [label="block2"];
+Block1 -> Transaction1 [label="transaction"];
+
+Chain -> ChainEntry1 [label="genesis"];
+Chain -> ChainEntry2 [label="end"];
+IntermediateChainEntry -> Block3 [label="block3"]
+ChainEntry2 -> IntermediateChainEntry -> ChainEntry1;
+
+Tip -> Tree [label="tree"];
+}
