@@ -435,6 +435,14 @@ func (bt *BidirectionalTree) Swap(oldCid *cid.Cid, newNode *cbornode.Node) error
 	return nil
 }
 
+func (bt *BidirectionalTree) ByteSize() int64 {
+	var length int64
+	for _,node := range bt.nodesByCid {
+		length += int64(len(node.Node.RawData()))
+	}
+	return length
+}
+
 func (bn *BidirectionalNode) Dump(bt *BidirectionalTree, isLink bool) map[string]interface{} {
 	nodeMap,_ := bn.AsMap()
 	for k,v := range nodeMap {

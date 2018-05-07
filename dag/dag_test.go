@@ -221,7 +221,12 @@ func TestBidirectionalTree_Copy(t *testing.T) {
 
 	newTree := tree.Copy()
 
-	assert.Equal(t, tree, newTree)
+	assert.Equal(t, len(tree.nodesByCid), len(newTree.nodesByCid))
+	assert.Equal(t, tree.Tip, newTree.Tip)
+
+	for _,node := range tree.nodesByCid {
+		assert.Equal(t, node.Node.Cid(), newTree.nodesByCid[node.Node.Cid().KeyString()].Node.Cid())
+	}
 }
 
 func TestBidirectionalTree_Get(t *testing.T) {
@@ -284,10 +289,10 @@ func TestSafeWrap_WrapObject(t *testing.T) {
 		},
 	} {
 		node := sw.WrapObject(test.obj)
-		j,err := node.MarshalJSON()
+		_,err := node.MarshalJSON()
 		assert.Nil(t, err, test.description)
 
-		t.Log(string(j))
+		//t.Log(string(j))
 		assert.Nil(t, sw.Err, test.description)
 	}
 }
