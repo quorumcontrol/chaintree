@@ -9,21 +9,21 @@ subgraph entries {
     rank="same";
     ChainEntry1 [group=1 shape=none label=<
             <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
-                <tr><td colspan="2">Chain Entry</td></tr>
+                <tr><td colspan="2">Chain Entry 1</td></tr>
                 <tr><td>previousTip</td><td>nil</td></tr>
                 <tr><td>blocksWithHeaders</td><td>[[ipld-link]...]</td></tr>
             </TABLE>>];
 
     ChainEntry2 [group=1 shape=none label=<
                        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
-                               <tr><td colspan="2">Chain Entry</td></tr>
+                               <tr><td colspan="2">Chain Entry 3</td></tr>
                            <tr><td>previousTip</td><td>zdpu...4dFFW</td></tr>
                            <tr><td>blocksWithHeaders</td><td>[[ipld-link]...]</td></tr>
                        </TABLE>>];
 
     IntermediateChainEntry [group=1 shape=none label=<
                     <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
-                            <tr><td colspan="2">Chain Entry</td></tr>
+                            <tr><td colspan="2">Chain Entry 2</td></tr>
                         <tr><td>previousTip</td><td>zdL7...AB77</td></tr>
                         <tr><td>blocksWithHeaders</td><td>[[ipld-link]...]</td></tr>
                     </TABLE>>];
