@@ -4,8 +4,8 @@ import (
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/ipfs/go-cid"
 	"fmt"
-	"github.com/quorumcontrol/chaintree/typecaster"
 	"github.com/ipfs/go-ipld-cbor"
+	"github.com/quorumcontrol/chaintree/typecaster"
 )
 
 const (
@@ -18,6 +18,13 @@ const (
 	ChainLabel = "chain"
 )
 
+func init() {
+	typecaster.AddType(Chain{})
+	typecaster.AddType(ChainEntry{})
+	typecaster.AddType(BlockWithHeaders{})
+	typecaster.AddType(cid.Cid{})
+}
+
 type CodedError interface {
 	error
 	GetCode() int
@@ -28,13 +35,35 @@ type ErrorCode struct {
 	Memo string
 }
 
-func init() {
-	typecaster.AddType(Chain{})
-	typecaster.AddType(ChainEntry{})
-	typecaster.AddType(BlockWithHeaders{})
-	typecaster.AddType(cid.Cid{})
+
+type Transaction struct {
+	Type string `refmt:"type" json:"type" cbor:"type"`
+	Payload interface{} `refmt:"payload" json:"payload" cbor:"payload"`
 }
 
+type Block struct {
+	// this is an interface because nil pointers aren't encoded correctly
+	PreviousTip string `refmt:"previousTip,omitempty" json:"previousTip,omitempty" cbor:"previousTip,omitempty"`
+	Transactions []*Transaction `refmt:"transactions" json:"transactions" cbor:"transactions"`
+}
+
+type BlockWithHeaders struct {
+	Block
+	Headers map[string]interface{} `refmt:"headers" json:"headers" cbor:"headers"`
+}
+
+type Chain struct {
+	Genesis *cid.Cid `refmt:"genesis" json:"genesis" cbor:"genesis"`
+	End *cid.Cid `refmt:"end" json:"end" cbor:"end"`
+}
+
+type ChainEntry struct {
+	// this is an interface because nil pointers aren't encoded correctly
+	PreviousTip string `refmt:"previousTip,omitempty" json:"previousTip,omitempty" cbor:"previousTip,omitempty"`
+	BlocksWithHeaders []*cid.Cid	`refmt:"blocksWithHeaders" json:"blocksWithHeaders" cbor:"blocksWithHeaders"`
+	// this is an interface because nil pointers aren't encoded correctly
+	Previous interface{} `refmt:"previous" json:"previous" cbor:"previous"`
+}
 
 func (e *ErrorCode) GetCode() int {
 	return e.Code
@@ -56,6 +85,7 @@ type BlockValidatorFunc func(tree *dag.BidirectionalTree, blockWithHeaders *Bloc
 /*
 A Chain Tree is a DAG that starts with the following root node:
 {
+  id: string
   chain: *cidLink
   tree: *cidLink
 }
@@ -248,33 +278,3 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 
 	return true, nil
 }
-
-type Transaction struct {
-	Type string `refmt:"type" json:"type" cbor:"type"`
-	Payload interface{} `refmt:"payload" json:"payload" cbor:"payload"`
-}
-
-type Block struct {
-	// this is an interface because nil pointers aren't encoded correctly
-	PreviousTip string `refmt:"previousTip,omitempty" json:"previousTip,omitempty" cbor:"previousTip,omitempty"`
-	Transactions []*Transaction `refmt:"transactions" json:"transactions" cbor:"transactions"`
-}
-
-type BlockWithHeaders struct {
-	Block
-	Headers map[string]interface{} `refmt:"headers" json:"headers" cbor:"headers"`
-}
-
-type Chain struct {
-	Genesis *cid.Cid `refmt:"genesis" json:"genesis" cbor:"genesis"`
-	End *cid.Cid `refmt:"end" json:"end" cbor:"end"`
-}
-
-type ChainEntry struct {
-	// this is an interface because nil pointers aren't encoded correctly
-	PreviousTip string `refmt:"previousTip,omitempty" json:"previousTip,omitempty" cbor:"previousTip,omitempty"`
-	BlocksWithHeaders []*cid.Cid	`refmt:"blocksWithHeaders" json:"blocksWithHeaders" cbor:"blocksWithHeaders"`
-	// this is an interface because nil pointers aren't encoded correctly
-	Previous interface{} `refmt:"previous" json:"previous" cbor:"previous"`
-}
-

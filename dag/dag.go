@@ -179,6 +179,16 @@ func (bt *BidirectionalTree) AddNodes(nodes ...*cbornode.Node) {
 	}
 }
 
+func (bt *BidirectionalTree) Nodes() []*BidirectionalNode {
+	nodes := make([]*BidirectionalNode, len(bt.nodesByCid))
+	i := 0
+	for _,node := range bt.nodesByCid {
+		nodes[i] = node
+		i++
+	}
+	return nodes
+}
+
 func (bt *BidirectionalTree) Resolve(path []string) (interface{}, []string, error) {
 	//fmt.Printf("resolving: %v\n", path)
 	root,ok := bt.nodesByCid[bt.Tip.KeyString()]
