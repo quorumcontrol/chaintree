@@ -32,10 +32,10 @@
   revision = "9ed527918c2f20abdf0adfab0553cd87db34f656"
 
 [[projects]]
-  branch = "master"
+  branch = "refmt"
   name = "github.com/ipfs/go-ipld-cbor"
   packages = ["."]
-  revision = "c99eb619499c05326738bdf58e91074370a78b3d"
+  revision = "8b666bca090899848849a507a008080db0fcfe21"
 
 [[projects]]
   branch = "master"
@@ -82,7 +82,7 @@
 [[projects]]
   branch = "master"
   name = "github.com/polydawn/refmt"
-  packages = ["obj","obj/atlas","shared","tok"]
+  packages = ["cbor","obj","obj/atlas","shared","tok"]
   revision = "a1d2f05ac1bca2f4b4eed0d0fff736e8360cd32a"
 
 [[projects]]
@@ -105,12 +105,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/whyrusleeping/cbor"
-  packages = ["go"]
-  revision = "63513f603b11583741970c5045ea567130ddb492"
-
-[[projects]]
-  branch = "master"
   name = "golang.org/x/crypto"
   packages = ["blake2s","sha3"]
   revision = "d6449816ce06963d9d136eee5a56fca5b0616e7e"
@@ -118,6 +112,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7800da087c418f1a5bc07ac1f965915ad3ce9f62459a24b0635d3783a4817038"
+  inputs-digest = "ab3b76ed9820ab2df233b586105c1c18a2a1385b7d9136d7ae9d6c900cad3fe7"
   solver-name = "gps-cdcl"
   solver-version = 1
