@@ -7,6 +7,10 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
+func init() {
+	cbornode.RegisterCborType(objWithNilPointers{})
+}
+
 func TestCreating(t *testing.T) {
 	sw := &SafeWrap{}
 	child := sw.WrapObject(map[string]interface{} {
@@ -163,8 +167,6 @@ func TestBidirectionalTree_Set(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, true, val)
 
-
-
 	// test works in non-existant path
 
 	path := []string{"child", "non-existant-nested", "objects", "test"}
@@ -184,9 +186,9 @@ func TestBidirectionalTree_SetAsLink(t *testing.T) {
 		"name": "child",
 	})
 
-	unlinked := sw.WrapObject(map[string]interface{}{
+	unlinked := map[string]interface{}{
 		"unlinked": true,
-	})
+	}
 
 	root := sw.WrapObject(map[string]interface{}{
 		"child": child.Cid(),
@@ -263,27 +265,28 @@ func TestBidirectionalNode_AsMap(t *testing.T) {
 	rootAsMap,err := tree.Get(root.Cid()).AsMap()
 	assert.Nil(t, err)
 
-	assert.Equal(t, child.Cid().String(), rootAsMap["child"].(*cid.Cid).String())
+	assert.Equal(t, *child.Cid(), rootAsMap["child"].(cid.Cid))
+}
+
+type objWithNilPointers struct {
+	NilPointer *cid.Cid
+	Other string
+	Cids []*cid.Cid
 }
 
 func TestSafeWrap_WrapObject(t *testing.T) {
 	sw := &SafeWrap{}
 	for _,test := range []struct{
 		description string
-		obj interface{}
+		obj *objWithNilPointers
 	} {
 		{
 			description: "an object with an empty cid",
-			obj: struct{
-				NilPointer interface{}
-				Other string
-			}{Other: "something"},
+			obj: &objWithNilPointers{Other: "something"},
 		},
 		{
 			description: "an object with an array of CIDs",
-			obj: struct{
-				Cids []*cid.Cid
-			} {
+			obj: &objWithNilPointers{
 				Cids: []*cid.Cid{sw.WrapObject(map[string]string{"test":"test"}).Cid()},
 			},
 		},

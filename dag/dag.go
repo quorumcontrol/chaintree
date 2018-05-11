@@ -12,9 +12,6 @@ import (
 	"sync"
 	"fmt"
 	"github.com/ipfs/go-ipld-format"
-	"errors"
-	"encoding/json"
-	"bytes"
 	"github.com/davecgh/go-spew/spew"
 )
 
@@ -75,25 +72,14 @@ func NewBidirectionalTree(root *cid.Cid, nodes ...*cbornode.Node) *Bidirectional
 	return tree
 }
 
-func (bn *BidirectionalNode) AsJSONish() (map[string]interface{}, error) {
+func (bn *BidirectionalNode) AsMap() (map[string]interface{}, error) {
 	newParentJsonish := make(map[string]interface{})
 	err := cbornode.DecodeInto(bn.Node.RawData(), &newParentJsonish)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding: %v", err)
 	}
-	return newParentJsonish, nil
-}
 
-func (bn *BidirectionalNode) AsMap() (map[string]interface{}, error) {
-	jsonish,err := bn.AsJSONish()
-	if err != nil {
-		return nil, fmt.Errorf("error converting to jsonish: %v", err)
-	}
-	obj, err := convertToCborIshObj(jsonish)
-	if err != nil {
-		return nil, fmt.Errorf("error converting CIDs: %v", err)
-	}
-	return obj.(map[string]interface{}), nil
+	return newParentJsonish, nil
 }
 
 func (bn *BidirectionalNode) Resolve(tree *BidirectionalTree, path []string) (interface{}, []string, error) {
@@ -198,7 +184,7 @@ func (bt *BidirectionalTree) Resolve(path []string) (interface{}, []string, erro
 	}
 	if len(path) == 0 || len(path) == 1 && path[0] == "/" {
 		//fmt.Printf("path length == 1\n")
-		rootMap, err := root.AsJSONish()
+		rootMap, err := root.AsMap()
 		if err != nil {
 			return nil, nil, &ErrorCode{Code: ErrEncodingError, Memo: fmt.Sprintf("error encoding: %v", err)}
 		}
@@ -521,15 +507,12 @@ func (sf *SafeWrap) Decode(data []byte) *cbornode.Node {
 }
 
 func fromJsonish(obj interface{}) (*cbornode.Node, error) {
-	jBytes,err := json.Marshal(obj)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling: %v", err)
+	sw := &SafeWrap{}
+	node := sw.WrapObject(obj)
+	if sw.Err != nil {
+		return nil, fmt.Errorf("error marshaling: %v", sw.Err)
 	}
-	node,err := cbornode.FromJson(bytes.NewReader(jBytes), multihash.SHA2_256, -1)
-	if err != nil {
-		return nil, fmt.Errorf("error decoding: %v", err)
-	}
-	return node, nil
+	return node,nil
 }
 
 
@@ -544,19 +527,17 @@ func updateLinks(obj interface{}, oldCid *cid.Cid, newCid *cid.Cid) error {
 			return nil
 		case map[string]interface{}:
 			for ks, v := range obj {
-				//fmt.Printf("k: %s\n", ks)
-
-				if ks == "/" {
-					vs, ok := v.(string)
-					if ok {
-						if vs == oldCid.String() {
-							//fmt.Printf("updating link from %s to %s\n", oldCid.String(), newCid.String())
-							obj[ks] = newCid.String()
-						}
-					} else {
-						return errors.New("error, link was not a string")
+				switch v.(type) {
+				case *cid.Cid:
+					if v.(*cid.Cid).String() == oldCid.String() {
+						obj[ks] = newCid
 					}
-				} else {
+				case cid.Cid:
+					ptr := v.(cid.Cid)
+					if (&ptr).String() == oldCid.String() {
+						obj[ks] = newCid
+					}
+				default:
 					if err := updateLinks(v, oldCid, newCid); err != nil {
 						return err
 					}
@@ -574,52 +555,3 @@ func updateLinks(obj interface{}, oldCid *cid.Cid, newCid *cid.Cid) error {
 			return nil
 		}
 }
-
-
-
-
-func convertMapSIToCbor(from map[string]interface{}) (map[string]interface{}, error) {
-	to := make(map[string]interface{})
-	for k, v := range from {
-		out, err := convertToCborIshObj(v)
-		if err != nil {
-			return nil, err
-		}
-		to[k] = out
-	}
-
-	return to, nil
-}
-
-func convertToCborIshObj(i interface{}) (interface{}, error) {
-	switch v := i.(type) {
-	case map[string]interface{}:
-		if lnk, ok := v["/"]; ok && len(v) == 1 {
-			// special case for links
-			vstr, ok := lnk.(string)
-			if !ok {
-				return nil, fmt.Errorf("link should have been a string")
-			}
-
-			return cid.Decode(vstr)
-		}
-
-		return convertMapSIToCbor(v)
-	case []interface{}:
-		var out []interface{}
-		for _, o := range v {
-			obj, err := convertToCborIshObj(o)
-			if err != nil {
-				return nil, err
-			}
-
-			out = append(out, obj)
-		}
-
-		return out, nil
-	default:
-		return v, nil
-	}
-}
-
-
