@@ -300,6 +300,23 @@ func TestSafeWrap_WrapObject(t *testing.T) {
 	}
 }
 
+func TestBidirectionalTree_Dump(t *testing.T) {
+	sw := &SafeWrap{}
+
+	child := sw.WrapObject(map[string]interface{} {
+		"name": "child",
+	})
+
+	root := sw.WrapObject(map[string]interface{}{
+		"child": child.Cid(),
+	})
+
+	assert.Nil(t, sw.Err)
+	tree := NewBidirectionalTree(root.Cid(), root, child)
+
+	assert.IsType(t, "", tree.Dump())
+}
+
 func BenchmarkBidirectionalTree_Swap(b *testing.B) {
 	sw := &SafeWrap{}
 	child := sw.WrapObject(map[string]interface{} {
