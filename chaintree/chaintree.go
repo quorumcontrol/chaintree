@@ -64,11 +64,10 @@ type Chain struct {
 }
 
 type ChainEntry struct {
-	// this is an interface because nil pointers aren't encoded correctly
+	// this is a string so that CID links aren't automatically adjusted
 	PreviousTip string `refmt:"previousTip,omitempty" json:"previousTip,omitempty" cbor:"previousTip,omitempty"`
 	BlocksWithHeaders []*cid.Cid	`refmt:"blocksWithHeaders" json:"blocksWithHeaders" cbor:"blocksWithHeaders"`
-	// this is an interface because nil pointers aren't encoded correctly
-	Previous interface{} `refmt:"previous" json:"previous" cbor:"previous"`
+	Previous *cid.Cid `refmt:"previous" json:"previous" cbor:"previous"`
 }
 
 func (e *ErrorCode) GetCode() int {
