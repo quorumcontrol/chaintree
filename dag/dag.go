@@ -450,6 +450,13 @@ func (bn *BidirectionalNode) Dump(bt *BidirectionalTree, isLink bool) map[string
 			} else {
 				nodeMap[k] = node.Dump(bt, true)
 			}
+		case cid.Cid:
+			node := bt.Get(v)
+			if node == nil {
+				nodeMap[k] = fmt.Sprintf("non existant link: %s", v.String())
+			} else {
+				nodeMap[k] = node.Dump(bt, true)
+			}
 		default:
 			continue
 		}
