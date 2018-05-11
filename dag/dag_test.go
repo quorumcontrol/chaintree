@@ -342,7 +342,7 @@ func BenchmarkBidirectionalTree_Set(b *testing.B) {
 	tree := NewBidirectionalTree(root.Cid(), root, child)
 
 
-	swapper := []*cbornode.Node{sw.WrapObject("key"), sw.WrapObject("key2")}
+	swapper := []string{"key", "key2"}
 	assert.Nil(b, sw.Err)
 	var err error
 
@@ -400,5 +400,5 @@ func BenchmarkBidirectionalNode_AsMap(b *testing.B) {
 		rootMap,_ = tree.Get(root.Cid()).AsMap()
 	}
 
-	assert.Equal(b, child.Cid(), rootMap["child"])
+	assert.Equal(b, *child.Cid(), rootMap["child"])
 }
