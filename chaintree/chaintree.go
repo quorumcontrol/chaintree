@@ -5,7 +5,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"fmt"
 	"github.com/ipfs/go-ipld-cbor"
-	"github.com/quorumcontrol/chaintree/typecaster"
 )
 
 const (
@@ -19,10 +18,12 @@ const (
 )
 
 func init() {
-	typecaster.AddType(Chain{})
-	typecaster.AddType(ChainEntry{})
-	typecaster.AddType(BlockWithHeaders{})
-	typecaster.AddType(cid.Cid{})
+	cbornode.RegisterCborType(RootNode{})
+	cbornode.RegisterCborType(Chain{})
+	cbornode.RegisterCborType(ChainEntry{})
+	cbornode.RegisterCborType(BlockWithHeaders{})
+	cbornode.RegisterCborType(Block{})
+	cbornode.RegisterCborType(Transaction{})
 }
 
 type CodedError interface {
@@ -35,6 +36,11 @@ type ErrorCode struct {
 	Memo string
 }
 
+type RootNode struct {
+	Chain *cid.Cid `refmt:"chain"`
+	Tree *cid.Cid `refmt:"tree"`
+	Id string `refmt:"id"`
+}
 
 type Transaction struct {
 	Type string `refmt:"type" json:"type" cbor:"type"`
@@ -110,12 +116,15 @@ func NewChainTree(dag *dag.BidirectionalTree, blockValidators []BlockValidatorFu
 		Transactors: transactors,
 	}
 
-	root,err := ct.Dag.Get(ct.Dag.Tip).AsJSONish()
-	if err != nil {
-		return nil, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error: missing root %v", err)}
+	root := &RootNode{}
+
+	unmarshaledRoot := ct.Dag.Get(ct.Dag.Tip)
+	if unmarshaledRoot == nil {
+		return nil, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error: missing root")}
 	}
 
-	if len(root) == 0 || (hasKey(root, ChainLabel) && hasKey(root, TreeLabel)) {
+	err := cbornode.DecodeInto(unmarshaledRoot.Node.RawData(), root)
+	if err == nil {
 		return ct, nil
 	} else {
 		return nil, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error, invalid root: %v", root)}
@@ -145,22 +154,23 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 
 	newTree := ct.Dag.Copy()
 
-	rootNode := newTree.Get(newTree.Tip)
-	if rootNode == nil {
+	unmarshaledRoot := newTree.Get(newTree.Tip)
+	if unmarshaledRoot == nil {
 		return false, &ErrorCode{Code: ErrInvalidTree, Memo: "error missing root"}
 	}
 
-	root,err := rootNode.AsMap()
+	root := &RootNode{}
+
+	err = cbornode.DecodeInto(unmarshaledRoot.Node.RawData(), root)
 	if err != nil {
 		return false, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error converting root: %v", err)}
 	}
 
-	treeLink,ok := root[TreeLabel]
-	if !ok {
+	if root.Tree == nil {
 		return false, &ErrorCode{Code: ErrInvalidTree, Memo: "error getting treeLink"}
 	}
 
-	newTree.Tip = treeLink.(*cid.Cid)
+	newTree.Tip = root.Tree
 
 	for _,transaction := range blockWithHeaders.Transactions {
 		transactor,ok := ct.Transactors[transaction.Type]
@@ -182,7 +192,7 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		the PreviousTip of the last ChainEntry
 	 */
 
-	chainNode := ct.Dag.Get(root[ChainLabel].(*cid.Cid))
+	chainNode := ct.Dag.Get(root.Chain)
 	chainMap,err := chainNode.AsMap()
 	if err != nil {
 		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting map: %v", err)}
@@ -191,6 +201,9 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 	sw := &dag.SafeWrap{}
 
 	wrappedBlock := sw.WrapObject(blockWithHeaders)
+	if sw.Err != nil {
+		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error wrapping block: %v", sw.Err)}
+	}
 
 	endLink,ok := chainMap["end"]
 	if !ok {
@@ -213,7 +226,8 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 
 	} else {
 		//log.Println("we have an end")
-		endNode := ct.Dag.Get(endLink.(*cid.Cid))
+		link := endLink.(cid.Cid)
+		endNode := ct.Dag.Get(&link)
 		if endNode == nil {
 			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("missing end node in chain tree")}
 		}
@@ -229,7 +243,7 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 
 
 		switch tip := blockWithHeaders.PreviousTip; tip{
-		case rootNode.Node.Cid().String():
+		case unmarshaledRoot.Node.Cid().String():
 			//log.Printf("previous tip of block == rootNode")
 			newEntry := &ChainEntry{
 				PreviousTip: ct.Dag.Tip.String(),
@@ -270,7 +284,7 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 				return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error swapping object: %v", err)}
 			}
 		default:
-			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error, tip must be either current tip or same previousTip as last ChainEntry, tip: %v endMap: %v, rootNode: %v", tip, lastEntry.PreviousTip, rootNode.Node.Cid())}
+			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error, tip must be either current tip or same previousTip as last ChainEntry, tip: %v endMap: %v, rootNode: %v", tip, lastEntry.PreviousTip, unmarshaledRoot.Node.Cid())}
 		}
 	}
 
