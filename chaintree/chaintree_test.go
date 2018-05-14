@@ -45,6 +45,36 @@ func setData(tree *dag.BidirectionalTree, transaction *Transaction) (valid bool,
 	return true, nil
 }
 
+func TestChainTree_Id(t *testing.T) {
+	sw := &dag.SafeWrap{}
+
+	tree := sw.WrapObject(map[string]string{
+		"hithere": "hothere",
+	})
+
+	chain := sw.WrapObject(make(map[string]string))
+
+	root := sw.WrapObject(map[string]interface{}{
+		"chain": chain.Cid(),
+		"tree": tree.Cid(),
+		"id": "test",
+	})
+
+	chainTree,err := NewChainTree(
+		dag.NewBidirectionalTree(root.Cid(), root,tree,chain),
+		[]BlockValidatorFunc{hasCoolHeader},
+		map[string]TransactorFunc{
+			"SET_DATA": setData,
+		},
+	)
+	assert.Nil(t, err)
+
+	id,err := chainTree.Id()
+	assert.Nil(t, err)
+	assert.Equal(t, "test", id)
+
+}
+
 func TestBuildingUpAChain(t *testing.T) {
 	sw := &dag.SafeWrap{}
 

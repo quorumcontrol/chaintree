@@ -138,6 +138,22 @@ func hasKey(m map[string]interface{}, k string) bool {
 	return false
 }
 
+func (ct *ChainTree) Id() (string,error) {
+	root := &RootNode{}
+
+	unmarshaledRoot := ct.Dag.Get(ct.Dag.Tip)
+	if unmarshaledRoot == nil {
+		return "", &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error: missing root")}
+	}
+
+	err := cbornode.DecodeInto(unmarshaledRoot.Node.RawData(), root)
+	if err == nil {
+		return root.Id, nil
+	} else {
+		return "", &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error, invalid root: %v", root)}
+	}
+}
+
 func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid bool, err error) {
 	if blockWithHeaders == nil {
 		return false, &ErrorCode{Code: ErrUnknown, Memo: "must have a block to process"}
