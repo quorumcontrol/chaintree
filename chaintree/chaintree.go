@@ -5,6 +5,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"fmt"
 	"github.com/ipfs/go-ipld-cbor"
+	"github.com/quorumcontrol/chaintree/typecaster"
 )
 
 const (
@@ -24,6 +25,13 @@ func init() {
 	cbornode.RegisterCborType(BlockWithHeaders{})
 	cbornode.RegisterCborType(Block{})
 	cbornode.RegisterCborType(Transaction{})
+
+	typecaster.AddType(RootNode{})
+	typecaster.AddType(Chain{})
+	typecaster.AddType(ChainEntry{})
+	typecaster.AddType(BlockWithHeaders{})
+	typecaster.AddType(Block{})
+	typecaster.AddType(Transaction{})
 }
 
 type CodedError interface {
