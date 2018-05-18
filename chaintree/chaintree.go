@@ -32,6 +32,7 @@ func init() {
 	typecaster.AddType(BlockWithHeaders{})
 	typecaster.AddType(Block{})
 	typecaster.AddType(Transaction{})
+	typecaster.AddType(cid.Cid{})
 }
 
 type CodedError interface {
