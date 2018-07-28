@@ -311,6 +311,7 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error, tip must be either current tip or same previousTip as last ChainEntry, tip: %v endMap: %v, rootNode: %v", tip, lastEntry.PreviousTip, unmarshaledRoot.Node.Cid())}
 		}
 	}
+	ct.Dag.AddNodes(wrappedBlock)
 
 	ct.Dag.Prune()
 
