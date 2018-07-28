@@ -313,6 +313,10 @@ func TestBlockProcessing(t *testing.T) {
 
 		if test.shouldValid {
 			assert.True(t, valid, test.description)
+			wrappedBlock := sw.WrapObject(test.block)
+			assert.Nil(t, sw.Err, test.description)
+			node := tree.Dag.Get(wrappedBlock.Cid())
+			assert.NotNil(t, node, test.description)
 		}
 
 		if test.validator != nil {
