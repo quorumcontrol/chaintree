@@ -177,6 +177,20 @@ func TestBidirectionalTree_Set(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.Equal(t, "bob", val)
+
+	// Test sibling of existing path
+	siblingPath := []string{"child", "non-existant-nested", "objects", "siblingtest"}
+	err = tree.Set(siblingPath, "sue")
+	assert.Nil(t, err)
+
+	// original sibling is still available
+	val, _, err = tree.Resolve(path)
+	assert.Equal(t, "bob", val)
+
+	siblingVal, _, err := tree.Resolve(siblingPath)
+
+	assert.Nil(t, err)
+	assert.Equal(t, "sue", siblingVal)
 }
 
 func TestBidirectionalTree_SetAsLink(t *testing.T) {

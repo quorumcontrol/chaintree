@@ -153,11 +153,14 @@ func (bt *BidirectionalTree) AddNodes(nodes ...*cbornode.Node) {
 		}
 	}
 	bt.counter += len(nodes)
+	bt.updateParents()
+}
 
-	for _,bidiNode := range bt.nodesByStaticId {
+func (bt *BidirectionalTree) updateParents() {
+	for _, bidiNode := range bt.nodesByStaticId {
 		links := bidiNode.Node.Links()
-		for _,link := range links {
-			existing,ok := bt.nodesByCid[link.Cid.KeyString()]
+		for _, link := range links {
+			existing, ok := bt.nodesByCid[link.Cid.KeyString()]
 			if ok {
 				existing.Parents[bidiNode.id] = true
 			}
@@ -424,6 +427,7 @@ func (bt *BidirectionalTree) Swap(oldCid *cid.Cid, newNode *cbornode.Node) error
 		}
 	}
 
+	bt.updateParents()
 
 	//fmt.Println("after tree")
 	//bt.Dump()
