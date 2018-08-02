@@ -419,10 +419,6 @@ func (bt *BidirectionalTree) Swap(oldCid *cid.Cid, newNode *cbornode.Node) error
 			cbornode.DecodeInto(newParentNode.RawData(), &obj)
 			//spew.Dump(obj)
 
-			if parent.Node.Cid() == bt.Tip {
-				bt.Tip = newParentNode.Cid()
-			}
-
 			bt.Swap(parent.Node.Cid(), newParentNode)
 		}
 	}
