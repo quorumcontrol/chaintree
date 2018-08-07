@@ -3,16 +3,18 @@ package dag
 /*
 	The dag package holds convenience methods for working with a content-addressable DAG.
 	The BidirectionalTree holds nodes
- */
+*/
 
 import (
-	"github.com/ipfs/go-ipld-cbor"
-	"github.com/multiformats/go-multihash"
-	"github.com/ipfs/go-cid"
-	"sync"
 	"fmt"
-	"github.com/ipfs/go-ipld-format"
+	"sync"
+
 	"github.com/davecgh/go-spew/spew"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-ipld-cbor"
+	"github.com/ipfs/go-ipld-format"
+	"github.com/multiformats/go-multihash"
+	"github.com/quorumcontrol/chaintree/safewrap"
 )
 
 type nodeId int
@@ -26,7 +28,7 @@ type BidirectionalTree struct {
 }
 
 type ErrorCode struct {
-	Code  int
+	Code int
 	Memo string
 }
 
@@ -39,15 +41,14 @@ func (e *ErrorCode) Error() string {
 }
 
 const (
-	Success = 0
-	ErrMissingRoot = 1
-	ErrMissingPath = 2
-	ErrInvalidInput = 3
+	Success          = 0
+	ErrMissingRoot   = 1
+	ErrMissingPath   = 2
+	ErrInvalidInput  = 3
 	ErrEncodingError = 4
-	ErrBadInput = 5
-	ErrUnknown = 99
+	ErrBadInput      = 5
+	ErrUnknown       = 99
 )
-
 
 type BidirectionalNode struct {
 	Parents map[nodeId]bool
@@ -57,9 +58,9 @@ type BidirectionalNode struct {
 
 func NewBidirectionalTree(root *cid.Cid, nodes ...*cbornode.Node) *BidirectionalTree {
 	tree := &BidirectionalTree{
-		counter: 0,
+		counter:         0,
 		nodesByStaticId: make(map[nodeId]*BidirectionalNode),
-		nodesByCid: make(map[string]*BidirectionalNode),
+		nodesByCid:      make(map[string]*BidirectionalNode),
 	}
 
 	if len(nodes) > 0 {
@@ -92,7 +93,7 @@ func (bn *BidirectionalNode) Resolve(tree *BidirectionalTree, path []string) (in
 
 	switch val.(type) {
 	case *format.Link:
-		n,ok := tree.nodesByCid[val.(*format.Link).Cid.KeyString()]
+		n, ok := tree.nodesByCid[val.(*format.Link).Cid.KeyString()]
 		if ok {
 			return n.Resolve(tree, remaining)
 		} else {
@@ -103,8 +104,8 @@ func (bn *BidirectionalNode) Resolve(tree *BidirectionalTree, path []string) (in
 	}
 }
 
-func (bt *BidirectionalTree) Get(id *cid.Cid) (*BidirectionalNode) {
-	node,ok := bt.nodesByCid[id.KeyString()]
+func (bt *BidirectionalTree) Get(id *cid.Cid) *BidirectionalNode {
+	node, ok := bt.nodesByCid[id.KeyString()]
 	if ok {
 		return node
 	}
@@ -115,7 +116,7 @@ func (bt *BidirectionalTree) Copy() *BidirectionalTree {
 	newNodes := make([]*cbornode.Node, len(bt.nodesByStaticId))
 
 	i := 0
-	for _,oldNode := range bt.nodesByStaticId {
+	for _, oldNode := range bt.nodesByStaticId {
 		newNode, err := cbornode.Decode(oldNode.Node.RawData(), multihash.SHA2_256, -1)
 		if err != nil {
 			panic(fmt.Sprintf("this encoded, it should never fail to decode: %v", err))
@@ -124,7 +125,7 @@ func (bt *BidirectionalTree) Copy() *BidirectionalTree {
 		i++
 	}
 
-	newCid,err := cid.Cast(bt.Tip.Bytes())
+	newCid, err := cid.Cast(bt.Tip.Bytes())
 	if err != nil {
 		panic(fmt.Sprintf("this encoded, it should never fail to decode: %v", err))
 	}
@@ -139,8 +140,8 @@ func (bt *BidirectionalTree) AddNodes(nodes ...*cbornode.Node) {
 	defer bt.mutex.Unlock()
 	//log.Printf("Adding nodes: %d", len(nodes))
 
-	for i,node := range nodes {
-		_,ok := bt.nodesByCid[node.Cid().KeyString()]
+	for i, node := range nodes {
+		_, ok := bt.nodesByCid[node.Cid().KeyString()]
 		if !ok {
 			bidiNode := &BidirectionalNode{
 				Node:    node,
@@ -171,7 +172,7 @@ func (bt *BidirectionalTree) updateParents() {
 func (bt *BidirectionalTree) Nodes() []*BidirectionalNode {
 	nodes := make([]*BidirectionalNode, len(bt.nodesByCid))
 	i := 0
-	for _,node := range bt.nodesByCid {
+	for _, node := range bt.nodesByCid {
 		nodes[i] = node
 		i++
 	}
@@ -180,7 +181,7 @@ func (bt *BidirectionalTree) Nodes() []*BidirectionalNode {
 
 func (bt *BidirectionalTree) Resolve(path []string) (interface{}, []string, error) {
 	//fmt.Printf("resolving: %v\n", path)
-	root,ok := bt.nodesByCid[bt.Tip.KeyString()]
+	root, ok := bt.nodesByCid[bt.Tip.KeyString()]
 	if !ok {
 		//fmt.Printf("error resolving\n")
 		return nil, nil, &ErrorCode{Code: ErrMissingRoot}
@@ -201,12 +202,12 @@ func (bt *BidirectionalTree) keepWalker(node *BidirectionalNode) map[string]*Bid
 	toKeep := map[string]*BidirectionalNode{node.Node.Cid().KeyString(): node}
 
 	links := node.Node.Links()
-	for _,l := range links {
-		linkNode,ok := bt.nodesByCid[l.Cid.KeyString()]
+	for _, l := range links {
+		linkNode, ok := bt.nodesByCid[l.Cid.KeyString()]
 		if ok {
 			toKeep[node.Node.Cid().KeyString()] = linkNode
 			decedents := bt.keepWalker(linkNode)
-			for k,v := range decedents {
+			for k, v := range decedents {
 				toKeep[k] = v
 			}
 		}
@@ -219,8 +220,8 @@ func (bt *BidirectionalTree) Prune() {
 	defer bt.mutex.Unlock()
 
 	toKeep := bt.keepWalker(bt.Get(bt.Tip))
-	for cid,node := range bt.nodesByCid {
-		_,ok := toKeep[cid]
+	for cid, node := range bt.nodesByCid {
+		_, ok := toKeep[cid]
 		if !ok {
 			delete(bt.nodesByCid, cid)
 			delete(bt.nodesByStaticId, node.id)
@@ -232,11 +233,11 @@ func (bt *BidirectionalTree) createLinks(path []string, node *cbornode.Node) err
 
 	var idx int
 
-	for i := len(path);i >= 0; i-- {
-		_,_,err := bt.Resolve(path[0:i])
+	for i := len(path); i >= 0; i-- {
+		_, _, err := bt.Resolve(path[0:i])
 		if err == nil {
-			 idx = i
-			 break
+			idx = i
+			break
 		} else {
 			if err.(*ErrorCode).Code != ErrMissingPath {
 				return &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("unkown error: %v", err)}
@@ -249,8 +250,8 @@ func (bt *BidirectionalTree) createLinks(path []string, node *cbornode.Node) err
 
 	nodes := []*cbornode.Node{node}
 
-	sw := &SafeWrap{}
-	for i := len(path)-1;i > idx; i-- {
+	sw := &safewrap.SafeWrap{}
+	for i := len(path) - 1; i > idx; i-- {
 		obj := make(map[string]*cid.Cid)
 		obj[path[i]] = last.Cid()
 		newNode := sw.WrapObject(obj)
@@ -272,16 +273,16 @@ func (bt *BidirectionalTree) Set(pathAndKey []string, val interface{}) error {
 }
 
 func (bt *BidirectionalTree) SetAsLink(pathAndKey []string, val interface{}) error {
-	tree,ok := val.(*BidirectionalTree)
+	tree, ok := val.(*BidirectionalTree)
 	if ok {
 		newNodes := make([]*cbornode.Node, len(tree.nodesByStaticId))
 		i := 0
-		for _,node := range tree.nodesByStaticId {
+		for _, node := range tree.nodesByStaticId {
 			newNodes[i] = node.Node
 			i++
 		}
 		bt.AddNodes(newNodes...)
-		rootMap,err := tree.Get(tree.Tip).AsMap()
+		rootMap, err := tree.Get(tree.Tip).AsMap()
 		if err != nil {
 			return &ErrorCode{Code: ErrBadInput, Memo: "bad map"}
 		}
@@ -303,7 +304,7 @@ func (bt *BidirectionalTree) set(pathAndKey []string, val interface{}, asLink bo
 		path = []string{}
 		key = pathAndKey[0]
 	default:
-		path = pathAndKey[0:len(pathAndKey)-1]
+		path = pathAndKey[0 : len(pathAndKey)-1]
 		key = pathAndKey[len(pathAndKey)-1]
 	}
 	//fmt.Printf("setting %v, key: %v\n", path, key)
@@ -312,7 +313,7 @@ func (bt *BidirectionalTree) set(pathAndKey []string, val interface{}, asLink bo
 	if err != nil {
 		if err.(*ErrorCode).Code == ErrMissingPath {
 			newObj := map[string]interface{}{key: val}
-			sw := &SafeWrap{}
+			sw := &safewrap.SafeWrap{}
 			wrapped := sw.WrapObject(newObj)
 			if sw.Err != nil {
 				return err
@@ -332,7 +333,7 @@ func (bt *BidirectionalTree) set(pathAndKey []string, val interface{}, asLink bo
 
 	//fmt.Printf("tip: %v\n", bt.Tip.String())
 
-	existingCbor,err := fromJsonish(existing)
+	existingCbor, err := fromJsonish(existing)
 	if err != nil {
 		return &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting object: %v", err)}
 	}
@@ -340,7 +341,7 @@ func (bt *BidirectionalTree) set(pathAndKey []string, val interface{}, asLink bo
 	existingCid := existingCbor.Cid()
 
 	if asLink {
-		newNode,err := fromJsonish(val)
+		newNode, err := fromJsonish(val)
 		if err != nil {
 			return &ErrorCode{Code: ErrBadInput, Memo: fmt.Sprintf("error converting val: %v", err)}
 		}
@@ -350,7 +351,7 @@ func (bt *BidirectionalTree) set(pathAndKey []string, val interface{}, asLink bo
 		existing.(map[string]interface{})[key] = val
 	}
 
-	wrappedModified,err := fromJsonish(existing)
+	wrappedModified, err := fromJsonish(existing)
 	if err != nil {
 		return &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting object: %v", err)}
 	}
@@ -365,10 +366,10 @@ func (bt *BidirectionalTree) set(pathAndKey []string, val interface{}, asLink bo
 }
 
 func (bt *BidirectionalTree) Swap(oldCid *cid.Cid, newNode *cbornode.Node) error {
-	existing,ok := bt.nodesByCid[oldCid.KeyString()]
+	existing, ok := bt.nodesByCid[oldCid.KeyString()]
 	if !ok {
 		//log.Printf("existing not found")
-		return &ErrorCode{Code:ErrMissingPath, Memo: fmt.Sprintf("cannot find %s", oldCid.String())}
+		return &ErrorCode{Code: ErrMissingPath, Memo: fmt.Sprintf("cannot find %s", oldCid.String())}
 	}
 
 	//newMapped,_ := (&BidirectionalNode{Node: newNode}).AsMap()
@@ -410,7 +411,7 @@ func (bt *BidirectionalTree) Swap(oldCid *cid.Cid, newNode *cbornode.Node) error
 			//fmt.Println("after:")
 			//spew.Dump(newParentJsonish)
 
-			newParentNode,err := fromJsonish(newParentJsonish)
+			newParentNode, err := fromJsonish(newParentJsonish)
 			if err != nil {
 				return fmt.Errorf("error getting Node: %v", err)
 			}
@@ -433,15 +434,15 @@ func (bt *BidirectionalTree) Swap(oldCid *cid.Cid, newNode *cbornode.Node) error
 
 func (bt *BidirectionalTree) ByteSize() int64 {
 	var length int64
-	for _,node := range bt.nodesByCid {
+	for _, node := range bt.nodesByCid {
 		length += int64(len(node.Node.RawData()))
 	}
 	return length
 }
 
 func (bn *BidirectionalNode) Dump(bt *BidirectionalTree, isLink bool) map[string]interface{} {
-	nodeMap,_ := bn.AsMap()
-	for k,v := range nodeMap {
+	nodeMap, _ := bn.AsMap()
+	for k, v := range nodeMap {
 		switch v := v.(type) {
 		case *cid.Cid:
 			node := bt.Get(v)
@@ -471,7 +472,7 @@ func (bt *BidirectionalTree) Dump() string {
 	rootNode := bt.Get(bt.Tip)
 	nodes := make([]string, len(bt.nodesByCid))
 	i := 0
-	for _,node := range bt.nodesByCid {
+	for _, node := range bt.nodesByCid {
 		nodes[i] = node.Node.Cid().String()
 		i++
 	}
@@ -489,51 +490,50 @@ Nodes: %v
 }
 
 func fromJsonish(obj interface{}) (*cbornode.Node, error) {
-	sw := &SafeWrap{}
+	sw := &safewrap.SafeWrap{}
 	node := sw.WrapObject(obj)
 	if sw.Err != nil {
 		return nil, fmt.Errorf("error marshaling: %v", sw.Err)
 	}
-	return node,nil
+	return node, nil
 }
-
 
 func updateLinks(obj interface{}, oldCid *cid.Cid, newCid *cid.Cid) error {
 	switch obj := obj.(type) {
-		case map[interface{}]interface{}:
-			for _, v := range obj {
-				if err := updateLinks(v, oldCid, newCid); err != nil {
-					return err
-				}
+	case map[interface{}]interface{}:
+		for _, v := range obj {
+			if err := updateLinks(v, oldCid, newCid); err != nil {
+				return err
 			}
-			return nil
-		case map[string]interface{}:
-			for ks, v := range obj {
-				switch v.(type) {
-				case *cid.Cid:
-					if v.(*cid.Cid).String() == oldCid.String() {
-						obj[ks] = newCid
-					}
-				case cid.Cid:
-					ptr := v.(cid.Cid)
-					if (&ptr).String() == oldCid.String() {
-						obj[ks] = newCid
-					}
-				default:
-					if err := updateLinks(v, oldCid, newCid); err != nil {
-						return err
-					}
-				}
-			}
-			return nil
-		case []interface{}:
-			for _, v := range obj {
-				if err := updateLinks(v, oldCid, newCid); err != nil {
-					return err
-				}
-			}
-			return nil
-		default:
-			return nil
 		}
+		return nil
+	case map[string]interface{}:
+		for ks, v := range obj {
+			switch v.(type) {
+			case *cid.Cid:
+				if v.(*cid.Cid).String() == oldCid.String() {
+					obj[ks] = newCid
+				}
+			case cid.Cid:
+				ptr := v.(cid.Cid)
+				if (&ptr).String() == oldCid.String() {
+					obj[ks] = newCid
+				}
+			default:
+				if err := updateLinks(v, oldCid, newCid); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	case []interface{}:
+		for _, v := range obj {
+			if err := updateLinks(v, oldCid, newCid); err != nil {
+				return err
+			}
+		}
+		return nil
+	default:
+		return nil
+	}
 }
