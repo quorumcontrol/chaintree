@@ -488,31 +488,6 @@ Nodes: %v
 		nodes)
 }
 
-
-type SafeWrap struct {
-	Err error
-}
-
-func (sf *SafeWrap) WrapObject(obj interface{}) *cbornode.Node {
-	if sf.Err != nil {
-		return nil
-	}
-
-	node,err := cbornode.WrapObject(obj, multihash.SHA2_256, -1)
-	sf.Err = err
-	return node
-}
-
-func (sf *SafeWrap) Decode(data []byte) *cbornode.Node {
-	if sf.Err != nil {
-		return nil
-	}
-
-	node,err := cbornode.Decode(data, multihash.SHA2_256, -1)
-	sf.Err = err
-	return node
-}
-
 func fromJsonish(obj interface{}) (*cbornode.Node, error) {
 	sw := &SafeWrap{}
 	node := sw.WrapObject(obj)
