@@ -144,6 +144,14 @@
   revision = "a1d2f05ac1bca2f4b4eed0d0fff736e8360cd32a"
 
 [[projects]]
+  branch = "master"
+  digest = "1:09af781fcd348813b35d053b14c818038daa5fa392d800762ecab21a041e51a1"
+  name = "github.com/quorumcontrol/namedlocker"
+  packages = ["."]
+  pruneopts = ""
+  revision = "3f797c8b12b141e1e252cc202f43c27fce58ec9e"
+
+[[projects]]
   branch = "bug/whisperv6"
   digest = "1:b4ba378a88650935291fb7f15b3e20bb3433d2888d8a5a71b26914c1792a0c9a"
   name = "github.com/quorumcontrol/qc3"
@@ -216,6 +224,7 @@
     "github.com/polydawn/refmt/obj",
     "github.com/polydawn/refmt/obj/atlas",
     "github.com/polydawn/refmt/shared",
+    "github.com/quorumcontrol/namedlocker",
     "github.com/quorumcontrol/qc3/storage",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
