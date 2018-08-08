@@ -35,6 +35,13 @@ func (bs *BoltStorage) CreateBucketIfNotExists(bucketName []byte) error {
 	})
 }
 
+func (bs *BoltStorage) DeleteBucket(bucketName []byte) error {
+	return bs.db.Update(func(tx *bolt.Tx) error {
+		err := tx.DeleteBucket(bucketName)
+		return err
+	})
+}
+
 func (bs *BoltStorage) Set(bucketName []byte, key []byte, value []byte) error {
 	return bs.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bucketName)

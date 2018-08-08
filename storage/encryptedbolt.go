@@ -78,6 +78,13 @@ func (ebs *EncryptedBoltStorage) CreateBucketIfNotExists(bucketName []byte) erro
 	})
 }
 
+func (ebs *EncryptedBoltStorage) DeleteBucket(bucketName []byte) error {
+	return ebs.db.Update(func(tx *bolt.Tx) error {
+		err := tx.DeleteBucket(bucketName)
+		return err
+	})
+}
+
 func (ebs *EncryptedBoltStorage) Set(bucketName []byte, key []byte, value []byte) error {
 	log.Trace("setting value for ", string(bucketName), string(key))
 
