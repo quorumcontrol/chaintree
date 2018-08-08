@@ -2,12 +2,36 @@
 
 
 [[projects]]
+  digest = "1:6150d0a72956eb2e50226e13ce59ef2a9636c0e8e1ac900d72f9b2097121cdf9"
+  name = "github.com/coreos/bbolt"
+  packages = ["."]
+  pruneopts = ""
+  revision = "583e8937c61f1af6513608ccc75c97b6abdf4ff9"
+  version = "v1.3.0"
+
+[[projects]]
   digest = "1:56c130d885a4aacae1dd9c7b71cfe39912c7ebc1ff7d2b46083c8812996dc43b"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   pruneopts = ""
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
   version = "v1.1.0"
+
+[[projects]]
+  digest = "1:52020b0d8d20e2e73c4d6436aeb019d0f965bc73b81a7ea2547ab2b7023d4ef2"
+  name = "github.com/ethereum/go-ethereum"
+  packages = ["log"]
+  pruneopts = ""
+  revision = "225171a4bfcc16bd12a1906b1e0d43d0b18c353b"
+  version = "v1.8.13"
+
+[[projects]]
+  digest = "1:9ca737b471693542351e112c9e86be9bf7385e42256893a09ecb2a98e2036f74"
+  name = "github.com/go-stack/stack"
+  packages = ["."]
+  pruneopts = ""
+  revision = "259ab82a6cad3992b4e21ff5cac294ccb06474bc"
+  version = "v1.7.0"
 
 [[projects]]
   branch = "master"
@@ -120,6 +144,14 @@
   revision = "a1d2f05ac1bca2f4b4eed0d0fff736e8360cd32a"
 
 [[projects]]
+  branch = "bug/whisperv6"
+  digest = "1:b4ba378a88650935291fb7f15b3e20bb3433d2888d8a5a71b26914c1792a0c9a"
+  name = "github.com/quorumcontrol/qc3"
+  packages = ["storage"]
+  pruneopts = ""
+  revision = "c4ea8756d93bc4fa9997241c39c7d3f294bf3ade"
+
+[[projects]]
   digest = "1:633b5b39909d9d794f5543baee4971890e1866f5c082cdf4694954c1ff489a18"
   name = "github.com/spaolacci/murmur3"
   packages = ["."]
@@ -130,7 +162,10 @@
 [[projects]]
   digest = "1:a30066593578732a356dc7e5d7f78d69184ca65aeeff5939241a3ab10559bb06"
   name = "github.com/stretchr/testify"
-  packages = ["assert"]
+  packages = [
+    "assert",
+    "require",
+  ]
   pruneopts = ""
   revision = "12b6f73e6084dad08a7c6e575284b177ecafbc71"
   version = "v1.2.1"
@@ -149,16 +184,31 @@
   name = "golang.org/x/crypto"
   packages = [
     "blake2s",
+    "nacl/secretbox",
+    "pbkdf2",
+    "poly1305",
+    "salsa20/salsa",
+    "scrypt",
     "sha3",
   ]
   pruneopts = ""
   revision = "d6449816ce06963d9d136eee5a56fca5b0616e7e"
 
+[[projects]]
+  branch = "master"
+  digest = "1:00355c1b032fcd05c29dad217f43f38f7f46d691a519d86416edaf345e677c21"
+  name = "golang.org/x/sys"
+  packages = ["unix"]
+  pruneopts = ""
+  revision = "acbc56fc7007d2a01796d5bde54f39e3b3e95945"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/coreos/bbolt",
     "github.com/davecgh/go-spew/spew",
+    "github.com/ethereum/go-ethereum/log",
     "github.com/ipfs/go-cid",
     "github.com/ipfs/go-ipld-cbor",
     "github.com/ipfs/go-ipld-format",
@@ -166,7 +216,11 @@
     "github.com/polydawn/refmt/obj",
     "github.com/polydawn/refmt/obj/atlas",
     "github.com/polydawn/refmt/shared",
+    "github.com/quorumcontrol/qc3/storage",
     "github.com/stretchr/testify/assert",
+    "github.com/stretchr/testify/require",
+    "golang.org/x/crypto/nacl/secretbox",
+    "golang.org/x/crypto/scrypt",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
