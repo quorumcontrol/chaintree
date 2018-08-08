@@ -40,22 +40,17 @@ func (mns *MemoryNodeStore) CreateNode(obj interface{}) (node *cbornode.Node, er
 		return nil, fmt.Errorf("error wrapping: %v", sw.Err)
 	}
 
-	nodeCid := node.Cid()
+	return mns.createNodeFromCborNode(node)
+}
 
-	mns.lock.Lock()
-	defer mns.lock.Unlock()
-
-	mns.nodes[nodeCid.KeyString()] = node
-
-	links := node.Links()
-	for _, link := range links {
-		err := mns.saveReferences(link.Cid, nodeCid)
-		if err != nil {
-			return nil, fmt.Errorf("error saving reference: %v", err)
-		}
+// CreateNodeFromBytes implements the NodeStore interface
+func (mns *MemoryNodeStore) CreateNodeFromBytes(data []byte) (node *cbornode.Node, err error) {
+	sw := safewrap.SafeWrap{}
+	node = sw.Decode(data)
+	if sw.Err != nil {
+		return nil, fmt.Errorf("error wrapping: %v", sw.Err)
 	}
-
-	return
+	return mns.createNodeFromCborNode(node)
 }
 
 // GetNode returns a cbornode for a CID
@@ -129,15 +124,90 @@ func (mns *MemoryNodeStore) UpdateNode(existing *cid.Cid, obj interface{}) (upda
 	return updated, tips, nil
 }
 
+// DeleteIfUnreferenced implements the NodeStore DeleteIfUnreferenced interface.
+func (mns *MemoryNodeStore) DeleteIfUnreferenced(nodeCid *cid.Cid) error {
+	refs, err := mns.GetReferences(nodeCid)
+	if err != nil {
+		return fmt.Errorf("error getting refs: %v", err)
+	}
+	if len(refs) > 0 {
+		return nil
+	}
+
+	existing, err := mns.GetNode(nodeCid)
+	if err != nil {
+		return fmt.Errorf("error getting existing: %v", err)
+	}
+	for _, link := range existing.Links() {
+		mns.deleteReferences(link.Cid, nodeCid)
+	}
+
+	delete(mns.nodes, nodeCid.KeyString())
+	return nil
+}
+
+// DeleteTree implements the NodeStore DeleteTree interface
+func (mns *MemoryNodeStore) DeleteTree(tip *cid.Cid) error {
+	tipNode, err := mns.GetNode(tip)
+	if err != nil {
+		return fmt.Errorf("error getting tip: %v", err)
+	}
+
+	links := tipNode.Links()
+
+	for _, link := range links {
+		mns.deleteReferences(link.Cid, tip)
+		err := mns.DeleteTree(link.Cid)
+		if err != nil {
+			return fmt.Errorf("error deleting: %v", err)
+		}
+	}
+	return mns.DeleteIfUnreferenced(tip)
+}
+
+func (mns *MemoryNodeStore) createNodeFromCborNode(node *cbornode.Node) (*cbornode.Node, error) {
+	nodeCid := node.Cid()
+
+	mns.lock.Lock()
+	defer mns.lock.Unlock()
+
+	mns.nodes[nodeCid.KeyString()] = node
+
+	links := node.Links()
+	for _, link := range links {
+		err := mns.saveReferences(link.Cid, nodeCid)
+		if err != nil {
+			return nil, fmt.Errorf("error saving reference: %v", err)
+		}
+	}
+	return node, nil
+}
+
 func (mns *MemoryNodeStore) saveReferences(to *cid.Cid, from ...*cid.Cid) error {
 	toRefs, ok := mns.refs[to.KeyString()]
 	if !ok {
 		toRefs = make(map[string]bool)
 	}
-	for _, id := range from {
-		toRefs[id.KeyString()] = true
+	for _, fromID := range from {
+		toRefs[fromID.KeyString()] = true
 	}
 	mns.refs[to.KeyString()] = toRefs
+	return nil
+}
+
+func (mns *MemoryNodeStore) deleteReferences(to *cid.Cid, from ...*cid.Cid) error {
+	toRefs, ok := mns.refs[to.KeyString()]
+	if !ok {
+		toRefs = make(map[string]bool)
+	}
+	for _, fromID := range from {
+		delete(toRefs, fromID.KeyString())
+	}
+	if len(toRefs) > 0 {
+		mns.refs[to.KeyString()] = toRefs
+	} else {
+		delete(mns.refs, to.KeyString())
+	}
 	return nil
 }
 
