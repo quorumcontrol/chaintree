@@ -1,13 +1,15 @@
 package chaintree
 
 import (
-	"testing"
-	"github.com/quorumcontrol/chaintree/dag"
-	"github.com/stretchr/testify/assert"
-	"github.com/quorumcontrol/chaintree/typecaster"
 	"fmt"
 	"strings"
+	"testing"
+
 	"github.com/ipfs/go-cid"
+	"github.com/quorumcontrol/chaintree/dag"
+	"github.com/quorumcontrol/chaintree/safewrap"
+	"github.com/quorumcontrol/chaintree/typecaster"
+	"github.com/stretchr/testify/assert"
 )
 
 const errInvalidPayload = 999
@@ -17,7 +19,7 @@ func init() {
 }
 
 func hasCoolHeader(tree *dag.BidirectionalTree, blockWithHeaders *BlockWithHeaders) (valid bool, err CodedError) {
-	headerVal,ok :=  blockWithHeaders.Headers["cool"].(string)
+	headerVal, ok := blockWithHeaders.Headers["cool"].(string)
 	if ok {
 		return headerVal == "cool", nil
 	}
@@ -25,10 +27,9 @@ func hasCoolHeader(tree *dag.BidirectionalTree, blockWithHeaders *BlockWithHeade
 }
 
 type setDataPayload struct {
-	Path string
+	Path  string
 	Value interface{}
 }
-
 
 func setData(tree *dag.BidirectionalTree, transaction *Transaction) (valid bool, codedErr CodedError) {
 	payload := &setDataPayload{}
@@ -46,7 +47,7 @@ func setData(tree *dag.BidirectionalTree, transaction *Transaction) (valid bool,
 }
 
 func TestChainTree_Id(t *testing.T) {
-	sw := &dag.SafeWrap{}
+	sw := &safewrap.SafeWrap{}
 
 	tree := sw.WrapObject(map[string]string{
 		"hithere": "hothere",
@@ -56,12 +57,12 @@ func TestChainTree_Id(t *testing.T) {
 
 	root := sw.WrapObject(map[string]interface{}{
 		"chain": chain.Cid(),
-		"tree": tree.Cid(),
-		"id": "test",
+		"tree":  tree.Cid(),
+		"id":    "test",
 	})
 
-	chainTree,err := NewChainTree(
-		dag.NewBidirectionalTree(root.Cid(), root,tree,chain),
+	chainTree, err := NewChainTree(
+		dag.NewBidirectionalTree(root.Cid(), root, tree, chain),
 		[]BlockValidatorFunc{hasCoolHeader},
 		map[string]TransactorFunc{
 			"SET_DATA": setData,
@@ -69,15 +70,14 @@ func TestChainTree_Id(t *testing.T) {
 	)
 	assert.Nil(t, err)
 
-	id,err := chainTree.Id()
+	id, err := chainTree.Id()
 	assert.Nil(t, err)
 	assert.Equal(t, "test", id)
 
 }
 
 func TestBuildingUpAChain(t *testing.T) {
-	sw := &dag.SafeWrap{}
-
+	sw := &safewrap.SafeWrap{}
 
 	treeNode := sw.WrapObject(map[string]string{
 		"hithere": "hothere",
@@ -87,12 +87,12 @@ func TestBuildingUpAChain(t *testing.T) {
 
 	root := sw.WrapObject(map[string]interface{}{
 		"chain": chainNode.Cid(),
-		"tree": treeNode.Cid(),
+		"tree":  treeNode.Cid(),
 	})
 
 	assert.Nil(t, sw.Err)
-	tree,err := NewChainTree(
-		dag.NewBidirectionalTree(root.Cid(), root,treeNode,chainNode),
+	tree, err := NewChainTree(
+		dag.NewBidirectionalTree(root.Cid(), root, treeNode, chainNode),
 		[]BlockValidatorFunc{hasCoolHeader},
 		map[string]TransactorFunc{
 			"SET_DATA": setData,
@@ -106,7 +106,7 @@ func TestBuildingUpAChain(t *testing.T) {
 				{
 					Type: "SET_DATA",
 					Payload: map[string]string{
-						"path": "down/in/the/thing",
+						"path":  "down/in/the/thing",
 						"value": "hi",
 					},
 				},
@@ -117,16 +117,16 @@ func TestBuildingUpAChain(t *testing.T) {
 		},
 	}
 
-	valid,err := tree.ProcessBlock(block)
+	valid, err := tree.ProcessBlock(block)
 	assert.Nil(t, err)
-	assert.True(t,valid)
+	assert.True(t, valid)
 
 	//blockCid := sw.WrapObject(block).Cid()
 	assert.Nil(t, sw.Err)
 
 	//tree.Dag.Dump()
 
-	entry,_,err := tree.Dag.Resolve([]string{"chain", "end", "blocksWithHeaders"})
+	entry, _, err := tree.Dag.Resolve([]string{"chain", "end", "blocksWithHeaders"})
 	assert.Nil(t, err)
 	//assert.Equal(t, blockCid, entry.([]interface{})[0].(cid.Cid))
 
@@ -139,7 +139,7 @@ func TestBuildingUpAChain(t *testing.T) {
 				{
 					Type: "SET_DATA",
 					Payload: map[string]string{
-						"path": "down/in/the/thing",
+						"path":  "down/in/the/thing",
 						"value": "hi",
 					},
 				},
@@ -150,9 +150,9 @@ func TestBuildingUpAChain(t *testing.T) {
 		},
 	}
 
-	valid,err = tree.ProcessBlock(block2)
+	valid, err = tree.ProcessBlock(block2)
 	assert.Nil(t, err)
-	assert.True(t,valid)
+	assert.True(t, valid)
 
 	block2Cid := sw.WrapObject(block2).Cid()
 	assert.Nil(t, sw.Err)
@@ -163,10 +163,9 @@ func TestBuildingUpAChain(t *testing.T) {
 	//		t.Log(tree.Dag.Dump())
 	//	}
 	//}()
-	entry,_,err = tree.Dag.Resolve([]string{"chain", "end", "blocksWithHeaders"})
+	entry, _, err = tree.Dag.Resolve([]string{"chain", "end", "blocksWithHeaders"})
 	assert.Nil(t, err)
 	assert.Equal(t, *block2Cid, entry.([]interface{})[0].(cid.Cid))
-
 
 	// you can build on the same segment of the chain
 	block3 := &BlockWithHeaders{
@@ -176,7 +175,7 @@ func TestBuildingUpAChain(t *testing.T) {
 				{
 					Type: "SET_DATA",
 					Payload: map[string]string{
-						"path": "down/in/the/thing",
+						"path":  "down/in/the/thing",
 						"value": "hi",
 					},
 				},
@@ -187,22 +186,21 @@ func TestBuildingUpAChain(t *testing.T) {
 		},
 	}
 
-	valid,err = tree.ProcessBlock(block3)
+	valid, err = tree.ProcessBlock(block3)
 	assert.Nil(t, err)
-	assert.True(t,valid)
+	assert.True(t, valid)
 
 	block3Cid := sw.WrapObject(block3).Cid()
 	assert.Nil(t, sw.Err)
 
-	entry,_,err = tree.Dag.Resolve([]string{"chain", "end", "blocksWithHeaders"})
+	entry, _, err = tree.Dag.Resolve([]string{"chain", "end", "blocksWithHeaders"})
 	assert.Nil(t, err)
 	assert.Len(t, entry, 2)
 	assert.Equal(t, *block3Cid, entry.([]interface{})[1].(cid.Cid))
 }
 
 func TestBlockProcessing(t *testing.T) {
-	sw := &dag.SafeWrap{}
-
+	sw := &safewrap.SafeWrap{}
 
 	tree := sw.WrapObject(map[string]string{
 		"hithere": "hothere",
@@ -212,29 +210,29 @@ func TestBlockProcessing(t *testing.T) {
 
 	root := sw.WrapObject(map[string]interface{}{
 		"chain": chain.Cid(),
-		"tree": tree.Cid(),
+		"tree":  tree.Cid(),
 	})
 
 	assert.Nil(t, sw.Err)
 
-	for _,test := range []struct{
+	for _, test := range []struct {
 		description string
 		shouldValid bool
-		shouldErr bool
-		block *BlockWithHeaders
-		validator func(tree *ChainTree)
-	} {
+		shouldErr   bool
+		block       *BlockWithHeaders
+		validator   func(tree *ChainTree)
+	}{
 		{
 			description: "a valid set data",
 			shouldValid: true,
-			shouldErr: false,
+			shouldErr:   false,
 			block: &BlockWithHeaders{
 				Block: Block{
 					Transactions: []*Transaction{
 						{
 							Type: "SET_DATA",
 							Payload: map[string]string{
-								"path": "down/in/the/thing",
+								"path":  "down/in/the/thing",
 								"value": "hi",
 							},
 						},
@@ -245,7 +243,7 @@ func TestBlockProcessing(t *testing.T) {
 				},
 			},
 			validator: func(tree *ChainTree) {
-				val,_,err := tree.Dag.Resolve(strings.Split("tree/down/in/the/thing", "/"))
+				val, _, err := tree.Dag.Resolve(strings.Split("tree/down/in/the/thing", "/"))
 				assert.Nil(t, err, "valid data set resolution")
 				assert.Equal(t, "hi", val)
 			},
@@ -253,14 +251,14 @@ func TestBlockProcessing(t *testing.T) {
 		{
 			description: "a block that fails block validators",
 			shouldValid: false,
-			shouldErr: false,
+			shouldErr:   false,
 			block: &BlockWithHeaders{
 				Block: Block{
 					Transactions: []*Transaction{
 						{
 							Type: "SET_DATA",
 							Payload: map[string]string{
-								"path": "down/in/the/thing",
+								"path":  "down/in/the/thing",
 								"value": "hi",
 							},
 						},
@@ -271,19 +269,19 @@ func TestBlockProcessing(t *testing.T) {
 				},
 			},
 			validator: func(tree *ChainTree) {
-				_,_,err := tree.Dag.Resolve(strings.Split("tree/down/in/the/thing", "/"))
+				_, _, err := tree.Dag.Resolve(strings.Split("tree/down/in/the/thing", "/"))
 				assert.Equal(t, dag.ErrMissingPath, err.(*dag.ErrorCode).Code)
 			},
 		},
 		{
 			description: "a block that has a bad transaction",
 			shouldValid: false,
-			shouldErr: true,
+			shouldErr:   true,
 			block: &BlockWithHeaders{
 				Block: Block{
 					Transactions: []*Transaction{
 						{
-							Type: "SET_DATA",
+							Type:    "SET_DATA",
 							Payload: "broken payload",
 						},
 					},
@@ -293,20 +291,20 @@ func TestBlockProcessing(t *testing.T) {
 				},
 			},
 			validator: func(tree *ChainTree) {
-				_,_,err := tree.Dag.Resolve(strings.Split("tree/down/in/the/thing", "/"))
+				_, _, err := tree.Dag.Resolve(strings.Split("tree/down/in/the/thing", "/"))
 				assert.Equal(t, dag.ErrMissingPath, err.(*dag.ErrorCode).Code)
 			},
 		},
 	} {
-		tree,err := NewChainTree(
-			dag.NewBidirectionalTree(root.Cid(), root,tree,chain),
+		tree, err := NewChainTree(
+			dag.NewBidirectionalTree(root.Cid(), root, tree, chain),
 			[]BlockValidatorFunc{hasCoolHeader},
 			map[string]TransactorFunc{
 				"SET_DATA": setData,
 			},
 		)
 		assert.Nil(t, err)
-		valid,err := tree.ProcessBlock(test.block)
+		valid, err := tree.ProcessBlock(test.block)
 		if !test.shouldErr {
 			assert.Nil(t, err, test.description)
 		}

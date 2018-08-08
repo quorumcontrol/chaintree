@@ -1,20 +1,22 @@
 package chaintree
 
 import (
-	"github.com/quorumcontrol/chaintree/dag"
-	"github.com/ipfs/go-cid"
 	"fmt"
+
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipld-cbor"
+	"github.com/quorumcontrol/chaintree/dag"
+	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/chaintree/typecaster"
 )
 
 const (
 	ErrUnknownTransactionType = 1
-	ErrRetryableError = 2
-	ErrInvalidTree = 3
-	ErrUnknown = 4
+	ErrRetryableError         = 2
+	ErrInvalidTree            = 3
+	ErrUnknown                = 4
 
-	TreeLabel = "tree"
+	TreeLabel  = "tree"
 	ChainLabel = "chain"
 )
 
@@ -41,24 +43,24 @@ type CodedError interface {
 }
 
 type ErrorCode struct {
-	Code  int
+	Code int
 	Memo string
 }
 
 type RootNode struct {
 	Chain *cid.Cid `refmt:"chain"`
-	Tree *cid.Cid `refmt:"tree"`
-	Id string `refmt:"id"`
+	Tree  *cid.Cid `refmt:"tree"`
+	Id    string   `refmt:"id"`
 }
 
 type Transaction struct {
-	Type string `refmt:"type" json:"type" cbor:"type"`
+	Type    string      `refmt:"type" json:"type" cbor:"type"`
 	Payload interface{} `refmt:"payload" json:"payload" cbor:"payload"`
 }
 
 type Block struct {
 	// this is an interface because nil pointers aren't encoded correctly
-	PreviousTip string `refmt:"previousTip,omitempty" json:"previousTip,omitempty" cbor:"previousTip,omitempty"`
+	PreviousTip  string         `refmt:"previousTip,omitempty" json:"previousTip,omitempty" cbor:"previousTip,omitempty"`
 	Transactions []*Transaction `refmt:"transactions" json:"transactions" cbor:"transactions"`
 }
 
@@ -69,14 +71,14 @@ type BlockWithHeaders struct {
 
 type Chain struct {
 	Genesis *cid.Cid `refmt:"genesis" json:"genesis" cbor:"genesis"`
-	End *cid.Cid `refmt:"end" json:"end" cbor:"end"`
+	End     *cid.Cid `refmt:"end" json:"end" cbor:"end"`
 }
 
 type ChainEntry struct {
 	// this is a string so that CID links aren't automatically adjusted
-	PreviousTip string `refmt:"previousTip,omitempty" json:"previousTip,omitempty" cbor:"previousTip,omitempty"`
-	BlocksWithHeaders []*cid.Cid	`refmt:"blocksWithHeaders" json:"blocksWithHeaders" cbor:"blocksWithHeaders"`
-	Previous *cid.Cid `refmt:"previous" json:"previous" cbor:"previous"`
+	PreviousTip       string     `refmt:"previousTip,omitempty" json:"previousTip,omitempty" cbor:"previousTip,omitempty"`
+	BlocksWithHeaders []*cid.Cid `refmt:"blocksWithHeaders" json:"blocksWithHeaders" cbor:"blocksWithHeaders"`
+	Previous          *cid.Cid   `refmt:"previous" json:"previous" cbor:"previous"`
 }
 
 func (e *ErrorCode) GetCode() int {
@@ -95,7 +97,6 @@ type TransactorFunc func(tree *dag.BidirectionalTree, transaction *Transaction) 
 // Validator funcs are run
 type BlockValidatorFunc func(tree *dag.BidirectionalTree, blockWithHeaders *BlockWithHeaders) (valid bool, err CodedError)
 
-
 /*
 A Chain Tree is a DAG that starts with the following root node:
 {
@@ -109,19 +110,19 @@ data structure that has its history of change built into the merkle-DAG.
 
 Validators are given the tip of the whole chain tree (chain and tree). Transactions are only given the
 tip of the tree.
- */
+*/
 type ChainTree struct {
-	Dag *dag.BidirectionalTree
-	Transactors map[string]TransactorFunc
+	Dag             *dag.BidirectionalTree
+	Transactors     map[string]TransactorFunc
 	BlockValidators []BlockValidatorFunc
-	Metadata interface{}
+	Metadata        interface{}
 }
 
 func NewChainTree(dag *dag.BidirectionalTree, blockValidators []BlockValidatorFunc, transactors map[string]TransactorFunc) (*ChainTree, error) {
 	ct := &ChainTree{
-		Dag: dag,
+		Dag:             dag,
 		BlockValidators: blockValidators,
-		Transactors: transactors,
+		Transactors:     transactors,
 	}
 
 	root := &RootNode{}
@@ -140,14 +141,14 @@ func NewChainTree(dag *dag.BidirectionalTree, blockValidators []BlockValidatorFu
 }
 
 func hasKey(m map[string]interface{}, k string) bool {
-	_,ok := m[k]
+	_, ok := m[k]
 	if ok {
 		return true
 	}
 	return false
 }
 
-func (ct *ChainTree) Id() (string,error) {
+func (ct *ChainTree) Id() (string, error) {
 	root := &RootNode{}
 
 	unmarshaledRoot := ct.Dag.Get(ct.Dag.Tip)
@@ -169,10 +170,10 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 	}
 
 	// first validate the block
-	for _,validator := range ct.BlockValidators {
-		valid,err := validator(ct.Dag, blockWithHeaders)
+	for _, validator := range ct.BlockValidators {
+		valid, err := validator(ct.Dag, blockWithHeaders)
 		if err != nil || !valid {
-			return valid,err
+			return valid, err
 		}
 	}
 
@@ -196,14 +197,14 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 
 	newTree.Tip = root.Tree
 
-	for _,transaction := range blockWithHeaders.Transactions {
-		transactor,ok := ct.Transactors[transaction.Type]
+	for _, transaction := range blockWithHeaders.Transactions {
+		transactor, ok := ct.Transactors[transaction.Type]
 		if !ok {
 			return false, &ErrorCode{Code: ErrUnknownTransactionType, Memo: fmt.Sprintf("unknown transaction type: %v", transaction.Type)}
 		}
-		valid,err := transactor(newTree, transaction)
+		valid, err := transactor(newTree, transaction)
 		if err != nil || !valid {
-			return valid,err
+			return valid, err
 		}
 	}
 
@@ -211,25 +212,25 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 	// now add the block itself
 
 	/*
-	if there are no chain entries, then the PreviousTip should be nil
-	if there are chain entries than the tip should be either the current tip OR
-		the PreviousTip of the last ChainEntry
-	 */
+		if there are no chain entries, then the PreviousTip should be nil
+		if there are chain entries than the tip should be either the current tip OR
+			the PreviousTip of the last ChainEntry
+	*/
 
 	chainNode := ct.Dag.Get(root.Chain)
-	chainMap,err := chainNode.AsMap()
+	chainMap, err := chainNode.AsMap()
 	if err != nil {
 		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting map: %v", err)}
 	}
 
-	sw := &dag.SafeWrap{}
+	sw := &safewrap.SafeWrap{}
 
 	wrappedBlock := sw.WrapObject(blockWithHeaders)
 	if sw.Err != nil {
 		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error wrapping block: %v", sw.Err)}
 	}
 
-	endLink,ok := chainMap["end"]
+	endLink, ok := chainMap["end"]
 	if !ok {
 		if tip := blockWithHeaders.Block.PreviousTip; tip != "" {
 			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("invalid previous tip: %v, expecting nil", tip)}
@@ -238,7 +239,7 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		//log.Printf("wrapped block Cid: %v", wrappedBlock.Cid())
 
 		lastEntry := &ChainEntry{
-			PreviousTip: "",
+			PreviousTip:       "",
 			BlocksWithHeaders: []*cid.Cid{wrappedBlock.Cid()},
 		}
 		entryNode := sw.WrapObject(lastEntry)
@@ -265,14 +266,13 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error casting lastEntry: %v", err)}
 		}
 
-
-		switch tip := blockWithHeaders.PreviousTip; tip{
+		switch tip := blockWithHeaders.PreviousTip; tip {
 		case unmarshaledRoot.Node.Cid().String():
 			//log.Printf("previous tip of block == rootNode")
 			newEntry := &ChainEntry{
-				PreviousTip: ct.Dag.Tip.String(),
+				PreviousTip:       ct.Dag.Tip.String(),
 				BlocksWithHeaders: []*cid.Cid{wrappedBlock.Cid()},
-				Previous: endNode.Node.Cid(),
+				Previous:          endNode.Node.Cid(),
 			}
 
 			entryNode := sw.WrapObject(newEntry)
