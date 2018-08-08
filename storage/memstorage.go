@@ -46,6 +46,11 @@ func (ms *MemStorage) DeleteBucket(bucketName []byte) error {
 	return nil
 }
 
+func (ms *MemStorage) BucketExists(bucketName []byte) bool {
+	_, ok := ms.Buckets[string(bucketName)]
+	return ok
+}
+
 func (ms *MemStorage) Set(bucketName []byte, key []byte, value []byte) error {
 	bucket := ms.Buckets[string(bucketName)]
 	bucket.lock.Lock()

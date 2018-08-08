@@ -35,6 +35,16 @@ func (bs *BoltStorage) CreateBucketIfNotExists(bucketName []byte) error {
 	})
 }
 
+func (bs *BoltStorage) BucketExists(bucketName []byte) bool {
+	var hasBucket bool
+	bs.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bucketName)
+		hasBucket = (b != nil)
+		return nil
+	})
+	return hasBucket
+}
+
 func (bs *BoltStorage) DeleteBucket(bucketName []byte) error {
 	return bs.db.Update(func(tx *bolt.Tx) error {
 		err := tx.DeleteBucket(bucketName)

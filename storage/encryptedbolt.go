@@ -85,6 +85,16 @@ func (ebs *EncryptedBoltStorage) DeleteBucket(bucketName []byte) error {
 	})
 }
 
+func (ebs *EncryptedBoltStorage) BucketExists(bucketName []byte) bool {
+	var hasBucket bool
+	ebs.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bucketName)
+		hasBucket = (b != nil)
+		return nil
+	})
+	return hasBucket
+}
+
 func (ebs *EncryptedBoltStorage) Set(bucketName []byte, key []byte, value []byte) error {
 	log.Trace("setting value for ", string(bucketName), string(key))
 

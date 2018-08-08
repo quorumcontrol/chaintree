@@ -71,6 +71,9 @@ func (sbs *StorageBasedStore) GetReferences(to *cid.Cid) (refs []*cid.Cid, err e
 	bucketName := refBucketName(to)
 	sbs.locker.RLock(string(bucketName))
 	defer sbs.locker.RUnlockAndDelete(string(bucketName))
+	if !sbs.store.BucketExists(bucketName) {
+		return nil, nil
+	}
 
 	keys, err := sbs.store.GetKeys(bucketName)
 	if err != nil {
@@ -211,8 +214,10 @@ func (sbs *StorageBasedStore) deleteReferences(to *cid.Cid, from ...*cid.Cid) er
 	bucketName := refBucketName(to)
 	sbs.locker.Lock(string(bucketName))
 	defer sbs.locker.UnlockAndDelete(string(bucketName))
+	if !sbs.store.BucketExists(bucketName) {
+		return nil
+	}
 
-	sbs.store.CreateBucketIfNotExists(bucketName)
 	for _, fromID := range from {
 		sbs.store.Delete(bucketName, []byte(fromID.KeyString()))
 	}
