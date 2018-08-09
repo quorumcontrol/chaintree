@@ -79,15 +79,16 @@ func TestStorageBasedStoreUpdateNode(t *testing.T) {
 	require.Nil(t, err)
 
 	root := map[string]*cid.Cid{"child": childNode.Cid()}
-	_, err = sbs.CreateNode(root)
+	rootNode, err := sbs.CreateNode(root)
 	require.Nil(t, err)
 
-	updated, tips, err := sbs.UpdateNode(childNode.Cid(), newChild)
+	updatedNode, updates, err := sbs.UpdateNode(childNode.Cid(), newChild)
 	require.Nil(t, err)
-	require.Len(t, tips, 1)
+	require.Len(t, updates, 2)
 
-	assert.Equal(t, tips[0].String(), expectedNewRootNode.Cid().String())
-	assert.Equal(t, updated.Cid().String(), newChildNode.Cid().String())
+	assert.Equal(t, updates[ToCidString(rootNode.Cid())].String(), expectedNewRootNode.Cid().String())
+	assert.Equal(t, updates[ToCidString(childNode.Cid())].String(), newChildNode.Cid().String())
+	assert.Equal(t, updatedNode.Cid().String(), newChildNode.Cid().String())
 }
 
 func TestStorageBasedStoreDeleteIfUnreferenced(t *testing.T) {
