@@ -7,8 +7,8 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 	"github.com/quorumcontrol/chaintree/safewrap"
-	"github.com/quorumcontrol/chaintree/storage"
 	"github.com/quorumcontrol/namedlocker"
+	"github.com/quorumcontrol/storage"
 )
 
 var nodeBucket = []byte("nodeStoreNodes")

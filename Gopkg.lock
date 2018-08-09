@@ -152,12 +152,12 @@
   revision = "3f797c8b12b141e1e252cc202f43c27fce58ec9e"
 
 [[projects]]
-  branch = "bug/whisperv6"
-  digest = "1:b4ba378a88650935291fb7f15b3e20bb3433d2888d8a5a71b26914c1792a0c9a"
-  name = "github.com/quorumcontrol/qc3"
-  packages = ["storage"]
+  branch = "master"
+  digest = "1:0b5f76db3a0f1efadb94bca6d9351f15f772d7658246c877f885a8f6049e9ce8"
+  name = "github.com/quorumcontrol/storage"
+  packages = ["."]
   pruneopts = ""
-  revision = "c4ea8756d93bc4fa9997241c39c7d3f294bf3ade"
+  revision = "66a294ac54c8d4f92e530800d0ee6b43415c14b3"
 
 [[projects]]
   digest = "1:633b5b39909d9d794f5543baee4971890e1866f5c082cdf4694954c1ff489a18"
@@ -214,9 +214,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/coreos/bbolt",
     "github.com/davecgh/go-spew/spew",
-    "github.com/ethereum/go-ethereum/log",
     "github.com/ipfs/go-cid",
     "github.com/ipfs/go-ipld-cbor",
     "github.com/ipfs/go-ipld-format",
@@ -225,11 +223,9 @@
     "github.com/polydawn/refmt/obj/atlas",
     "github.com/polydawn/refmt/shared",
     "github.com/quorumcontrol/namedlocker",
-    "github.com/quorumcontrol/qc3/storage",
+    "github.com/quorumcontrol/storage",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
-    "golang.org/x/crypto/nacl/secretbox",
-    "golang.org/x/crypto/scrypt",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

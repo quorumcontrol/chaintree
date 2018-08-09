@@ -8,7 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/quorumcontrol/chaintree/safewrap"
-	"github.com/quorumcontrol/chaintree/storage"
+	"github.com/quorumcontrol/storage"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
