@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ipfs/go-ipld-cbor"
+	format "github.com/ipfs/go-ipld-format"
 
 	cid "github.com/ipfs/go-cid"
 	"github.com/quorumcontrol/chaintree/safewrap"
@@ -172,6 +173,37 @@ func (sbs *StorageBasedStore) DeleteTree(tip *cid.Cid) error {
 		}
 	}
 	return sbs.DeleteIfUnreferenced(tip)
+}
+
+// Resolve implements the NodeStore interface
+func (sbs *StorageBasedStore) Resolve(tip *cid.Cid, path []string) (val interface{}, remaining []string, err error) {
+	node, err := sbs.GetNode(tip)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error getting node (%s): %v", tip.String(), err)
+	}
+	val, remaining, err = node.Resolve(path)
+	if err != nil {
+		// If the link is just missing, then just return the whole path as remaining, with a nil value
+		// instead of an error
+		if err == cbornode.ErrNoSuchLink {
+			return nil, path, nil
+		}
+		return nil, nil, err
+	}
+
+	switch val.(type) {
+	case *format.Link:
+		linkNode, err := sbs.GetNode(val.(*format.Link).Cid)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error getting linked node (%s): %v", linkNode.Cid().String(), err)
+		}
+		if linkNode != nil {
+			return sbs.Resolve(linkNode.Cid(), remaining)
+		}
+		return nil, remaining, nil
+	default:
+		return val, remaining, err
+	}
 }
 
 func (sbs *StorageBasedStore) createNodeFromCborNode(node *cbornode.Node) (*cbornode.Node, error) {

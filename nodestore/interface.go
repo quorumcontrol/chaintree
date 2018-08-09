@@ -61,4 +61,7 @@ type NodeStore interface {
 	// DeleteTree removes everything in a tree starting from a tip as long as none of the nodes have
 	// references
 	DeleteTree(tip *cid.Cid) error
+
+	// Resolve takes a tip, and walks through the NodeStore until finding a value
+	Resolve(tip *cid.Cid, path []string) (val interface{}, remaining []string, err error)
 }

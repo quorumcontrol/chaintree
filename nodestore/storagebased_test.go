@@ -257,3 +257,38 @@ func TestStorageBasedStoreDeleteTree(t *testing.T) {
 		tc.tests(sbs, nodes)
 	}
 }
+
+func TestStorageBasedStoreResolve(t *testing.T) {
+	sw := &safewrap.SafeWrap{}
+	child := sw.WrapObject(map[string]interface{}{
+		"name": "child",
+	})
+
+	root := sw.WrapObject(map[string]interface{}{
+		"child": child.Cid(),
+		"key":   "value",
+	})
+
+	assert.Nil(t, sw.Err)
+	sbs := NewStorageBasedStore(storage.NewMemStorage())
+	sbs.CreateNodeFromBytes(child.RawData())
+	sbs.CreateNodeFromBytes(root.RawData())
+
+	// Resolves through the tree
+	val, remaining, err := sbs.Resolve(root.Cid(), []string{"child", "name"})
+	assert.Nil(t, err)
+	assert.Empty(t, remaining)
+	assert.Equal(t, "child", val)
+
+	// Resolves on the object itself
+	val, remaining, err = sbs.Resolve(root.Cid(), []string{"key"})
+	assert.Nil(t, err)
+	assert.Empty(t, remaining)
+	assert.Equal(t, "value", val)
+
+	// Does not error on missing paths, but returns a nil value, with the part of the path missing
+	val, remaining, err = sbs.Resolve(root.Cid(), []string{"child", "missing", "path"})
+	assert.Nil(t, err)
+	assert.Nil(t, val)
+	assert.Equal(t, []string{"missing", "path"}, remaining)
+}
