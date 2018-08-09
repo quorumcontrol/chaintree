@@ -3,6 +3,7 @@ package dag
 import (
 	"fmt"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ipfs/go-ipld-cbor"
 
 	cid "github.com/ipfs/go-cid"
@@ -182,4 +183,53 @@ func (d *Dag) createDeepObject(path []string, node *cbornode.Node) (*Dag, error)
 
 	setPath := path[0 : indexOfLastExistingNode+1]
 	return d.set(setPath, last.Cid(), false)
+}
+
+func (d *Dag) dumpNode(node *cbornode.Node, isLink bool) map[string]interface{} {
+	nodeMap, _ := nodestore.CborNodeToObj(node)
+	for k, v := range nodeMap {
+		switch v := v.(type) {
+		case *cid.Cid:
+			node, _ := d.store.GetNode(v)
+			if node == nil {
+				nodeMap[k] = fmt.Sprintf("non existant link: %s", v.String())
+			} else {
+				nodeMap[k] = d.dumpNode(node, true)
+			}
+		case cid.Cid:
+			node, _ := d.store.GetNode(&v)
+			if node == nil {
+				nodeMap[k] = fmt.Sprintf("non existant link: %s", v.String())
+			} else {
+				nodeMap[k] = d.dumpNode(node, true)
+			}
+		default:
+			continue
+		}
+	}
+	if isLink {
+		nodeMap["_isLink"] = true
+	}
+	return nodeMap
+}
+
+// Dump dumps the current DAG out as a string for debugging
+func (d *Dag) Dump() string {
+	rootNode, _ := d.store.GetNode(d.Tip)
+	nodes, _ := d.Nodes()
+	nodeStrings := make([]string, len(nodes))
+	for i, node := range nodes {
+		nodeStrings[i] = node.Cid().String()
+	}
+	return fmt.Sprintf(`
+Tip: %s,
+Tree:	
+%s
+
+Nodes: %v
+
+	`,
+		d.Tip.String(),
+		spew.Sdump(d.dumpNode(rootNode, false)),
+		nodes)
 }
