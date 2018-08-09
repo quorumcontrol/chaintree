@@ -50,6 +50,26 @@ func (d *Dag) AddNodes(nodes ...*cbornode.Node) error {
 	return nil
 }
 
+//WithNewTip returns a new Dag, but with the Tip set to the argument
+func (d *Dag) WithNewTip(tip *cid.Cid) *Dag {
+	return &Dag{
+		Tip:     tip,
+		store:   d.store,
+		oldTips: append(d.oldTips, d.Tip),
+	}
+}
+
+// Get takes a CID and returns the cbornode
+func (d *Dag) Get(id *cid.Cid) (*cbornode.Node, error) {
+	return d.store.GetNode(id)
+}
+
+// CreateNode adds an object to the Dags underlying storage (doesn't change the tip)
+// and returns the cbornode
+func (d *Dag) CreateNode(obj interface{}) (*cbornode.Node, error) {
+	return d.store.CreateNode(obj)
+}
+
 // Resolve takes a path (as a string slice) and returns the value, remaining path and any error
 // it delegates to the underlying store's resolve
 func (d *Dag) Resolve(path []string) (interface{}, []string, error) {
@@ -80,6 +100,16 @@ func (d *Dag) nodeAndDecendants(node *cbornode.Node) ([]*cbornode.Node, error) {
 		nodes = append(nodes, childNodes...)
 	}
 	return nodes, nil
+}
+
+// Update returns a new Dag with the old node swapped out for the new object
+func (d *Dag) Update(existing *cid.Cid, newObj interface{}) (*Dag, error) {
+	_, updates, err := d.store.UpdateNode(existing, newObj)
+	if err != nil {
+		return nil, fmt.Errorf("error updating node: %v", err)
+	}
+	newTip := updates[nodestore.ToCidString(d.Tip)]
+	return d.WithNewTip(newTip), nil
 }
 
 // Set sets a value at a path and returns a new dag with a new tip that reflects

@@ -133,3 +133,50 @@ func TestDagSetAsLink(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, true, val)
 }
+
+func TestDagGet(t *testing.T) {
+	sw := &safewrap.SafeWrap{}
+
+	child := sw.WrapObject(map[string]interface{}{
+		"name": "child",
+	})
+
+	root := sw.WrapObject(map[string]interface{}{
+		"child": child.Cid(),
+	})
+
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	dag, err := NewDagWithNodes(store, root, child)
+	require.Nil(t, err)
+	n, err := dag.Get(child.Cid())
+	require.Nil(t, err)
+	assert.Equal(t, child.Cid().String(), n.Cid().String())
+}
+
+func TestDagDump(t *testing.T) {
+	// Not really a test here, but do call it just to make sure no panics
+	dag := newDeepDag(t)
+	dag.Dump()
+}
+
+func TestDagWithNewTip(t *testing.T) {
+	sw := &safewrap.SafeWrap{}
+
+	child := sw.WrapObject(map[string]interface{}{
+		"name": "child",
+	})
+
+	root := sw.WrapObject(map[string]interface{}{
+		"child": child.Cid(),
+	})
+
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	dag, err := NewDagWithNodes(store, root, child)
+	require.Nil(t, err)
+
+	newDag := dag.WithNewTip(child.Cid())
+	assert.Equal(t, newDag.Tip.String(), child.Cid().String())
+	nodes, err := newDag.Nodes()
+	require.Nil(t, err)
+	assert.Len(t, nodes, 1)
+}
