@@ -40,7 +40,7 @@ func (sbs *StorageBasedStore) CreateNode(obj interface{}) (node *cbornode.Node, 
 		return nil, fmt.Errorf("error wrapping: %v", sw.Err)
 	}
 
-	return sbs.createNodeFromCborNode(node)
+	return node, sbs.StoreNode(node)
 }
 
 // CreateNodeFromBytes implements the NodeStore interface
@@ -50,7 +50,7 @@ func (sbs *StorageBasedStore) CreateNodeFromBytes(data []byte) (node *cbornode.N
 	if sw.Err != nil {
 		return nil, fmt.Errorf("error wrapping: %v", sw.Err)
 	}
-	return sbs.createNodeFromCborNode(node)
+	return node, sbs.StoreNode(node)
 }
 
 // GetNode returns a cbornode for a CID
@@ -206,7 +206,8 @@ func (sbs *StorageBasedStore) Resolve(tip *cid.Cid, path []string) (val interfac
 	}
 }
 
-func (sbs *StorageBasedStore) createNodeFromCborNode(node *cbornode.Node) (*cbornode.Node, error) {
+// StoreNode implements the NodeStore interface
+func (sbs *StorageBasedStore) StoreNode(node *cbornode.Node) error {
 	nodeCid := node.Cid()
 
 	sbs.locker.Lock(nodeCid.KeyString())
@@ -214,16 +215,16 @@ func (sbs *StorageBasedStore) createNodeFromCborNode(node *cbornode.Node) (*cbor
 
 	err := sbs.store.Set(nodeBucket, []byte(node.Cid().KeyString()), node.RawData())
 	if err != nil {
-		return nil, fmt.Errorf("error saving storage: %v", err)
+		return fmt.Errorf("error saving storage: %v", err)
 	}
 	links := node.Links()
 	for _, link := range links {
 		err := sbs.saveReferences(link.Cid, nodeCid)
 		if err != nil {
-			return nil, fmt.Errorf("error saving reference: %v", err)
+			return fmt.Errorf("error saving reference: %v", err)
 		}
 	}
-	return node, nil
+	return nil
 }
 
 func (sbs *StorageBasedStore) saveReferences(to *cid.Cid, from ...*cid.Cid) error {

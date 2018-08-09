@@ -50,6 +50,8 @@ type NodeStore interface {
 	CreateNode(obj interface{}) (*cbornode.Node, error)
 	// CreateNodeFromBytes creates a new node, but using cbor bytes instead of a native GO object
 	CreateNodeFromBytes(nodeBytes []byte) (*cbornode.Node, error)
+	// StoreNode just takes a cbornode and sets references, etc in the storage
+	StoreNode(node *cbornode.Node) error
 	// GetReferences returns a slice of CIDs that contain a link to the CID in the to argument
 	GetReferences(to *cid.Cid) ([]*cid.Cid, error)
 	// UpdateNode adds the new obj to the NodeStore, then walks the references to the old
