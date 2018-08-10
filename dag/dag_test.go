@@ -125,13 +125,23 @@ func TestDagSetAsLink(t *testing.T) {
 	dag, err := NewDagWithNodes(store, root, child)
 	require.Nil(t, err)
 
-	dag, err = dag.SetAsLink([]string{"child", "key"}, unlinked)
+	dag, err = dag.SetAsLink([]string{"child", "grandchild", "key"}, unlinked)
 	assert.Nil(t, err)
-
-	val, _, err := dag.Resolve([]string{"child", "key", "unlinked"})
+	val, _, err := dag.Resolve([]string{"child", "grandchild", "key", "unlinked"})
 
 	assert.Nil(t, err)
 	assert.Equal(t, true, val)
+
+	unlinked2 := map[string]interface{}{
+		"unlinked2": false,
+	}
+
+	dag, err = dag.SetAsLink([]string{"child", "grandchild", "key", "unlinkedsibling"}, unlinked2)
+	assert.Nil(t, err)
+
+	val, _, err = dag.Resolve([]string{"child", "grandchild", "key", "unlinkedsibling", "unlinked2"})
+	assert.Nil(t, err)
+	assert.Equal(t, false, val)
 }
 
 func TestDagInvalidSet(t *testing.T) {

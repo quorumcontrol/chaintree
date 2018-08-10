@@ -165,7 +165,15 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 		return nil, fmt.Errorf("error resolving")
 	}
 	if existing == nil {
-		newObj := map[string]interface{}{key: val}
+		var newObj interface{}
+
+		if asLink {
+			path = append(path, key)
+			newObj = val
+		} else {
+			newObj = map[string]interface{}{key: val}
+		}
+
 		sw := &safewrap.SafeWrap{}
 		wrapped := sw.WrapObject(newObj)
 		if sw.Err != nil {
