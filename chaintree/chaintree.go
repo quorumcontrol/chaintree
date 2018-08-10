@@ -3,8 +3,6 @@ package chaintree
 import (
 	"fmt"
 
-	"github.com/quorumcontrol/chaintree/nodestore"
-
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/dag"
@@ -52,6 +50,7 @@ type RootNode struct {
 	Chain *cid.Cid `refmt:"chain"`
 	Tree  *cid.Cid `refmt:"tree"`
 	Id    string   `refmt:"id"`
+	cid   *cid.Cid
 }
 
 type Transaction struct {
@@ -117,6 +116,7 @@ type ChainTree struct {
 	Transactors     map[string]TransactorFunc
 	BlockValidators []BlockValidatorFunc
 	Metadata        interface{}
+	root            *RootNode
 }
 
 func NewChainTree(dag *dag.Dag, blockValidators []BlockValidatorFunc, transactors map[string]TransactorFunc) (*ChainTree, error) {
@@ -126,45 +126,26 @@ func NewChainTree(dag *dag.Dag, blockValidators []BlockValidatorFunc, transactor
 		Transactors:     transactors,
 	}
 
-	root := &RootNode{}
-
-	unmarshaledRoot, err := ct.Dag.Get(ct.Dag.Tip)
-	if unmarshaledRoot == nil || err != nil {
-		return nil, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error: missing root: %v", err)}
+	_, err := ct.getRoot()
+	if err != nil {
+		return nil, err
 	}
-
-	err = cbornode.DecodeInto(unmarshaledRoot.RawData(), root)
-	if err == nil {
-		return ct, nil
-	} else {
-		return nil, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error, invalid root: %v", root)}
-	}
+	return ct, nil
 }
 
-func hasKey(m map[string]interface{}, k string) bool {
-	_, ok := m[k]
-	if ok {
-		return true
-	}
-	return false
-}
-
+// Id returns the ID of a chain tree (the ID node in the root of the chaintree)
 func (ct *ChainTree) Id() (string, error) {
-	root := &RootNode{}
-
-	unmarshaledRoot, err := ct.Dag.Get(ct.Dag.Tip)
-	if unmarshaledRoot == nil || err != nil {
-		return "", &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error: missing root: %v", err)}
+	root, err := ct.getRoot()
+	if err != nil {
+		return "", err
 	}
-
-	err = cbornode.DecodeInto(unmarshaledRoot.RawData(), root)
-	if err == nil {
-		return root.Id, nil
-	} else {
-		return "", &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error, invalid root: %v", root)}
-	}
+	return root.Id, nil
 }
 
+// ProcessBlock takes a signed block, runs all the validators and if those succeeds
+// it runs the transactors. If all transactors succeed, then the tree
+// of the Chain Tree is updated and the block is appended to the chain part
+// of the Chain Tree
 func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid bool, err error) {
 	if blockWithHeaders == nil {
 		return false, &ErrorCode{Code: ErrUnknown, Memo: "must have a block to process"}
@@ -178,16 +159,9 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		}
 	}
 
-	unmarshaledRoot, err := ct.Dag.Get(ct.Dag.Tip)
-	if unmarshaledRoot == nil || err != nil {
-		return false, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error: missing root: %v", err)}
-	}
-
-	root := &RootNode{}
-
-	err = cbornode.DecodeInto(unmarshaledRoot.RawData(), root)
+	root, err := ct.getRoot()
 	if err != nil {
-		return false, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error converting root: %v", err)}
+		return false, err
 	}
 
 	if root.Tree == nil {
@@ -212,26 +186,19 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting tree tip: %v", err)}
 	}
 
-	rootObj, err := nodestore.CborNodeToObj(newTreeRoot)
-	if err != nil {
-		if err != nil {
-			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting tree tip: %v", err)}
-		}
-	}
-	ct.Dag, err = ct.Dag.Update(root.Tree, rootObj)
+	ct.Dag, err = ct.Dag.Swap(root.Tree, newTreeRoot)
 	if err != nil {
 		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error setting as link: %v", err)}
 	}
-	// now add the block itself
 
 	/*
 		if there are no chain entries, then the PreviousTip should be nil
 		if there are chain entries than the tip should be either the current tip OR
 			the PreviousTip of the last ChainEntry
 	*/
-
 	chainNode, err := ct.Dag.Get(root.Chain)
-	chainMap, err := nodestore.CborNodeToObj(chainNode)
+	chain := &Chain{}
+	err = cbornode.DecodeInto(chainNode.RawData(), chain)
 	if err != nil {
 		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting map: %v", err)}
 	}
@@ -241,8 +208,7 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error wrapping block: %v", err)}
 	}
 
-	endLink, ok := chainMap["end"]
-	if !ok {
+	if chain.End == nil {
 		if tip := blockWithHeaders.Block.PreviousTip; tip != "" {
 			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("invalid previous tip: %v, expecting nil", tip)}
 		}
@@ -257,17 +223,16 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		if err != nil {
 			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error creating: %v", err)}
 		}
-		chainMap["end"] = entryNode.Cid()
+		chain.End = entryNode.Cid()
 
-		ct.Dag, err = ct.Dag.SetAsLink([]string{ChainLabel}, chainMap)
+		ct.Dag, err = ct.Dag.SetAsLink([]string{ChainLabel}, chain)
 		if err != nil {
 			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error updating: %v", err)}
 		}
 
 	} else {
 		//log.Println("we have an end")
-		link := endLink.(cid.Cid)
-		endNode, err := ct.Dag.Get(&link)
+		endNode, err := ct.Dag.Get(chain.End)
 		if endNode == nil {
 			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("missing end node in chain tree")}
 		}
@@ -282,7 +247,7 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		}
 
 		switch tip := blockWithHeaders.PreviousTip; tip {
-		case unmarshaledRoot.Cid().String():
+		case root.cid.String():
 			//log.Printf("previous tip of block == rootNode")
 			newEntry := &ChainEntry{
 				PreviousTip:       ct.Dag.Tip.String(),
@@ -294,12 +259,12 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 			if err != nil {
 				return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error casting lastEntry: %v", err)}
 			}
-			chainMap["end"] = entryNode.Cid()
+			chain.End = entryNode.Cid()
 			//log.Printf("setting end to: %v", entryNode.Cid().String())
 
 			//log.Printf("chain map: %v", chainMap)
 
-			ct.Dag, err = ct.Dag.SetAsLink([]string{ChainLabel}, chainMap)
+			ct.Dag, err = ct.Dag.SetAsLink([]string{ChainLabel}, chain)
 			if err != nil {
 				return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error swapping object: %v", err)}
 			}
@@ -314,9 +279,29 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 				return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error swapping object: %v", err)}
 			}
 		default:
-			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error, tip must be either current tip or same previousTip as last ChainEntry, tip: %v endMap: %v, rootNode: %v", tip, lastEntry.PreviousTip, unmarshaledRoot.Cid())}
+			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error, tip must be either current tip or same previousTip as last ChainEntry, tip: %v endMap: %v, rootNode: %v", tip, lastEntry.PreviousTip, root.cid)}
 		}
 	}
 
 	return true, nil
+}
+
+func (ct *ChainTree) getRoot() (*RootNode, error) {
+	if ct.root != nil && ct.root.cid.Equals(ct.Dag.Tip) {
+		return ct.root, nil
+	}
+	unmarshaledRoot, err := ct.Dag.Get(ct.Dag.Tip)
+	if unmarshaledRoot == nil || err != nil {
+		return nil, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error: missing root: %v", err)}
+	}
+
+	root := &RootNode{}
+
+	err = cbornode.DecodeInto(unmarshaledRoot.RawData(), root)
+	if err != nil {
+		return nil, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error converting root: %v", err)}
+	}
+	root.cid = ct.Dag.Tip
+	ct.root = root
+	return root, nil
 }

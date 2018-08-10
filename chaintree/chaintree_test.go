@@ -130,8 +130,8 @@ func TestBuildingUpAChain(t *testing.T) {
 	}
 
 	valid, err := tree.ProcessBlock(block)
-	assert.Nil(t, err)
-	assert.True(t, valid)
+	require.Nil(t, err)
+	require.True(t, valid)
 
 	//blockCid := sw.WrapObject(block).Cid()
 	assert.Nil(t, sw.Err)
@@ -175,8 +175,9 @@ func TestBuildingUpAChain(t *testing.T) {
 	//		t.Log(tree.Dag.Dump())
 	//	}
 	//}()
-	entry, _, err = tree.Dag.Resolve([]string{"chain", "end", "blocksWithHeaders"})
+	entry, remain, err := tree.Dag.Resolve([]string{"chain", "end", "blocksWithHeaders"})
 	assert.Nil(t, err)
+	assert.Len(t, remain, 0)
 	assert.Equal(t, *block2Cid, entry.([]interface{})[0].(cid.Cid))
 
 	// you can build on the same segment of the chain
