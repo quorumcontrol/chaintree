@@ -135,6 +135,17 @@ func (d *Dag) SetAsLink(pathAndKey []string, val interface{}) (*Dag, error) {
 }
 
 func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, error) {
+	if !asLink {
+		switch val.(type) {
+		// These are the built in type of go (excluding map) plus cid.Cid
+		// Use SetAsLink if attempting to set map
+		case bool, byte, complex64, complex128, error, float32, float64, int, int8, int16, int32, int64, string, uint, uint16, uint32, uint64, uintptr, cid.Cid, *bool, *byte, *complex64, *complex128, *error, *float32, *float64, *int, *int8, *int16, *int32, *int64, *string, *uint, *uint16, *uint32, *uint64, *uintptr, *cid.Cid, []bool, []byte, []complex64, []complex128, []error, []float32, []float64, []int, []int8, []int16, []int32, []int64, []string, []uint, []uint16, []uint32, []uint64, []uintptr, []cid.Cid, []*bool, []*byte, []*complex64, []*complex128, []*error, []*float32, []*float64, []*int, []*int8, []*int16, []*int32, []*int64, []*string, []*uint, []*uint16, []*uint32, []*uint64, []*uintptr, []*cid.Cid:
+			// Noop here, its a valid type, continue on
+		default:
+			return nil, fmt.Errorf("can not set complex objects, use asLink=true: %v", val)
+		}
+	}
+
 	var path []string
 	var key string
 
