@@ -60,6 +60,36 @@ func TestStorageBasedStoreGetReferences(t *testing.T) {
 	assert.Equal(t, refs[0].String(), rootNode.Cid().String())
 }
 
+func TestStorageBasedStoreSwap(t *testing.T) {
+	sbs := NewStorageBasedStore(storage.NewMemStorage())
+	sw := &safewrap.SafeWrap{}
+
+	child := map[string]string{"hi": "value"}
+	childNode := sw.WrapObject(child)
+
+	newChild := map[string]string{"hi": "newValue"}
+	newChildNode := sw.WrapObject(newChild)
+
+	expectedNewRoot := map[string]*cid.Cid{"child": newChildNode.Cid()}
+	expectedNewRootNode := sw.WrapObject(expectedNewRoot)
+
+	require.Nil(t, sw.Err)
+
+	_, err := sbs.CreateNode(child)
+	require.Nil(t, err)
+
+	root := map[string]*cid.Cid{"child": childNode.Cid()}
+	rootNode, err := sbs.CreateNode(root)
+	require.Nil(t, err)
+
+	updates, err := sbs.Swap(childNode.Cid(), newChildNode)
+	require.Nil(t, err)
+	require.Len(t, updates, 2)
+
+	assert.Equal(t, updates[ToCidString(rootNode.Cid())].String(), expectedNewRootNode.Cid().String())
+	assert.Equal(t, updates[ToCidString(childNode.Cid())].String(), newChildNode.Cid().String())
+}
+
 func TestStorageBasedStoreUpdateNode(t *testing.T) {
 	sbs := NewStorageBasedStore(storage.NewMemStorage())
 	sw := &safewrap.SafeWrap{}

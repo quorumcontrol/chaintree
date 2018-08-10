@@ -58,6 +58,9 @@ type NodeStore interface {
 	// CID and updates their links to reflect the new object. It then returns the new, updated cbor node
 	// for obj and the "tips" of the reference tree: that is the last objects with no parents
 	UpdateNode(existing *cid.Cid, obj interface{}) (updatedNode *cbornode.Node, updates UpdateMap, err error)
+	// Swap takes an existing CID, and just swaps it out for the new node.
+	// It is up to the caller to make sure that any child nodes are already part of the store.
+	Swap(existing *cid.Cid, node *cbornode.Node) (updates UpdateMap, err error)
 	// DeleteNode deletes a node from the store, it will no-op if the node is referenced by other nodes
 	DeleteIfUnreferenced(nodeCid *cid.Cid) error
 	// DeleteTree removes everything in a tree starting from a tip as long as none of the nodes have
