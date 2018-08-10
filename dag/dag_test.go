@@ -134,6 +134,31 @@ func TestDagSetAsLink(t *testing.T) {
 	assert.Equal(t, true, val)
 }
 
+func TestDagInvalidSet(t *testing.T) {
+	sw := &safewrap.SafeWrap{}
+
+	child := sw.WrapObject(map[string]interface{}{
+		"name": "child",
+	})
+
+	root := sw.WrapObject(map[string]interface{}{
+		"child": child.Cid(),
+	})
+
+	assert.Nil(t, sw.Err)
+
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	dag, err := NewDagWithNodes(store, root, child)
+	require.Nil(t, err)
+
+	dag, err = dag.Set([]string{"test"}, map[string]interface{}{
+		"child1": "1",
+		"child2": "2",
+	})
+
+	assert.NotNil(t, err)
+}
+
 func TestDagGet(t *testing.T) {
 	sw := &safewrap.SafeWrap{}
 
