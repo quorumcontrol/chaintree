@@ -1,461 +1,237 @@
 package dag
 
-/*
-	The dag package holds convenience methods for working with a content-addressable DAG.
-	The BidirectionalTree holds nodes
- */
-
 import (
-	"github.com/ipfs/go-ipld-cbor"
-	"github.com/multiformats/go-multihash"
-	"github.com/ipfs/go-cid"
-	"sync"
 	"fmt"
-	"github.com/ipfs/go-ipld-format"
+
 	"github.com/davecgh/go-spew/spew"
+	"github.com/ipfs/go-ipld-cbor"
+
+	cid "github.com/ipfs/go-cid"
+	"github.com/quorumcontrol/chaintree/nodestore"
+	"github.com/quorumcontrol/chaintree/safewrap"
 )
 
-type nodeId int
-
-type BidirectionalTree struct {
-	Tip             *cid.Cid
-	counter         int
-	nodesByStaticId map[nodeId]*BidirectionalNode
-	nodesByCid      map[string]*BidirectionalNode
-	mutex           sync.Mutex
+// Dag is a convenience wrapper around a node store for setting and pruning
+type Dag struct {
+	Tip     *cid.Cid
+	oldTips []*cid.Cid
+	store   nodestore.NodeStore
 }
 
-type ErrorCode struct {
-	Code  int
-	Memo string
-}
-
-func (e *ErrorCode) GetCode() int {
-	return e.Code
-}
-
-func (e *ErrorCode) Error() string {
-	return fmt.Sprintf("%d - %s", e.Code, e.Memo)
-}
-
-const (
-	Success = 0
-	ErrMissingRoot = 1
-	ErrMissingPath = 2
-	ErrInvalidInput = 3
-	ErrEncodingError = 4
-	ErrBadInput = 5
-	ErrUnknown = 99
-)
-
-
-type BidirectionalNode struct {
-	Parents map[nodeId]bool
-	id      nodeId
-	Node    *cbornode.Node
-}
-
-func NewBidirectionalTree(root *cid.Cid, nodes ...*cbornode.Node) *BidirectionalTree {
-	tree := &BidirectionalTree{
-		counter: 0,
-		nodesByStaticId: make(map[nodeId]*BidirectionalNode),
-		nodesByCid: make(map[string]*BidirectionalNode),
+// NewDag takes a tip and a store and returns an initialized Dag
+func NewDag(tip *cid.Cid, store nodestore.NodeStore) *Dag {
+	return &Dag{
+		Tip:   tip,
+		store: store,
 	}
-
-	if len(nodes) > 0 {
-		tree.AddNodes(nodes...)
-	}
-	if root != nil {
-		tree.Tip = root
-	}
-
-	return tree
 }
 
-func (bn *BidirectionalNode) AsMap() (map[string]interface{}, error) {
-	newParentJsonish := make(map[string]interface{})
-	err := cbornode.DecodeInto(bn.Node.RawData(), &newParentJsonish)
+// NewDagWithNodes creates a new Dag, and imports the passed in nodes, the first node is set as the tip
+func NewDagWithNodes(store nodestore.NodeStore, nodes ...*cbornode.Node) (*Dag, error) {
+	dag := &Dag{
+		Tip:   nodes[0].Cid(),
+		store: store,
+	}
+	err := dag.AddNodes(nodes...)
 	if err != nil {
-		return nil, fmt.Errorf("error decoding: %v", err)
+		return nil, fmt.Errorf("error adding nodes: %v", err)
 	}
-
-	return newParentJsonish, nil
+	return dag, nil
 }
 
-func (bn *BidirectionalNode) Resolve(tree *BidirectionalTree, path []string) (interface{}, []string, error) {
-	val, remaining, err := bn.Node.Resolve(path)
-	if err != nil {
-		//fmt.Printf("error resolving: %v", err)
-		return nil, nil, &ErrorCode{Code: ErrMissingPath, Memo: fmt.Sprintf("error resolving: %v", err)}
-	}
-	//spew.Dump("resolved on Node", val)
-
-	switch val.(type) {
-	case *format.Link:
-		n,ok := tree.nodesByCid[val.(*format.Link).Cid.KeyString()]
-		if ok {
-			return n.Resolve(tree, remaining)
-		} else {
-			return nil, nil, &ErrorCode{Code: ErrMissingPath}
+// AddNodes takes cbornodes and adds them to the underlying storage
+func (d *Dag) AddNodes(nodes ...*cbornode.Node) error {
+	for _, node := range nodes {
+		err := d.store.StoreNode(node)
+		if err != nil {
+			return fmt.Errorf("error storing node (%s): %v", node.Cid().String(), err)
 		}
-	default:
-		return val, remaining, err
-	}
-}
-
-func (bt *BidirectionalTree) Get(id *cid.Cid) (*BidirectionalNode) {
-	node,ok := bt.nodesByCid[id.KeyString()]
-	if ok {
-		return node
 	}
 	return nil
 }
 
-func (bt *BidirectionalTree) Copy() *BidirectionalTree {
-	newNodes := make([]*cbornode.Node, len(bt.nodesByStaticId))
-
-	i := 0
-	for _,oldNode := range bt.nodesByStaticId {
-		newNode, err := cbornode.Decode(oldNode.Node.RawData(), multihash.SHA2_256, -1)
-		if err != nil {
-			panic(fmt.Sprintf("this encoded, it should never fail to decode: %v", err))
-		}
-		newNodes[i] = newNode
-		i++
+//WithNewTip returns a new Dag, but with the Tip set to the argument
+func (d *Dag) WithNewTip(tip *cid.Cid) *Dag {
+	return &Dag{
+		Tip:     tip,
+		store:   d.store,
+		oldTips: append(d.oldTips, d.Tip),
 	}
+}
 
-	newCid,err := cid.Cast(bt.Tip.Bytes())
+// Get takes a CID and returns the cbornode
+func (d *Dag) Get(id *cid.Cid) (*cbornode.Node, error) {
+	return d.store.GetNode(id)
+}
+
+// CreateNode adds an object to the Dags underlying storage (doesn't change the tip)
+// and returns the cbornode
+func (d *Dag) CreateNode(obj interface{}) (*cbornode.Node, error) {
+	return d.store.CreateNode(obj)
+}
+
+// Resolve takes a path (as a string slice) and returns the value, remaining path and any error
+// it delegates to the underlying store's resolve
+func (d *Dag) Resolve(path []string) (interface{}, []string, error) {
+	return d.store.Resolve(d.Tip, path)
+}
+
+// Nodes returns all the nodes in an entire tree from the Tip out
+func (d *Dag) Nodes() ([]*cbornode.Node, error) {
+	root, err := d.store.GetNode(d.Tip)
 	if err != nil {
-		panic(fmt.Sprintf("this encoded, it should never fail to decode: %v", err))
+		return nil, fmt.Errorf("error getting root: %v", err)
 	}
-
-	//log.Printf("copying tree")
-
-	return NewBidirectionalTree(newCid, newNodes...)
+	return d.nodeAndDecendants(root)
 }
 
-func (bt *BidirectionalTree) AddNodes(nodes ...*cbornode.Node) {
-	bt.mutex.Lock()
-	defer bt.mutex.Unlock()
-	//log.Printf("Adding nodes: %d", len(nodes))
-
-	for i,node := range nodes {
-		_,ok := bt.nodesByCid[node.Cid().KeyString()]
-		if !ok {
-			bidiNode := &BidirectionalNode{
-				Node:    node,
-				id:      nodeId(bt.counter + i),
-				Parents: make(map[nodeId]bool),
-			}
-			//log.Printf("adding bidiNode: %v, %s", bidiNode.id, node.Cid().String())
-			bt.nodesByStaticId[bidiNode.id] = bidiNode
-			bt.nodesByCid[node.Cid().KeyString()] = bidiNode
-		}
-	}
-	bt.counter += len(nodes)
-	bt.updateParents()
-}
-
-func (bt *BidirectionalTree) updateParents() {
-	for _, bidiNode := range bt.nodesByStaticId {
-		links := bidiNode.Node.Links()
-		for _, link := range links {
-			existing, ok := bt.nodesByCid[link.Cid.KeyString()]
-			if ok {
-				existing.Parents[bidiNode.id] = true
-			}
-		}
-	}
-}
-
-func (bt *BidirectionalTree) Nodes() []*BidirectionalNode {
-	nodes := make([]*BidirectionalNode, len(bt.nodesByCid))
-	i := 0
-	for _,node := range bt.nodesByCid {
-		nodes[i] = node
-		i++
-	}
-	return nodes
-}
-
-func (bt *BidirectionalTree) Resolve(path []string) (interface{}, []string, error) {
-	//fmt.Printf("resolving: %v\n", path)
-	root,ok := bt.nodesByCid[bt.Tip.KeyString()]
-	if !ok {
-		//fmt.Printf("error resolving\n")
-		return nil, nil, &ErrorCode{Code: ErrMissingRoot}
-	}
-	if len(path) == 0 || len(path) == 1 && path[0] == "/" {
-		//fmt.Printf("path length == 1\n")
-		rootMap, err := root.AsMap()
-		if err != nil {
-			return nil, nil, &ErrorCode{Code: ErrEncodingError, Memo: fmt.Sprintf("error encoding: %v", err)}
-		}
-		return rootMap, []string{}, nil
-	}
-	//fmt.Printf("resolving to root\n")
-	return root.Resolve(bt, path)
-}
-
-func (bt *BidirectionalTree) keepWalker(node *BidirectionalNode) map[string]*BidirectionalNode {
-	toKeep := map[string]*BidirectionalNode{node.Node.Cid().KeyString(): node}
-
-	links := node.Node.Links()
-	for _,l := range links {
-		linkNode,ok := bt.nodesByCid[l.Cid.KeyString()]
-		if ok {
-			toKeep[node.Node.Cid().KeyString()] = linkNode
-			decedents := bt.keepWalker(linkNode)
-			for k,v := range decedents {
-				toKeep[k] = v
-			}
-		}
-	}
-	return toKeep
-}
-
-func (bt *BidirectionalTree) Prune() {
-	bt.mutex.Lock()
-	defer bt.mutex.Unlock()
-
-	toKeep := bt.keepWalker(bt.Get(bt.Tip))
-	for cid,node := range bt.nodesByCid {
-		_,ok := toKeep[cid]
-		if !ok {
-			delete(bt.nodesByCid, cid)
-			delete(bt.nodesByStaticId, node.id)
-		}
-	}
-}
-
-func (bt *BidirectionalTree) createLinks(path []string, node *cbornode.Node) error {
-
-	var idx int
-
-	for i := len(path);i >= 0; i-- {
-		_,_,err := bt.Resolve(path[0:i])
-		if err == nil {
-			 idx = i
-			 break
-		} else {
-			if err.(*ErrorCode).Code != ErrMissingPath {
-				return &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("unkown error: %v", err)}
-			}
-		}
-	}
-
-	var last *cbornode.Node
-	last = node
-
+func (d *Dag) nodeAndDecendants(node *cbornode.Node) ([]*cbornode.Node, error) {
+	links := node.Links()
 	nodes := []*cbornode.Node{node}
-
-	sw := &SafeWrap{}
-	for i := len(path)-1;i > idx; i-- {
-		obj := make(map[string]*cid.Cid)
-		obj[path[i]] = last.Cid()
-		newNode := sw.WrapObject(obj)
-		nodes = append(nodes, newNode)
-		last = newNode
-	}
-	if sw.Err != nil {
-		return &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error wrapping: %v", sw.Err)}
-	}
-
-	bt.AddNodes(nodes...)
-
-	//fmt.Printf("calling set with: %v\n", path[0:idx+1])
-	return bt.Set(path[0:idx+1], last.Cid())
-}
-
-func (bt *BidirectionalTree) Set(pathAndKey []string, val interface{}) error {
-	return bt.set(pathAndKey, val, false)
-}
-
-func (bt *BidirectionalTree) SetAsLink(pathAndKey []string, val interface{}) error {
-	tree,ok := val.(*BidirectionalTree)
-	if ok {
-		newNodes := make([]*cbornode.Node, len(tree.nodesByStaticId))
-		i := 0
-		for _,node := range tree.nodesByStaticId {
-			newNodes[i] = node.Node
-			i++
-		}
-		bt.AddNodes(newNodes...)
-		rootMap,err := tree.Get(tree.Tip).AsMap()
+	for _, link := range links {
+		linkNode, err := d.store.GetNode(link.Cid)
 		if err != nil {
-			return &ErrorCode{Code: ErrBadInput, Memo: "bad map"}
+			return nil, fmt.Errorf("error getting link: %v", err)
 		}
-		val = rootMap
+		childNodes, err := d.nodeAndDecendants(linkNode)
+		if err != nil {
+			return nil, fmt.Errorf("error getting child nodes: %v", err)
+		}
+		nodes = append(nodes, childNodes...)
 	}
-
-	return bt.set(pathAndKey, val, true)
+	return nodes, nil
 }
 
-func (bt *BidirectionalTree) set(pathAndKey []string, val interface{}, asLink bool) error {
+// Update returns a new Dag with the old node swapped out for the new object
+func (d *Dag) Update(existing *cid.Cid, newObj interface{}) (*Dag, error) {
+	_, updates, err := d.store.UpdateNode(existing, newObj)
+	if err != nil {
+		return nil, fmt.Errorf("error updating node: %v", err)
+	}
+	newTip := updates[nodestore.ToCidString(d.Tip)]
+	return d.WithNewTip(newTip), nil
+}
 
+// Set sets a value at a path and returns a new dag with a new tip that reflects
+// the new state (and adds the old tip to oldTips)
+func (d *Dag) Set(pathAndKey []string, val interface{}) (*Dag, error) {
+	return d.set(pathAndKey, val, false)
+}
+
+// SetAsLink sets a value at a path and returns a new dag with a new tip that reflects
+// the new state (and adds the old tip to oldTips)
+func (d *Dag) SetAsLink(pathAndKey []string, val interface{}) (*Dag, error) {
+	return d.set(pathAndKey, val, true)
+}
+
+func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, error) {
 	var path []string
 	var key string
 
 	switch len(pathAndKey) {
 	case 0:
-		return &ErrorCode{Code: ErrBadInput, Memo: "must pass in a key"}
+		return nil, fmt.Errorf("must pass in a key")
 	case 1:
 		path = []string{}
 		key = pathAndKey[0]
 	default:
-		path = pathAndKey[0:len(pathAndKey)-1]
+		path = pathAndKey[0 : len(pathAndKey)-1]
 		key = pathAndKey[len(pathAndKey)-1]
 	}
-	//fmt.Printf("setting %v, key: %v\n", path, key)
 
-	existing, remaining, err := bt.Resolve(path)
+	existing, _, err := d.Resolve(path)
 	if err != nil {
-		if err.(*ErrorCode).Code == ErrMissingPath {
-			newObj := map[string]interface{}{key: val}
-			sw := &SafeWrap{}
-			wrapped := sw.WrapObject(newObj)
-			if sw.Err != nil {
-				return err
-			}
-			return bt.createLinks(path, wrapped)
-		} else {
-			fmt.Printf("error resolving: %v\n", path)
-			return err
+		return nil, fmt.Errorf("error resolving")
+	}
+	if existing == nil {
+		newObj := map[string]interface{}{key: val}
+		sw := &safewrap.SafeWrap{}
+		wrapped := sw.WrapObject(newObj)
+		if sw.Err != nil {
+			return nil, err
 		}
+		err = d.store.StoreNode(wrapped)
+		if err != nil {
+			return nil, fmt.Errorf("error storing node: %v", err)
+		}
+		return d.createDeepObject(path, wrapped)
 	}
 
-	//spew.Dump("existing: ", existing)
-
-	if len(remaining) != 0 {
-		return &ErrorCode{Code: ErrInvalidInput, Memo: "The selected path didn't resolve."}
+	sw := &safewrap.SafeWrap{}
+	existingCbor := sw.WrapObject(existing)
+	if sw.Err != nil {
+		return nil, fmt.Errorf("error wrapping (%v): %v", existing, err)
 	}
-
-	//fmt.Printf("tip: %v\n", bt.Tip.String())
-
-	existingCbor,err := fromJsonish(existing)
-	if err != nil {
-		return &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting object: %v", err)}
-	}
-
-	existingCid := existingCbor.Cid()
 
 	if asLink {
-		newNode,err := fromJsonish(val)
+		newNode, err := d.store.CreateNode(val)
 		if err != nil {
-			return &ErrorCode{Code: ErrBadInput, Memo: fmt.Sprintf("error converting val: %v", err)}
+			return nil, fmt.Errorf("error creating node: %v", err)
 		}
-		bt.AddNodes(newNode)
 		existing.(map[string]interface{})[key] = newNode.Cid()
 	} else {
 		existing.(map[string]interface{})[key] = val
 	}
 
-	wrappedModified,err := fromJsonish(existing)
+	_, updates, err := d.store.UpdateNode(existingCbor.Cid(), existing)
 	if err != nil {
-		return &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting object: %v", err)}
+		return nil, fmt.Errorf("error updagint node: %v", err)
 	}
+	newTip := updates[nodestore.ToCidString(d.Tip)]
 
-	//fmt.Printf("swapping: %v for %v\n", existingCid.String(), wrappedModified.Cid().String())
-	err = bt.Swap(existingCid, wrappedModified)
-	if err != nil {
-		return &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error swapping: %v", err)}
-	}
-	//spew.Dump("after swap:", bt.nodesByCid[wrappedModified.Cid().KeyString()])
-	return nil
+	return &Dag{
+		store:   d.store,
+		Tip:     newTip,
+		oldTips: append(d.oldTips, d.Tip),
+	}, nil
 }
 
-func (bt *BidirectionalTree) Swap(oldCid *cid.Cid, newNode *cbornode.Node) error {
-	existing,ok := bt.nodesByCid[oldCid.KeyString()]
-	if !ok {
-		//log.Printf("existing not found")
-		return &ErrorCode{Code:ErrMissingPath, Memo: fmt.Sprintf("cannot find %s", oldCid.String())}
-	}
+func (d *Dag) createDeepObject(path []string, node *cbornode.Node) (*Dag, error) {
 
-	//newMapped,_ := (&BidirectionalNode{Node: newNode}).AsMap()
-	//oldMapped,_ := existing.AsMap()
-	//log.Printf("swapping: %s from: \n %v \nto:\n %v with CID: %v", oldCid.String(), oldMapped, newMapped, newNode.Cid())
+	var indexOfLastExistingNode int
 
-	//fmt.Println("existing:")
-	//existing.Dump()
-
-	existingCid := existing.Node.Cid()
-	existing.Node = newNode
-	delete(bt.nodesByCid, existingCid.KeyString())
-
-	bt.nodesByCid[newNode.Cid().KeyString()] = existing
-
-	//fmt.Printf("existing tip: %v\n", bt.Tip.String())
-
-	if bt.Tip.KeyString() == oldCid.KeyString() {
-		bt.Tip = newNode.Cid()
-	} else {
-		for parentId := range existing.Parents {
-			parent := bt.nodesByStaticId[parentId]
-			//fmt.Println("parent")
-			//parent.Dump()
-			newParentJsonish := make(map[string]interface{})
-			err := cbornode.DecodeInto(parent.Node.RawData(), &newParentJsonish)
-			if err != nil {
-				return fmt.Errorf("error decoding: %v", err)
-			}
-
-			//fmt.Println("before:")
-			//spew.Dump(newParentJsonish)
-
-			err = updateLinks(newParentJsonish, existingCid, newNode.Cid())
-			if err != nil {
-				return fmt.Errorf("error updating links: %v", err)
-			}
-
-			//fmt.Println("after:")
-			//spew.Dump(newParentJsonish)
-
-			newParentNode,err := fromJsonish(newParentJsonish)
-			if err != nil {
-				return fmt.Errorf("error getting Node: %v", err)
-			}
-			//fmt.Println("new parent Node")
-			obj := make(map[string]interface{})
-			cbornode.DecodeInto(newParentNode.RawData(), &obj)
-			//spew.Dump(obj)
-
-			bt.Swap(parent.Node.Cid(), newParentNode)
+	for i := len(path); i >= 0; i-- {
+		val, _, err := d.Resolve(path[0:i])
+		if err != nil {
+			return nil, fmt.Errorf("error resolving: %v", err)
+		}
+		if val != nil {
+			indexOfLastExistingNode = i
+			break
 		}
 	}
 
-	bt.updateParents()
+	var last = node
+	var err error
 
-	//fmt.Println("after tree")
-	//bt.Dump()
-
-	return nil
-}
-
-func (bt *BidirectionalTree) ByteSize() int64 {
-	var length int64
-	for _,node := range bt.nodesByCid {
-		length += int64(len(node.Node.RawData()))
+	for i := len(path) - 1; i > indexOfLastExistingNode; i-- {
+		last, err = d.store.CreateNode(map[string]*cid.Cid{path[i]: last.Cid()})
+		if err != nil {
+			return nil, fmt.Errorf("error creating node: %v", err)
+		}
 	}
-	return length
+
+	setPath := path[0 : indexOfLastExistingNode+1]
+	return d.set(setPath, last.Cid(), false)
 }
 
-func (bn *BidirectionalNode) Dump(bt *BidirectionalTree, isLink bool) map[string]interface{} {
-	nodeMap,_ := bn.AsMap()
-	for k,v := range nodeMap {
+func (d *Dag) dumpNode(node *cbornode.Node, isLink bool) map[string]interface{} {
+	nodeMap, _ := nodestore.CborNodeToObj(node)
+	for k, v := range nodeMap {
 		switch v := v.(type) {
 		case *cid.Cid:
-			node := bt.Get(v)
+			node, _ := d.store.GetNode(v)
 			if node == nil {
 				nodeMap[k] = fmt.Sprintf("non existant link: %s", v.String())
 			} else {
-				nodeMap[k] = node.Dump(bt, true)
+				nodeMap[k] = d.dumpNode(node, true)
 			}
 		case cid.Cid:
-			node := bt.Get(&v)
+			node, _ := d.store.GetNode(&v)
 			if node == nil {
 				nodeMap[k] = fmt.Sprintf("non existant link: %s", v.String())
 			} else {
-				nodeMap[k] = node.Dump(bt, true)
+				nodeMap[k] = d.dumpNode(node, true)
 			}
 		default:
 			continue
@@ -467,13 +243,13 @@ func (bn *BidirectionalNode) Dump(bt *BidirectionalTree, isLink bool) map[string
 	return nodeMap
 }
 
-func (bt *BidirectionalTree) Dump() string {
-	rootNode := bt.Get(bt.Tip)
-	nodes := make([]string, len(bt.nodesByCid))
-	i := 0
-	for _,node := range bt.nodesByCid {
-		nodes[i] = node.Node.Cid().String()
-		i++
+// Dump dumps the current DAG out as a string for debugging
+func (d *Dag) Dump() string {
+	rootNode, _ := d.store.GetNode(d.Tip)
+	nodes, _ := d.Nodes()
+	nodeStrings := make([]string, len(nodes))
+	for i, node := range nodes {
+		nodeStrings[i] = node.Cid().String()
 	}
 	return fmt.Sprintf(`
 Tip: %s,
@@ -483,82 +259,7 @@ Tree:
 Nodes: %v
 
 	`,
-		bt.Tip.String(),
-		spew.Sdump(rootNode.Dump(bt, false)),
+		d.Tip.String(),
+		spew.Sdump(d.dumpNode(rootNode, false)),
 		nodes)
-}
-
-
-type SafeWrap struct {
-	Err error
-}
-
-func (sf *SafeWrap) WrapObject(obj interface{}) *cbornode.Node {
-	if sf.Err != nil {
-		return nil
-	}
-
-	node,err := cbornode.WrapObject(obj, multihash.SHA2_256, -1)
-	sf.Err = err
-	return node
-}
-
-func (sf *SafeWrap) Decode(data []byte) *cbornode.Node {
-	if sf.Err != nil {
-		return nil
-	}
-
-	node,err := cbornode.Decode(data, multihash.SHA2_256, -1)
-	sf.Err = err
-	return node
-}
-
-func fromJsonish(obj interface{}) (*cbornode.Node, error) {
-	sw := &SafeWrap{}
-	node := sw.WrapObject(obj)
-	if sw.Err != nil {
-		return nil, fmt.Errorf("error marshaling: %v", sw.Err)
-	}
-	return node,nil
-}
-
-
-func updateLinks(obj interface{}, oldCid *cid.Cid, newCid *cid.Cid) error {
-	switch obj := obj.(type) {
-		case map[interface{}]interface{}:
-			for _, v := range obj {
-				if err := updateLinks(v, oldCid, newCid); err != nil {
-					return err
-				}
-			}
-			return nil
-		case map[string]interface{}:
-			for ks, v := range obj {
-				switch v.(type) {
-				case *cid.Cid:
-					if v.(*cid.Cid).String() == oldCid.String() {
-						obj[ks] = newCid
-					}
-				case cid.Cid:
-					ptr := v.(cid.Cid)
-					if (&ptr).String() == oldCid.String() {
-						obj[ks] = newCid
-					}
-				default:
-					if err := updateLinks(v, oldCid, newCid); err != nil {
-						return err
-					}
-				}
-			}
-			return nil
-		case []interface{}:
-			for _, v := range obj {
-				if err := updateLinks(v, oldCid, newCid); err != nil {
-					return err
-				}
-			}
-			return nil
-		default:
-			return nil
-		}
 }

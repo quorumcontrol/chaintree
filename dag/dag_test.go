@@ -2,137 +2,48 @@ package dag
 
 import (
 	"testing"
+
+	"github.com/quorumcontrol/storage"
 	"github.com/stretchr/testify/assert"
-	"github.com/ipfs/go-ipld-cbor"
-	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
+
+	"github.com/quorumcontrol/chaintree/nodestore"
+
+	"github.com/quorumcontrol/chaintree/safewrap"
 )
 
-func init() {
-	cbornode.RegisterCborType(objWithNilPointers{})
+func newDeepDag(t *testing.T) *Dag {
+	sw := safewrap.SafeWrap{}
+	deepChild := sw.WrapObject(map[string]interface{}{"deepChild": true})
+	child := sw.WrapObject(map[string]interface{}{"deepChild": deepChild.Cid(), "child": true})
+	root := sw.WrapObject(map[string]interface{}{"child": child.Cid(), "root": true})
+	require.Nil(t, sw.Err)
+
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	dag, err := NewDagWithNodes(store, root, deepChild, child)
+	require.Nil(t, err)
+	return dag
 }
 
-func TestCreating(t *testing.T) {
-	sw := &SafeWrap{}
-	child := sw.WrapObject(map[string]interface{} {
-		"name": "child",
-	})
-
-	root := sw.WrapObject(map[string]interface{}{
-		"child": child.Cid(),
-	})
-
-	assert.Nil(t, sw.Err)
-
-	tree := NewBidirectionalTree(root.Cid(), root, child)
-	assert.NotNil(t, tree)
+func TestDagNodes(t *testing.T) {
+	dag := newDeepDag(t)
+	nodes, err := dag.Nodes()
+	assert.Nil(t, err)
+	assert.Len(t, nodes, 3)
 }
 
-func TestBidirectionalTree_Prune(t *testing.T) {
-	sw := &SafeWrap{}
-	child := sw.WrapObject(map[string]interface{} {
-		"name": "child",
-	})
-
-	orphan := sw.WrapObject(map[string]interface{} {
-		"name": "orphan",
-	})
-
-	root := sw.WrapObject(map[string]interface{}{
-		"child": child.Cid(),
-		"key": "value",
-	})
-
-
-	assert.Nil(t, sw.Err)
-
-	tree := NewBidirectionalTree(root.Cid(), root, child, orphan)
-
-	assert.Len(t, tree.nodesByStaticId, 3)
-
-	tree.Prune()
-
-	assert.Len(t, tree.nodesByStaticId, 2)
-
-}
-
-func TestBidirectionalTree_Resolve(t *testing.T) {
-	sw := &SafeWrap{}
-	child := sw.WrapObject(map[string]interface{} {
-		"name": "child",
-	})
-
-	root := sw.WrapObject(map[string]interface{}{
-		"child": child.Cid(),
-		"key": "value",
-	})
-
-	assert.Nil(t, sw.Err)
-
-	tree := NewBidirectionalTree(root.Cid(), root, child)
-
-	val,remaining,err := tree.Resolve([]string{"child", "name"})
-	assert.Nil(t, err)
-	assert.Empty(t, remaining)
-	assert.Equal(t, "child", val)
-
-	val,remaining,err = tree.Resolve([]string{"key"})
-	assert.Nil(t, err)
-	assert.Empty(t, remaining)
-	assert.Equal(t, "value", val)
-}
-
-func TestBidirectionalTree_Swap(t *testing.T) {
-	sw := &SafeWrap{}
-	child := sw.WrapObject(map[string]interface{} {
-		"name": "child",
-	})
-
-	root := sw.WrapObject(map[string]interface{}{
-		"child": child.Cid(),
-	})
-
-	newRoot := sw.WrapObject(map[string]interface{}{
-		"child": child.Cid(),
-		"isNew": true,
-	})
-
-	assert.Nil(t, sw.Err)
-
-	tree := NewBidirectionalTree(root.Cid(), root, child)
-
-	newChild := sw.WrapObject(map[string]interface{} {
-		"name": "newChild",
-	})
-
-	err := tree.Swap(child.Cid(), newChild)
-	assert.Nil(t,err)
-
-	val,remaining,err := tree.Resolve([]string{"child", "name"})
-	assert.Nil(t, err)
-	assert.Empty(t, remaining)
-	assert.Equal(t, "newChild", val)
-
-	err = tree.Swap(newChild.Cid(), child)
-	assert.Nil(t,err)
-
-	val,remaining,err = tree.Resolve([]string{"child", "name"})
-	assert.Nil(t, err)
-	assert.Empty(t, remaining)
-	assert.Equal(t, "child", val)
-
-	err = tree.Swap(tree.Tip, newRoot)
-	assert.Nil(t,err)
-
-	val,remaining,err = tree.Resolve([]string{"isNew"})
-	assert.Nil(t, err)
-	assert.Empty(t, remaining)
+func TestDagResolve(t *testing.T) {
+	dag := newDeepDag(t)
+	val, remain, err := dag.Resolve([]string{"child", "deepChild", "deepChild"})
+	require.Nil(t, err)
+	assert.Len(t, remain, 0)
 	assert.Equal(t, true, val)
 }
 
-func TestBidirectionalTree_Set(t *testing.T) {
-	sw := &SafeWrap{}
+func TestDagSet(t *testing.T) {
+	sw := &safewrap.SafeWrap{}
 
-	child := sw.WrapObject(map[string]interface{} {
+	child := sw.WrapObject(map[string]interface{}{
 		"name": "child",
 	})
 
@@ -146,23 +57,25 @@ func TestBidirectionalTree_Set(t *testing.T) {
 
 	assert.Nil(t, sw.Err)
 
-	tree := NewBidirectionalTree(root.Cid(), root, child)
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	dag, err := NewDagWithNodes(store, root, child)
+	require.Nil(t, err)
 
-	err := tree.Set([]string{"test"}, "bob")
+	dag, err = dag.Set([]string{"test"}, "bob")
 	assert.Nil(t, err)
 
-	val,_,err := tree.Resolve([]string{"test"})
+	val, _, err := dag.Resolve([]string{"test"})
 
 	assert.Nil(t, err)
 	assert.Equal(t, "bob", val)
 
 	// test works with a CID
-	tree.AddNodes(unlinked)
+	dag.AddNodes(unlinked)
 
-	err = tree.Set([]string{"test"}, unlinked.Cid())
+	dag, err = dag.Set([]string{"test"}, unlinked.Cid())
 	assert.Nil(t, err)
 
-	val,_,err = tree.Resolve([]string{"test", "unlinked"})
+	val, _, err = dag.Resolve([]string{"test", "unlinked"})
 
 	assert.Nil(t, err)
 	assert.Equal(t, true, val)
@@ -170,33 +83,33 @@ func TestBidirectionalTree_Set(t *testing.T) {
 	// test works in non-existant path
 
 	path := []string{"child", "non-existant-nested", "objects", "test"}
-	err = tree.Set(path, "bob")
+	dag, err = dag.Set(path, "bob")
 	assert.Nil(t, err)
 
-	val,_,err = tree.Resolve(path)
+	val, _, err = dag.Resolve(path)
 
 	assert.Nil(t, err)
 	assert.Equal(t, "bob", val)
 
 	// Test sibling of existing path
 	siblingPath := []string{"child", "non-existant-nested", "objects", "siblingtest"}
-	err = tree.Set(siblingPath, "sue")
+	dag, err = dag.Set(siblingPath, "sue")
 	assert.Nil(t, err)
 
 	// original sibling is still available
-	val, _, err = tree.Resolve(path)
+	val, _, err = dag.Resolve(path)
 	assert.Equal(t, "bob", val)
 
-	siblingVal, _, err := tree.Resolve(siblingPath)
+	siblingVal, _, err := dag.Resolve(siblingPath)
 
 	assert.Nil(t, err)
 	assert.Equal(t, "sue", siblingVal)
 }
 
-func TestBidirectionalTree_SetAsLink(t *testing.T) {
-	sw := &SafeWrap{}
+func TestDagSetAsLink(t *testing.T) {
+	sw := &safewrap.SafeWrap{}
 
-	child := sw.WrapObject(map[string]interface{} {
+	child := sw.WrapObject(map[string]interface{}{
 		"name": "child",
 	})
 
@@ -208,23 +121,23 @@ func TestBidirectionalTree_SetAsLink(t *testing.T) {
 		"child": child.Cid(),
 	})
 
-	assert.Nil(t, sw.Err)
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	dag, err := NewDagWithNodes(store, root, child)
+	require.Nil(t, err)
 
-	tree := NewBidirectionalTree(root.Cid(), root, child)
-
-	err := tree.SetAsLink([]string{"child", "key"}, unlinked)
+	dag, err = dag.SetAsLink([]string{"child", "key"}, unlinked)
 	assert.Nil(t, err)
 
-	val,_,err := tree.Resolve([]string{"child", "key", "unlinked"})
+	val, _, err := dag.Resolve([]string{"child", "key", "unlinked"})
 
 	assert.Nil(t, err)
 	assert.Equal(t, true, val)
 }
 
-func TestBidirectionalTree_Copy(t *testing.T) {
-	sw := &SafeWrap{}
+func TestDagGet(t *testing.T) {
+	sw := &safewrap.SafeWrap{}
 
-	child := sw.WrapObject(map[string]interface{} {
+	child := sw.WrapObject(map[string]interface{}{
 		"name": "child",
 	})
 
@@ -232,23 +145,24 @@ func TestBidirectionalTree_Copy(t *testing.T) {
 		"child": child.Cid(),
 	})
 
-	assert.Nil(t, sw.Err)
-	tree := NewBidirectionalTree(root.Cid(), root, child)
-
-	newTree := tree.Copy()
-
-	assert.Equal(t, len(tree.nodesByCid), len(newTree.nodesByCid))
-	assert.Equal(t, tree.Tip, newTree.Tip)
-
-	for _,node := range tree.nodesByCid {
-		assert.Equal(t, node.Node.Cid(), newTree.nodesByCid[node.Node.Cid().KeyString()].Node.Cid())
-	}
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	dag, err := NewDagWithNodes(store, root, child)
+	require.Nil(t, err)
+	n, err := dag.Get(child.Cid())
+	require.Nil(t, err)
+	assert.Equal(t, child.Cid().String(), n.Cid().String())
 }
 
-func TestBidirectionalTree_Get(t *testing.T) {
-	sw := &SafeWrap{}
+func TestDagDump(t *testing.T) {
+	// Not really a test here, but do call it just to make sure no panics
+	dag := newDeepDag(t)
+	dag.Dump()
+}
 
-	child := sw.WrapObject(map[string]interface{} {
+func TestDagWithNewTip(t *testing.T) {
+	sw := &safewrap.SafeWrap{}
+
+	child := sw.WrapObject(map[string]interface{}{
 		"name": "child",
 	})
 
@@ -256,180 +170,13 @@ func TestBidirectionalTree_Get(t *testing.T) {
 		"child": child.Cid(),
 	})
 
-	assert.Nil(t, sw.Err)
-	tree := NewBidirectionalTree(root.Cid(), root, child)
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	dag, err := NewDagWithNodes(store, root, child)
+	require.Nil(t, err)
 
-	assert.Equal(t, child, tree.Get(child.Cid()).Node)
-}
-
-func TestBidirectionalNode_AsMap(t *testing.T) {
-	sw := &SafeWrap{}
-
-	child := sw.WrapObject(map[string]interface{} {
-		"name": "child",
-	})
-
-	root := sw.WrapObject(map[string]interface{}{
-		"child": child.Cid(),
-	})
-
-	assert.Nil(t, sw.Err)
-	tree := NewBidirectionalTree(root.Cid(), root, child)
-
-	rootAsMap,err := tree.Get(root.Cid()).AsMap()
-	assert.Nil(t, err)
-
-	assert.Equal(t, *child.Cid(), rootAsMap["child"].(cid.Cid))
-}
-
-type objWithNilPointers struct {
-	NilPointer *cid.Cid
-	Other string
-	Cids []*cid.Cid
-}
-
-func TestSafeWrap_WrapObject(t *testing.T) {
-	sw := &SafeWrap{}
-	for _,test := range []struct{
-		description string
-		obj *objWithNilPointers
-	} {
-		{
-			description: "an object with an empty cid",
-			obj: &objWithNilPointers{Other: "something"},
-		},
-		{
-			description: "an object with an array of CIDs",
-			obj: &objWithNilPointers{
-				Cids: []*cid.Cid{sw.WrapObject(map[string]string{"test":"test"}).Cid()},
-			},
-		},
-	} {
-		node := sw.WrapObject(test.obj)
-		_,err := node.MarshalJSON()
-		assert.Nil(t, err, test.description)
-
-		//t.Log(string(j))
-		assert.Nil(t, sw.Err, test.description)
-	}
-}
-
-func TestBidirectionalTree_Dump(t *testing.T) {
-	sw := &SafeWrap{}
-
-	child := sw.WrapObject(map[string]interface{} {
-		"name": "child",
-	})
-
-	root := sw.WrapObject(map[string]interface{}{
-		"child": child.Cid(),
-	})
-
-	assert.Nil(t, sw.Err)
-	tree := NewBidirectionalTree(root.Cid(), root, child)
-
-	assert.IsType(t, "", tree.Dump())
-}
-
-func BenchmarkBidirectionalTree_Swap(b *testing.B) {
-	sw := &SafeWrap{}
-	child := sw.WrapObject(map[string]interface{} {
-		"name": "child",
-	})
-
-	root := sw.WrapObject(map[string]interface{}{
-		"child": child.Cid(),
-	})
-
-	tree := NewBidirectionalTree(root.Cid(), root, child)
-
-	newChild := sw.WrapObject(map[string]interface{} {
-		"name": "newChild",
-	})
-
-	swapper := []*cbornode.Node{child, newChild}
-
-	var err error
-
-	// run the Fib function b.N times
-	for n := 0; n < b.N; n++ {
-		idx := n % 2
-		err = tree.Swap(swapper[idx].Cid(), swapper[(idx + 1) %2])
-	}
-
-	assert.Nil(b, err)
-}
-
-func BenchmarkBidirectionalTree_Set(b *testing.B) {
-	sw := &SafeWrap{}
-	child := sw.WrapObject(map[string]interface{} {
-		"name": "child",
-	})
-
-	root := sw.WrapObject(map[string]interface{}{
-		"child": child.Cid(),
-	})
-
-	tree := NewBidirectionalTree(root.Cid(), root, child)
-
-
-	swapper := []string{"key", "key2"}
-	assert.Nil(b, sw.Err)
-	var err error
-
-	// run the Fib function b.N times
-	for n := 0; n < b.N; n++ {
-		idx := n % 2
-		err = tree.Set([]string{"child", "key"}, swapper[(idx + 1) %2])
-	}
-
-	assert.Nil(b, err)
-}
-
-func BenchmarkBidirectionalTree_Copy(b *testing.B) {
-	sw := &SafeWrap{}
-	child := sw.WrapObject(map[string]interface{} {
-		"name": "child",
-	})
-
-	root := sw.WrapObject(map[string]interface{}{
-		"child": child.Cid(),
-	})
-
-	tree := NewBidirectionalTree(root.Cid(), root, child)
-
-	assert.Nil(b, sw.Err)
-	// run the Fib function b.N times
-
-	var newTree *BidirectionalTree
-
-	for n := 0; n < b.N; n++ {
-		newTree = tree.Copy()
-	}
-
-	assert.Equal(b, tree, newTree)
-}
-
-func BenchmarkBidirectionalNode_AsMap(b *testing.B) {
-	sw := &SafeWrap{}
-	child := sw.WrapObject(map[string]interface{} {
-		"name": "child",
-	})
-
-	root := sw.WrapObject(map[string]interface{}{
-		"child": child.Cid(),
-	})
-
-	tree := NewBidirectionalTree(root.Cid(), root, child)
-
-	assert.Nil(b, sw.Err)
-	// run the Fib function b.N times
-
-	var rootMap map[string]interface{}
-
-	for n := 0; n < b.N; n++ {
-		rootMap,_ = tree.Get(root.Cid()).AsMap()
-	}
-
-	assert.Equal(b, *child.Cid(), rootMap["child"])
+	newDag := dag.WithNewTip(child.Cid())
+	assert.Equal(t, newDag.Tip.String(), child.Cid().String())
+	nodes, err := newDag.Nodes()
+	require.Nil(t, err)
+	assert.Len(t, nodes, 1)
 }
