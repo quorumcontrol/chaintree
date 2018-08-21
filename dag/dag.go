@@ -177,7 +177,7 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 		sw := &safewrap.SafeWrap{}
 		wrapped := sw.WrapObject(newObj)
 		if sw.Err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error wrapping (%v): %v", newObj, sw.Err)
 		}
 		err = d.store.StoreNode(wrapped)
 		if err != nil {
@@ -189,7 +189,7 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 	sw := &safewrap.SafeWrap{}
 	existingCbor := sw.WrapObject(existing)
 	if sw.Err != nil {
-		return nil, fmt.Errorf("error wrapping (%v): %v", existing, err)
+		return nil, fmt.Errorf("error wrapping (%v): %v", existing, sw.Err)
 	}
 
 	if asLink {
