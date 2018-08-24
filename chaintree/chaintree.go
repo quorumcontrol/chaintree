@@ -91,7 +91,7 @@ func (e *ErrorCode) Error() string {
 
 // TransactorFunc mutates a  ChainTree and returns whether the transaction is valid
 // or if there was an error processing the transactor. Errors should be retried,
-// valid means it isn't a valid transaction
+// valid means it is a valid transaction
 type TransactorFunc func(tree *dag.Dag, transaction *Transaction) (newTree *dag.Dag, valid bool, err CodedError)
 
 // BlockValidatorFuncs are run on the block level rather than the per transaction level
