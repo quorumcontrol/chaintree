@@ -42,44 +42,47 @@
   revision = "d9f6b97f8db22dd1e090fd0bbbe98f09cc7dd0a8"
 
 [[projects]]
-  branch = "master"
-  digest = "1:759db0fee6856e39bca454aa4e01c839d8020d89ae4c950cab9c8e6a7201f725"
+  digest = "1:b8d2c49bda797e13e2d6b169032efccc6f16209650f34979177823d2fbde16f5"
   name = "github.com/ipfs/go-block-format"
   packages = ["."]
   pruneopts = ""
-  revision = "9a467d476a676d8318b19993ab40067c5d75af28"
+  revision = "071a086542e0c24bfd773f68aead14ceb77bc817"
+  version = "v0.2.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:c72b0a6568e959ec6c47bc9ecdadda400e69f54a787afebd03db880c3af7f5c7"
+  digest = "1:b7c957d6872ac6d8e007846236f0761b65eed1b4af840a57372e76d4a6987a09"
   name = "github.com/ipfs/go-cid"
   packages = ["."]
   pruneopts = ""
-  revision = "078355866b1dda1658b5fdc5496ed7e25fdcf883"
+  revision = "6e296c5c49ad84dc6a44af69fa1fe4e1245cd0cf"
+  version = "v0.9.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:8a33564f33fe0317f88ee7ee299e9a7a47b95cb5c2666f351197e397df21ffd2"
+  digest = "1:15ddaf5e5342274e6b8ac9061c2eed96f46373c747060c01d4bc1f9d186f5810"
   name = "github.com/ipfs/go-ipfs-util"
   packages = ["."]
   pruneopts = ""
-  revision = "9ed527918c2f20abdf0adfab0553cd87db34f656"
+  revision = "10d786c5ed859afd22223df76a89bf57b24b2ee1"
+  version = "v1.2.8"
 
 [[projects]]
-  branch = "refmt"
-  digest = "1:8e5c84ed3786865c04c554a00deea1cc52d218dea8da596223bea99cd0727526"
+  digest = "1:9b8e2c443acf6ff015754d0268a7cda53c827daedb0467dd7880d1a0e5d00667"
   name = "github.com/ipfs/go-ipld-cbor"
-  packages = ["."]
+  packages = [
+    ".",
+    "encoding",
+  ]
   pruneopts = ""
-  revision = "8b666bca090899848849a507a008080db0fcfe21"
+  revision = "2e6de03042b7c11dcfafb0c507963a037bc09b55"
+  version = "v1.5.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:da71937cdd418cab1f182b4dbea03d0f24b6082064391f92db066bd160730c9b"
+  digest = "1:ffe9ae762b1701d7ff681bd5cbe40de73ecbcebd993fc90c705773bcf9f69e55"
   name = "github.com/ipfs/go-ipld-format"
   packages = ["."]
   pruneopts = ""
-  revision = "9b90054a0e154f2c07fe03e820ba221de79992b0"
+  revision = "6b969cac91a29d376091d768815ef260a15ebdfc"
+  version = "v0.6.0"
 
 [[projects]]
   branch = "master"
@@ -106,20 +109,20 @@
   revision = "c1bdf7c52f59d6685ca597b9955a443ff95eeee6"
 
 [[projects]]
-  branch = "master"
-  digest = "1:e1a09476c997d66ec3adb690be3682024e31eeaccfbb81b6b3e6f3790887a069"
+  digest = "1:579a93dea7f9a930f1c1288a4e9691b43047cb09e1176dc20919de9724fc079a"
   name = "github.com/multiformats/go-multibase"
   packages = ["."]
   pruneopts = ""
-  revision = "dfd5076869faca5aed2886dcba60b44a0d0e9c01"
+  revision = "bb91b53e5695e699a86654d77d03db7bc7506d12"
+  version = "v0.3.0"
 
 [[projects]]
   branch = "master"
-  digest = "1:326393adfc242dbcca4e38dab8f4976723e1474394284db7d59e74938c1457f5"
+  digest = "1:aa1c4e640b9e30bf188c999eae8a64306b212fcc5ee651259293c57e9b75c15c"
   name = "github.com/multiformats/go-multihash"
   packages = ["."]
   pruneopts = ""
-  revision = "265e72146e710ff649c6982e3699d01d4e9a18bb"
+  revision = "66cd79b386e51ddf63270f2b71c57436a60035f3"
 
 [[projects]]
   digest = "1:256484dbbcd271f9ecebc6795b2df8cad4c458dd0f5fd82a8c2fa0c29f233411"
@@ -131,17 +134,19 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:5705a2f998b901924314b704d70ec6d8b1627ddeabbcd3c12bed986bb1d75001"
+  digest = "1:0841deabb133d088ee26b4687ca31994a530ab5a059fa0edf877af27c89ebec8"
   name = "github.com/polydawn/refmt"
   packages = [
+    ".",
     "cbor",
+    "json",
     "obj",
     "obj/atlas",
     "shared",
     "tok",
   ]
   pruneopts = ""
-  revision = "a1d2f05ac1bca2f4b4eed0d0fff736e8360cd32a"
+  revision = "332d9fceb7243532c37e887f926b529d9087526f"
 
 [[projects]]
   branch = "master"
