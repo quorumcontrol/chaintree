@@ -66,7 +66,6 @@
   revision = "9ed527918c2f20abdf0adfab0553cd87db34f656"
 
 [[projects]]
-  branch = "refmt"
   digest = "1:8e5c84ed3786865c04c554a00deea1cc52d218dea8da596223bea99cd0727526"
   name = "github.com/ipfs/go-ipld-cbor"
   packages = ["."]
