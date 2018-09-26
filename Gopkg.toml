@@ -23,7 +23,6 @@
 [[constraint]]
   name = "github.com/multiformats/go-multihash"
   branch = "master"
-
 [[constraint]]
   name = "github.com/ipfs/go-ipld-cbor"
-  branch = "refmt"
+  revision = "8b666bca090899848849a507a008080db0fcfe21"
