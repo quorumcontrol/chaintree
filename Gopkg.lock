@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  branch = "master"
+  digest = "1:be8511fbdf669eb267e4ba4f964b9c380ec3b95b8931ee3e89ce22ae01418b4b"
+  name = "github.com/AndreasBriese/bbloom"
+  packages = ["."]
+  pruneopts = ""
+  revision = "343706a395b76e5ca5c7dca46a5d937b48febc74"
+
+[[projects]]
   digest = "1:6150d0a72956eb2e50226e13ce59ef2a9636c0e8e1ac900d72f9b2097121cdf9"
   name = "github.com/coreos/bbolt"
   packages = ["."]
@@ -18,6 +26,29 @@
   version = "v1.1.0"
 
 [[projects]]
+  digest = "1:81d49e94365e7f1ed77edddf9a5482ab4ced461dab56fbf8fc2834da6c295de5"
+  name = "github.com/dgraph-io/badger"
+  packages = [
+    ".",
+    "options",
+    "protos",
+    "skl",
+    "table",
+    "y",
+  ]
+  pruneopts = ""
+  revision = "99233d725dbdd26d156c61b2f42ae1671b794656"
+  version = "v1.5.4"
+
+[[projects]]
+  branch = "master"
+  digest = "1:2407d73d2349c9dd9d7b2c9fafcee9412444cb6cb261ee47ebb751b2a5507976"
+  name = "github.com/dgryski/go-farm"
+  packages = ["."]
+  pruneopts = ""
+  revision = "2de33835d10275975374b37b2dcfd22c9020a1f5"
+
+[[projects]]
   digest = "1:52020b0d8d20e2e73c4d6436aeb019d0f965bc73b81a7ea2547ab2b7023d4ef2"
   name = "github.com/ethereum/go-ethereum"
   packages = ["log"]
@@ -32,6 +63,14 @@
   pruneopts = ""
   revision = "259ab82a6cad3992b4e21ff5cac294ccb06474bc"
   version = "v1.7.0"
+
+[[projects]]
+  digest = "1:3dd078fda7500c341bc26cfbc6c6a34614f295a2457149fc1045cab767cbcf18"
+  name = "github.com/golang/protobuf"
+  packages = ["proto"]
+  pruneopts = ""
+  revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
+  version = "v1.2.0"
 
 [[projects]]
   branch = "master"
@@ -121,6 +160,14 @@
   revision = "265e72146e710ff649c6982e3699d01d4e9a18bb"
 
 [[projects]]
+  digest = "1:7365acd48986e205ccb8652cc746f09c8b7876030d53710ea6ef7d0bd0dcd7ca"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = ""
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
+
+[[projects]]
   digest = "1:256484dbbcd271f9ecebc6795b2df8cad4c458dd0f5fd82a8c2fa0c29f233411"
   name = "github.com/pmezard/go-difflib"
   packages = ["difflib"]
@@ -152,11 +199,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:0b5f76db3a0f1efadb94bca6d9351f15f772d7658246c877f885a8f6049e9ce8"
+  digest = "1:4b62cb9e67860a43eaf8ee250b5692ee92863299c85215b1436e56f6bb0298a5"
   name = "github.com/quorumcontrol/storage"
   packages = ["."]
   pruneopts = ""
-  revision = "66a294ac54c8d4f92e530800d0ee6b43415c14b3"
+  revision = "7ab031c68cf8a3b6a431ce6ab88c6179929033b4"
 
 [[projects]]
   digest = "1:633b5b39909d9d794f5543baee4971890e1866f5c082cdf4694954c1ff489a18"
@@ -200,6 +247,18 @@
   ]
   pruneopts = ""
   revision = "d6449816ce06963d9d136eee5a56fca5b0616e7e"
+
+[[projects]]
+  branch = "master"
+  digest = "1:3a3c1b660248c0ec25f00cfb9c6526bd5b0ede4c8bfa2ed56a3f5e7e9d0a19cd"
+  name = "golang.org/x/net"
+  packages = [
+    "context",
+    "internal/timeseries",
+    "trace",
+  ]
+  pruneopts = ""
+  revision = "146acd28ed5894421fb5aac80ca93bc1b1f46f87"
 
 [[projects]]
   branch = "master"
