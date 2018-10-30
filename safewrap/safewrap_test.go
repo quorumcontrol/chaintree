@@ -3,10 +3,10 @@ package safewrap
 import (
 	"testing"
 
-	"github.com/ipfs/go-ipld-cbor"
-
 	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -16,7 +16,7 @@ func init() {
 type objWithNilPointers struct {
 	NilPointer *cid.Cid
 	Other      string
-	Cids       []*cid.Cid
+	Cids       []cid.Cid
 }
 
 func TestSafeWrap_WrapObject(t *testing.T) {
@@ -32,11 +32,12 @@ func TestSafeWrap_WrapObject(t *testing.T) {
 		{
 			description: "an object with an array of CIDs",
 			obj: &objWithNilPointers{
-				Cids: []*cid.Cid{sw.WrapObject(map[string]string{"test": "test"}).Cid()},
+				Cids: []cid.Cid{sw.WrapObject(map[string]string{"test": "test"}).Cid()},
 			},
 		},
 	} {
 		node := sw.WrapObject(test.obj)
+		require.Nil(t, sw.Err)
 		_, err := node.MarshalJSON()
 		assert.Nil(t, err, test.description)
 

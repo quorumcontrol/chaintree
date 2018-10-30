@@ -3,10 +3,9 @@ package nodestore
 import (
 	"fmt"
 
+	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
-
-	cid "github.com/ipfs/go-cid"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/namedlocker"
 	"github.com/quorumcontrol/storage"
@@ -52,7 +51,7 @@ func (sbs *StorageBasedStore) CreateNodeFromBytes(data []byte) (node *cbornode.N
 }
 
 // GetNode returns a cbornode for a CID
-func (sbs *StorageBasedStore) GetNode(cid *cid.Cid) (node *cbornode.Node, err error) {
+func (sbs *StorageBasedStore) GetNode(cid cid.Cid) (node *cbornode.Node, err error) {
 	nodeBytes, err := sbs.store.Get(nodeBucket, []byte(cid.KeyString()))
 	if err != nil {
 		return nil, fmt.Errorf("error getting cid: %v", err)
@@ -66,7 +65,7 @@ func (sbs *StorageBasedStore) GetNode(cid *cid.Cid) (node *cbornode.Node, err er
 }
 
 // GetReferences implements NodeStore GetReferences
-func (sbs *StorageBasedStore) GetReferences(to *cid.Cid) (refs []*cid.Cid, err error) {
+func (sbs *StorageBasedStore) GetReferences(to cid.Cid) (refs []cid.Cid, err error) {
 	bucketName := refBucketName(to)
 	sbs.locker.RLock(string(bucketName))
 	defer sbs.locker.RUnlockAndDelete(string(bucketName))
@@ -79,7 +78,7 @@ func (sbs *StorageBasedStore) GetReferences(to *cid.Cid) (refs []*cid.Cid, err e
 		return nil, fmt.Errorf("error getting keys from storage: %v", err)
 	}
 
-	refs = make([]*cid.Cid, len(keys))
+	refs = make([]cid.Cid, len(keys))
 
 	for i, keyBytes := range keys {
 		cid, err := cid.Cast(keyBytes)
@@ -92,7 +91,7 @@ func (sbs *StorageBasedStore) GetReferences(to *cid.Cid) (refs []*cid.Cid, err e
 }
 
 // UpdateNode implements NodeStore UpdateNode
-func (sbs *StorageBasedStore) UpdateNode(existing *cid.Cid, obj interface{}) (updatedNode *cbornode.Node, updates UpdateMap, err error) {
+func (sbs *StorageBasedStore) UpdateNode(existing cid.Cid, obj interface{}) (updatedNode *cbornode.Node, updates UpdateMap, err error) {
 	updatedNode, err = objToCbor(obj)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating node: %v", err)
@@ -105,7 +104,7 @@ func (sbs *StorageBasedStore) UpdateNode(existing *cid.Cid, obj interface{}) (up
 }
 
 // Swap implements the NodeStore interface.
-func (sbs *StorageBasedStore) Swap(existing *cid.Cid, updatedNode *cbornode.Node) (updates UpdateMap, err error) {
+func (sbs *StorageBasedStore) Swap(existing cid.Cid, updatedNode *cbornode.Node) (updates UpdateMap, err error) {
 	err = sbs.StoreNode(updatedNode)
 	if err != nil {
 		return nil, fmt.Errorf("error storing: %v", err)
@@ -147,7 +146,7 @@ func (sbs *StorageBasedStore) Swap(existing *cid.Cid, updatedNode *cbornode.Node
 }
 
 // DeleteIfUnreferenced implements the NodeStore DeleteIfUnreferenced interface.
-func (sbs *StorageBasedStore) DeleteIfUnreferenced(nodeCid *cid.Cid) error {
+func (sbs *StorageBasedStore) DeleteIfUnreferenced(nodeCid cid.Cid) error {
 	refs, err := sbs.GetReferences(nodeCid)
 	if err != nil {
 		return fmt.Errorf("error getting refs: %v", err)
@@ -168,7 +167,7 @@ func (sbs *StorageBasedStore) DeleteIfUnreferenced(nodeCid *cid.Cid) error {
 }
 
 // DeleteTree implements the NodeStore DeleteTree interface
-func (sbs *StorageBasedStore) DeleteTree(tip *cid.Cid) error {
+func (sbs *StorageBasedStore) DeleteTree(tip cid.Cid) error {
 	tipNode, err := sbs.GetNode(tip)
 	if err != nil {
 		return fmt.Errorf("error getting tip: %v", err)
@@ -187,7 +186,7 @@ func (sbs *StorageBasedStore) DeleteTree(tip *cid.Cid) error {
 }
 
 // Resolve implements the NodeStore interface
-func (sbs *StorageBasedStore) Resolve(tip *cid.Cid, path []string) (val interface{}, remaining []string, err error) {
+func (sbs *StorageBasedStore) Resolve(tip cid.Cid, path []string) (val interface{}, remaining []string, err error) {
 	node, err := sbs.GetNode(tip)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error getting node (%s): %v", tip.String(), err)
@@ -238,7 +237,7 @@ func (sbs *StorageBasedStore) StoreNode(node *cbornode.Node) error {
 	return nil
 }
 
-func (sbs *StorageBasedStore) saveReferences(to *cid.Cid, from ...*cid.Cid) error {
+func (sbs *StorageBasedStore) saveReferences(to cid.Cid, from ...cid.Cid) error {
 	bucketName := refBucketName(to)
 	sbs.locker.Lock(string(bucketName))
 	defer sbs.locker.UnlockAndDelete(string(bucketName))
@@ -253,11 +252,11 @@ func (sbs *StorageBasedStore) saveReferences(to *cid.Cid, from ...*cid.Cid) erro
 	return nil
 }
 
-func refBucketName(nodeID *cid.Cid) []byte {
+func refBucketName(nodeID cid.Cid) []byte {
 	return []byte(nodeID.KeyString() + "-refs")
 }
 
-func (sbs *StorageBasedStore) deleteReferences(to *cid.Cid, from ...*cid.Cid) error {
+func (sbs *StorageBasedStore) deleteReferences(to cid.Cid, from ...cid.Cid) error {
 	bucketName := refBucketName(to)
 	sbs.locker.Lock(string(bucketName))
 	defer sbs.locker.UnlockAndDelete(string(bucketName))
@@ -298,7 +297,7 @@ func objToCbor(obj interface{}) (node *cbornode.Node, err error) {
 	return
 }
 
-func updateLinks(obj interface{}, oldCid *cid.Cid, newCid *cid.Cid) error {
+func updateLinks(obj interface{}, oldCid cid.Cid, newCid cid.Cid) error {
 	switch obj := obj.(type) {
 	case map[interface{}]interface{}:
 		for _, v := range obj {
@@ -310,11 +309,11 @@ func updateLinks(obj interface{}, oldCid *cid.Cid, newCid *cid.Cid) error {
 	case map[string]interface{}:
 		for ks, v := range obj {
 			switch v.(type) {
-			case *cid.Cid:
-				if v.(*cid.Cid).Equals(oldCid) {
+			case cid.Cid:
+				if v.(cid.Cid).Equals(oldCid) {
 					obj[ks] = newCid
 				}
-			case cid.Cid:
+			case *cid.Cid:
 				ptr := v.(cid.Cid)
 				if (&ptr).Equals(oldCid) {
 					obj[ks] = newCid
