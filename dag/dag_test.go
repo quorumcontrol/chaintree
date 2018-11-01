@@ -3,13 +3,11 @@ package dag
 import (
 	"testing"
 
+	"github.com/quorumcontrol/chaintree/nodestore"
+	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/quorumcontrol/chaintree/nodestore"
-
-	"github.com/quorumcontrol/chaintree/safewrap"
 )
 
 func newDeepDag(t *testing.T) *Dag {

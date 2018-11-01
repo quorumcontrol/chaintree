@@ -5,13 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/quorumcontrol/chaintree/nodestore"
-	"github.com/quorumcontrol/storage"
-
 	"github.com/ipfs/go-cid"
 	"github.com/quorumcontrol/chaintree/dag"
+	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/chaintree/typecaster"
+	"github.com/quorumcontrol/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -178,7 +177,7 @@ func TestBuildingUpAChain(t *testing.T) {
 	entry, remain, err := tree.Dag.Resolve([]string{"chain", "end", "blocksWithHeaders"})
 	assert.Nil(t, err)
 	assert.Len(t, remain, 0)
-	assert.Equal(t, *block2Cid, entry.([]interface{})[0].(cid.Cid))
+	assert.True(t, block2Cid.Equals(entry.([]interface{})[0].(cid.Cid)))
 
 	// you can build on the same segment of the chain
 	block3 := &BlockWithHeaders{
@@ -209,7 +208,7 @@ func TestBuildingUpAChain(t *testing.T) {
 	entry, _, err = tree.Dag.Resolve([]string{"chain", "end", "blocksWithHeaders"})
 	assert.Nil(t, err)
 	assert.Len(t, entry, 2)
-	assert.Equal(t, *block3Cid, entry.([]interface{})[1].(cid.Cid))
+	assert.True(t, block3Cid.Equals(entry.([]interface{})[1].(cid.Cid)))
 }
 
 func TestBlockProcessing(t *testing.T) {
@@ -341,4 +340,56 @@ func TestBlockProcessing(t *testing.T) {
 			test.validator(tree)
 		}
 	}
+}
+
+func BenchmarkEncodeDecode(b *testing.B) {
+	sw := &safewrap.SafeWrap{}
+
+	tree := sw.WrapObject(map[string]string{
+		"hithere": "hothere",
+	})
+
+	chain := sw.WrapObject(make(map[string]string))
+
+	root := sw.WrapObject(map[string]interface{}{
+		"chain": chain.Cid(),
+		"tree":  tree.Cid(),
+	})
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	dag, err := dag.NewDagWithNodes(store, root, tree, chain)
+	require.Nil(b, err)
+
+	chainTree, err := NewChainTree(
+		dag,
+		[]BlockValidatorFunc{hasCoolHeader},
+		map[string]TransactorFunc{
+			"SET_DATA": setData,
+		},
+	)
+
+	block := &BlockWithHeaders{
+		Block: Block{
+			Transactions: []*Transaction{
+				{
+					Type: "SET_DATA",
+					Payload: map[string]string{
+						"path":  "down/in/the/thing",
+						"value": "hi",
+					},
+				},
+			},
+		},
+		Headers: map[string]interface{}{
+			"cool": "cool",
+		},
+	}
+	valid, err := chainTree.ProcessBlock(block)
+	require.Nil(b, err)
+	require.True(b, valid)
+
+	for n := 0; n < b.N; n++ {
+		_, _, err = chainTree.Dag.Resolve([]string{"tree", "down", "in", "the", "thing"})
+	}
+	require.Nil(b, err)
+
 }

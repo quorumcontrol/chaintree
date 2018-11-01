@@ -50,7 +50,7 @@ type RootNode struct {
 	Chain *cid.Cid `refmt:"chain"`
 	Tree  *cid.Cid `refmt:"tree"`
 	Id    string   `refmt:"id"`
-	cid   *cid.Cid
+	cid   cid.Cid
 }
 
 type Transaction struct {
@@ -76,9 +76,9 @@ type Chain struct {
 
 type ChainEntry struct {
 	// this is a string so that CID links aren't automatically adjusted
-	PreviousTip       string     `refmt:"previousTip,omitempty" json:"previousTip,omitempty" cbor:"previousTip,omitempty"`
-	BlocksWithHeaders []*cid.Cid `refmt:"blocksWithHeaders" json:"blocksWithHeaders" cbor:"blocksWithHeaders"`
-	Previous          *cid.Cid   `refmt:"previous" json:"previous" cbor:"previous"`
+	PreviousTip       string    `refmt:"previousTip,omitempty" json:"previousTip,omitempty" cbor:"previousTip,omitempty"`
+	BlocksWithHeaders []cid.Cid `refmt:"blocksWithHeaders" json:"blocksWithHeaders" cbor:"blocksWithHeaders"`
+	Previous          *cid.Cid  `refmt:"previous" json:"previous" cbor:"previous"`
 }
 
 func (e *ErrorCode) GetCode() int {
@@ -168,7 +168,7 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		return false, &ErrorCode{Code: ErrInvalidTree, Memo: "error getting treeLink"}
 	}
 
-	newTree := ct.Dag.WithNewTip(root.Tree)
+	newTree := ct.Dag.WithNewTip(*root.Tree)
 
 	for _, transaction := range blockWithHeaders.Transactions {
 		transactor, ok := ct.Transactors[transaction.Type]
@@ -186,7 +186,7 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting tree tip: %v", err)}
 	}
 
-	ct.Dag, err = ct.Dag.Swap(root.Tree, newTreeRoot)
+	ct.Dag, err = ct.Dag.Swap(*root.Tree, newTreeRoot)
 	if err != nil {
 		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error setting as link: %v", err)}
 	}
@@ -196,7 +196,7 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		if there are chain entries than the tip should be either the current tip OR
 			the PreviousTip of the last ChainEntry
 	*/
-	chainNode, err := ct.Dag.Get(root.Chain)
+	chainNode, err := ct.Dag.Get(*root.Chain)
 	chain := &Chain{}
 	err = cbornode.DecodeInto(chainNode.RawData(), chain)
 	if err != nil {
@@ -217,13 +217,14 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 
 		lastEntry := &ChainEntry{
 			PreviousTip:       "",
-			BlocksWithHeaders: []*cid.Cid{wrappedBlock.Cid()},
+			BlocksWithHeaders: []cid.Cid{wrappedBlock.Cid()},
 		}
 		entryNode, err := ct.Dag.CreateNode(lastEntry)
 		if err != nil {
 			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error creating: %v", err)}
 		}
-		chain.End = entryNode.Cid()
+		endCid := entryNode.Cid()
+		chain.End = &endCid
 
 		ct.Dag, err = ct.Dag.SetAsLink([]string{ChainLabel}, chain)
 		if err != nil {
@@ -232,7 +233,7 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 
 	} else {
 		//log.Println("we have an end")
-		endNode, err := ct.Dag.Get(chain.End)
+		endNode, err := ct.Dag.Get(*chain.End)
 		if endNode == nil {
 			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("missing end node in chain tree")}
 		}
@@ -249,17 +250,19 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		switch tip := blockWithHeaders.PreviousTip; tip {
 		case root.cid.String():
 			//log.Printf("previous tip of block == rootNode")
+			endCid := endNode.Cid()
 			newEntry := &ChainEntry{
 				PreviousTip:       ct.Dag.Tip.String(),
-				BlocksWithHeaders: []*cid.Cid{wrappedBlock.Cid()},
-				Previous:          endNode.Cid(),
+				BlocksWithHeaders: []cid.Cid{wrappedBlock.Cid()},
+				Previous:          &endCid,
 			}
 
 			entryNode, err := ct.Dag.CreateNode(newEntry)
 			if err != nil {
 				return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error casting lastEntry: %v", err)}
 			}
-			chain.End = entryNode.Cid()
+			endNode := entryNode.Cid()
+			chain.End = &endNode
 			//log.Printf("setting end to: %v", entryNode.Cid().String())
 
 			//log.Printf("chain map: %v", chainMap)

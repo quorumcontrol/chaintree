@@ -3,13 +3,10 @@ package nodestore
 import (
 	"testing"
 
-	"github.com/ipfs/go-ipld-cbor"
-
 	"github.com/ipfs/go-cid"
-
+	"github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/storage"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -45,7 +42,7 @@ func TestStorageBasedStoreGetReferences(t *testing.T) {
 
 	child := map[string]string{"hi": "value"}
 	childNode := sw.WrapObject(child)
-	root := map[string]*cid.Cid{"child": childNode.Cid()}
+	root := map[string]cid.Cid{"child": childNode.Cid()}
 	rootNode := sw.WrapObject(root)
 
 	_, err := sbs.CreateNode(child)
@@ -70,7 +67,7 @@ func TestStorageBasedStoreSwap(t *testing.T) {
 	newChild := map[string]string{"hi": "newValue"}
 	newChildNode := sw.WrapObject(newChild)
 
-	expectedNewRoot := map[string]*cid.Cid{"child": newChildNode.Cid()}
+	expectedNewRoot := map[string]cid.Cid{"child": newChildNode.Cid()}
 	expectedNewRootNode := sw.WrapObject(expectedNewRoot)
 
 	require.Nil(t, sw.Err)
@@ -78,7 +75,7 @@ func TestStorageBasedStoreSwap(t *testing.T) {
 	_, err := sbs.CreateNode(child)
 	require.Nil(t, err)
 
-	root := map[string]*cid.Cid{"child": childNode.Cid()}
+	root := map[string]cid.Cid{"child": childNode.Cid()}
 	rootNode, err := sbs.CreateNode(root)
 	require.Nil(t, err)
 
@@ -100,7 +97,7 @@ func TestStorageBasedStoreUpdateNode(t *testing.T) {
 	newChild := map[string]string{"hi": "newValue"}
 	newChildNode := sw.WrapObject(newChild)
 
-	expectedNewRoot := map[string]*cid.Cid{"child": newChildNode.Cid()}
+	expectedNewRoot := map[string]cid.Cid{"child": newChildNode.Cid()}
 	expectedNewRootNode := sw.WrapObject(expectedNewRoot)
 
 	require.Nil(t, sw.Err)
@@ -108,7 +105,7 @@ func TestStorageBasedStoreUpdateNode(t *testing.T) {
 	_, err := sbs.CreateNode(child)
 	require.Nil(t, err)
 
-	root := map[string]*cid.Cid{"child": childNode.Cid()}
+	root := map[string]cid.Cid{"child": childNode.Cid()}
 	rootNode, err := sbs.CreateNode(root)
 	require.Nil(t, err)
 
@@ -124,7 +121,7 @@ func TestStorageBasedStoreUpdateNode(t *testing.T) {
 func TestStorageBasedStoreDeleteIfUnreferenced(t *testing.T) {
 	type testStruct struct {
 		description  string
-		setup        func(t *testing.T) (*cid.Cid, NodeStore)
+		setup        func(t *testing.T) (cid.Cid, NodeStore)
 		shouldErr    bool
 		shouldDelete bool
 	}
@@ -136,7 +133,7 @@ func TestStorageBasedStoreDeleteIfUnreferenced(t *testing.T) {
 			description:  "an unreferenced node",
 			shouldErr:    false,
 			shouldDelete: true,
-			setup: func(t *testing.T) (*cid.Cid, NodeStore) {
+			setup: func(t *testing.T) (cid.Cid, NodeStore) {
 				sbs := NewStorageBasedStore(storage.NewMemStorage())
 				node, err := sbs.CreateNode(defaultMap)
 				require.Nil(t, err)
@@ -147,11 +144,11 @@ func TestStorageBasedStoreDeleteIfUnreferenced(t *testing.T) {
 			description:  "a referenced node",
 			shouldErr:    false,
 			shouldDelete: false,
-			setup: func(t *testing.T) (*cid.Cid, NodeStore) {
+			setup: func(t *testing.T) (cid.Cid, NodeStore) {
 				sbs := NewStorageBasedStore(storage.NewMemStorage())
 				node, err := sbs.CreateNode(defaultMap)
 				require.Nil(t, err)
-				root := map[string]*cid.Cid{
+				root := map[string]cid.Cid{
 					"ref": node.Cid(),
 				}
 				_, err = sbs.CreateNode(root)
@@ -164,11 +161,11 @@ func TestStorageBasedStoreDeleteIfUnreferenced(t *testing.T) {
 			description:  "a node with link",
 			shouldErr:    false,
 			shouldDelete: true,
-			setup: func(t *testing.T) (*cid.Cid, NodeStore) {
+			setup: func(t *testing.T) (cid.Cid, NodeStore) {
 				sbs := NewStorageBasedStore(storage.NewMemStorage())
 				node, err := sbs.CreateNode(defaultMap)
 				require.Nil(t, err)
-				root := map[string]*cid.Cid{
+				root := map[string]cid.Cid{
 					"ref": node.Cid(),
 				}
 				rootNode, err := sbs.CreateNode(root)
@@ -200,7 +197,7 @@ func TestStorageBasedStoreDeleteIfUnreferenced(t *testing.T) {
 func TestStorageBasedStoreDeleteTree(t *testing.T) {
 	type testCase struct {
 		description string
-		setup       func() (nodesToCreate []*cbornode.Node, tipToDelete *cid.Cid)
+		setup       func() (nodesToCreate []*cbornode.Node, tipToDelete cid.Cid)
 		tests       func(store NodeStore, nodes []*cbornode.Node)
 		shouldErr   bool
 	}
@@ -213,7 +210,7 @@ func TestStorageBasedStoreDeleteTree(t *testing.T) {
 		{
 			description: "a single node",
 			shouldErr:   false,
-			setup: func() (nodesToCreate []*cbornode.Node, tipToDelete *cid.Cid) {
+			setup: func() (nodesToCreate []*cbornode.Node, tipToDelete cid.Cid) {
 				sw := safewrap.SafeWrap{}
 				node := sw.WrapObject(defaultMap)
 				return []*cbornode.Node{node}, node.Cid()
@@ -227,10 +224,10 @@ func TestStorageBasedStoreDeleteTree(t *testing.T) {
 		{
 			description: "a tree",
 			shouldErr:   false,
-			setup: func() (nodesToCreate []*cbornode.Node, tipToDelete *cid.Cid) {
+			setup: func() (nodesToCreate []*cbornode.Node, tipToDelete cid.Cid) {
 				sw := safewrap.SafeWrap{}
 				node := sw.WrapObject(defaultMap)
-				root := map[string]*cid.Cid{"child": node.Cid()}
+				root := map[string]cid.Cid{"child": node.Cid()}
 				rootNode := sw.WrapObject(root)
 
 				return []*cbornode.Node{node, rootNode}, rootNode.Cid()
@@ -247,12 +244,12 @@ func TestStorageBasedStoreDeleteTree(t *testing.T) {
 		{
 			description: "a tree with another reference",
 			shouldErr:   false,
-			setup: func() (nodesToCreate []*cbornode.Node, tipToDelete *cid.Cid) {
+			setup: func() (nodesToCreate []*cbornode.Node, tipToDelete cid.Cid) {
 				sw := safewrap.SafeWrap{}
 				node := sw.WrapObject(defaultMap)
-				root := map[string]*cid.Cid{"child": node.Cid()}
+				root := map[string]cid.Cid{"child": node.Cid()}
 				rootNode := sw.WrapObject(root)
-				otherRefHolder := map[string]*cid.Cid{"diferentNode": node.Cid()}
+				otherRefHolder := map[string]cid.Cid{"diferentNode": node.Cid()}
 				otherRefHolderNode := sw.WrapObject(otherRefHolder)
 				require.Nil(t, sw.Err)
 				return []*cbornode.Node{node, rootNode, otherRefHolderNode}, rootNode.Cid()

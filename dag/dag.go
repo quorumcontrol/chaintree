@@ -4,22 +4,21 @@ import (
 	"fmt"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/ipfs/go-ipld-cbor"
-
 	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
 )
 
 // Dag is a convenience wrapper around a node store for setting and pruning
 type Dag struct {
-	Tip     *cid.Cid
-	oldTips []*cid.Cid
+	Tip     cid.Cid
+	oldTips []cid.Cid
 	store   nodestore.NodeStore
 }
 
 // NewDag takes a tip and a store and returns an initialized Dag
-func NewDag(tip *cid.Cid, store nodestore.NodeStore) *Dag {
+func NewDag(tip cid.Cid, store nodestore.NodeStore) *Dag {
 	return &Dag{
 		Tip:   tip,
 		store: store,
@@ -51,7 +50,7 @@ func (d *Dag) AddNodes(nodes ...*cbornode.Node) error {
 }
 
 //WithNewTip returns a new Dag, but with the Tip set to the argument
-func (d *Dag) WithNewTip(tip *cid.Cid) *Dag {
+func (d *Dag) WithNewTip(tip cid.Cid) *Dag {
 	return &Dag{
 		Tip:     tip,
 		store:   d.store,
@@ -60,7 +59,7 @@ func (d *Dag) WithNewTip(tip *cid.Cid) *Dag {
 }
 
 // Get takes a CID and returns the cbornode
-func (d *Dag) Get(id *cid.Cid) (*cbornode.Node, error) {
+func (d *Dag) Get(id cid.Cid) (*cbornode.Node, error) {
 	return d.store.GetNode(id)
 }
 
@@ -103,7 +102,7 @@ func (d *Dag) nodeAndDecendants(node *cbornode.Node) ([]*cbornode.Node, error) {
 }
 
 // Update returns a new Dag with the old node swapped out for the new object
-func (d *Dag) Update(existing *cid.Cid, newObj interface{}) (*Dag, error) {
+func (d *Dag) Update(existing cid.Cid, newObj interface{}) (*Dag, error) {
 	_, updates, err := d.store.UpdateNode(existing, newObj)
 	if err != nil {
 		return nil, fmt.Errorf("error updating node: %v", err)
@@ -113,7 +112,7 @@ func (d *Dag) Update(existing *cid.Cid, newObj interface{}) (*Dag, error) {
 }
 
 // Swap returns a new Dag with the old node swapped out for the new node
-func (d *Dag) Swap(existing *cid.Cid, newNode *cbornode.Node) (*Dag, error) {
+func (d *Dag) Swap(existing cid.Cid, newNode *cbornode.Node) (*Dag, error) {
 	updates, err := d.store.Swap(existing, newNode)
 	if err != nil {
 		return nil, fmt.Errorf("error updating node: %v", err)
@@ -139,7 +138,7 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 		switch val.(type) {
 		// These are the built in type of go (excluding map) plus cid.Cid
 		// Use SetAsLink if attempting to set map
-		case bool, byte, complex64, complex128, error, float32, float64, int, int8, int16, int32, int64, string, uint, uint16, uint32, uint64, uintptr, cid.Cid, *bool, *byte, *complex64, *complex128, *error, *float32, *float64, *int, *int8, *int16, *int32, *int64, *string, *uint, *uint16, *uint32, *uint64, *uintptr, *cid.Cid, []bool, []byte, []complex64, []complex128, []error, []float32, []float64, []int, []int8, []int16, []int32, []int64, []string, []uint, []uint16, []uint32, []uint64, []uintptr, []cid.Cid, []*bool, []*byte, []*complex64, []*complex128, []*error, []*float32, []*float64, []*int, []*int8, []*int16, []*int32, []*int64, []*string, []*uint, []*uint16, []*uint32, []*uint64, []*uintptr, []*cid.Cid:
+		case bool, byte, complex64, complex128, error, float32, float64, int, int8, int16, int32, int64, string, uint, uint16, uint32, uint64, uintptr, *cid.Cid, *bool, *byte, *complex64, *complex128, *error, *float32, *float64, *int, *int8, *int16, *int32, *int64, *string, *uint, *uint16, *uint32, *uint64, *uintptr, cid.Cid, []bool, []byte, []complex64, []complex128, []error, []float32, []float64, []int, []int8, []int16, []int32, []int64, []string, []uint, []uint16, []uint32, []uint64, []uintptr, []*cid.Cid, []*bool, []*byte, []*complex64, []*complex128, []*error, []*float32, []*float64, []*int, []*int8, []*int16, []*int32, []*int64, []*string, []*uint, []*uint16, []*uint32, []*uint64, []*uintptr, []cid.Cid:
 			// Noop here, its a valid type, continue on
 		default:
 			return nil, fmt.Errorf("can not set complex objects, use asLink=true: %v", val)
@@ -234,7 +233,7 @@ func (d *Dag) createDeepObject(path []string, node *cbornode.Node) (*Dag, error)
 	var err error
 
 	for i := len(path) - 1; i > indexOfLastExistingNode; i-- {
-		last, err = d.store.CreateNode(map[string]*cid.Cid{path[i]: last.Cid()})
+		last, err = d.store.CreateNode(map[string]cid.Cid{path[i]: last.Cid()})
 		if err != nil {
 			return nil, fmt.Errorf("error creating node: %v", err)
 		}
@@ -248,15 +247,15 @@ func (d *Dag) dumpNode(node *cbornode.Node, isLink bool) map[string]interface{} 
 	nodeMap, _ := nodestore.CborNodeToObj(node)
 	for k, v := range nodeMap {
 		switch v := v.(type) {
-		case *cid.Cid:
+		case cid.Cid:
 			node, _ := d.store.GetNode(v)
 			if node == nil {
 				nodeMap[k] = fmt.Sprintf("non existant link: %s", v.String())
 			} else {
 				nodeMap[k] = d.dumpNode(node, true)
 			}
-		case cid.Cid:
-			node, _ := d.store.GetNode(&v)
+		case *cid.Cid:
+			node, _ := d.store.GetNode(*v)
 			if node == nil {
 				nodeMap[k] = fmt.Sprintf("non existant link: %s", v.String())
 			} else {
