@@ -279,8 +279,7 @@ func (sbs *StorageBasedStore) deleteReferences(to cid.Cid, from ...cid.Cid) erro
 
 // CborNodeToObj takes a cbornode and returns a map[string]interface{} representation
 // of the data. Useful for setting values, etc
-func CborNodeToObj(node *cbornode.Node) (obj map[string]interface{}, err error) {
-	obj = make(map[string]interface{})
+func CborNodeToObj(node *cbornode.Node) (obj interface{}, err error) {
 	err = cbornode.DecodeInto(node.RawData(), &obj)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding: %v", err)

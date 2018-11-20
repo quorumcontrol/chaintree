@@ -243,32 +243,39 @@ func (d *Dag) createDeepObject(path []string, node *cbornode.Node) (*Dag, error)
 	return d.set(setPath, last.Cid(), false)
 }
 
-func (d *Dag) dumpNode(node *cbornode.Node, isLink bool) map[string]interface{} {
-	nodeMap, _ := nodestore.CborNodeToObj(node)
-	for k, v := range nodeMap {
-		switch v := v.(type) {
-		case cid.Cid:
-			node, _ := d.store.GetNode(v)
-			if node == nil {
-				nodeMap[k] = fmt.Sprintf("non existant link: %s", v.String())
-			} else {
-				nodeMap[k] = d.dumpNode(node, true)
+func (d *Dag) dumpNode(node *cbornode.Node, isLink bool) interface{} {
+	nodeData, _ := nodestore.CborNodeToObj(node)
+
+	switch nodeData.(type) {
+	case map[interface{}]interface{}:
+		nodeMap := nodeData.(map[interface{}]interface{})
+		for k, v := range nodeMap {
+			switch v := v.(type) {
+			case cid.Cid:
+				node, _ := d.store.GetNode(v)
+				if node == nil {
+					nodeMap[k] = fmt.Sprintf("non existant link: %s", v.String())
+				} else {
+					nodeMap[k] = d.dumpNode(node, true)
+				}
+			case *cid.Cid:
+				node, _ := d.store.GetNode(*v)
+				if node == nil {
+					nodeMap[k] = fmt.Sprintf("non existant link: %s", v.String())
+				} else {
+					nodeMap[k] = d.dumpNode(node, true)
+				}
+			default:
+				continue
 			}
-		case *cid.Cid:
-			node, _ := d.store.GetNode(*v)
-			if node == nil {
-				nodeMap[k] = fmt.Sprintf("non existant link: %s", v.String())
-			} else {
-				nodeMap[k] = d.dumpNode(node, true)
-			}
-		default:
-			continue
 		}
+		if isLink {
+			nodeMap["_isLink"] = true
+		}
+		return nodeMap
+	default:
+		return nodeData
 	}
-	if isLink {
-		nodeMap["_isLink"] = true
-	}
-	return nodeMap
 }
 
 // Dump dumps the current DAG out as a string for debugging
