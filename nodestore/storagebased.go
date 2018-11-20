@@ -65,7 +65,7 @@ func (sbs *StorageBasedStore) GetNode(cid cid.Cid) (node *cbornode.Node, err err
 }
 
 // GetReferences implements NodeStore GetReferences
-func (sbs *StorageBasedStore) GetReferences(to cid.Cid) (refs []cid.Cid, err error) {
+func (sbs *StorageBasedStore) GetReferences(to cid.Cid) (refs map[string]cid.Cid, err error) {
 	bucketName := refBucketName(to)
 	sbs.locker.RLock(string(bucketName))
 	defer sbs.locker.RUnlockAndDelete(string(bucketName))
@@ -78,14 +78,14 @@ func (sbs *StorageBasedStore) GetReferences(to cid.Cid) (refs []cid.Cid, err err
 		return nil, fmt.Errorf("error getting keys from storage: %v", err)
 	}
 
-	refs = make([]cid.Cid, len(keys))
+	refs = make(map[string]cid.Cid)
 
-	for i, keyBytes := range keys {
+	for _, keyBytes := range keys {
 		cid, err := cid.Cast(keyBytes)
 		if err != nil {
 			return nil, fmt.Errorf("error casting CID: %v", err)
 		}
-		refs[i] = cid
+		refs[cid.KeyString()] = cid
 	}
 	return
 }
@@ -103,7 +103,6 @@ func (sbs *StorageBasedStore) UpdateNode(existing cid.Cid, obj interface{}) (upd
 	return
 }
 
-// Swap implements the NodeStore interface.
 func (sbs *StorageBasedStore) Swap(existing cid.Cid, updatedNode *cbornode.Node) (updates UpdateMap, err error) {
 	err = sbs.StoreNode(updatedNode)
 	if err != nil {
@@ -112,6 +111,9 @@ func (sbs *StorageBasedStore) Swap(existing cid.Cid, updatedNode *cbornode.Node)
 	if updates == nil {
 		updates = make(UpdateMap)
 	}
+
+	updates[ToCidString(existing)] = updatedNode.Cid()
+
 	refs, err := sbs.GetReferences(existing)
 	if err != nil {
 		return nil, fmt.Errorf("error getting references: %v", err)
@@ -124,24 +126,43 @@ func (sbs *StorageBasedStore) Swap(existing cid.Cid, updatedNode *cbornode.Node)
 	updates[ToCidString(existing)] = updatedNode.Cid()
 
 	for _, ref := range refs {
-		reffedNode, err := sbs.GetNode(ref)
+		refToUpdate := ref
+
+		if otherRef, exists := updates[ToCidString(ref)]; exists {
+			refToUpdate = otherRef
+		}
+
+		reffedNode, err := sbs.GetNode(refToUpdate)
 		if err != nil {
-			return nil, fmt.Errorf("error getting node (%s): %v", ref.String(), err)
+			return nil, fmt.Errorf("error getting node (%s): %v", refToUpdate.String(), err)
 		}
 		reffedObj, err := CborNodeToObj(reffedNode)
 		if err != nil {
-			return nil, fmt.Errorf("error converting node to obj (%s): %v", ref.String(), err)
+			return nil, fmt.Errorf("error converting node to obj (%s): %v", refToUpdate.String(), err)
 		}
 		err = updateLinks(reffedObj, existing, updatedNode.Cid())
 		if err != nil {
-			return nil, fmt.Errorf("error updating links (%s): %v", ref.String(), err)
+			return nil, fmt.Errorf("error updating links (%s): %v", refToUpdate.String(), err)
 		}
-		_, refUpdates, err := sbs.UpdateNode(ref, reffedObj)
+		_, refUpdates, err := sbs.UpdateNode(refToUpdate, reffedObj)
+
 		if err != nil {
-			return nil, fmt.Errorf("error updating reference (%s): %v", ref.String(), err)
+			return nil, fmt.Errorf("error updating reference (%s): %v", refToUpdate.String(), err)
 		}
-		updates = MergeUpdateMap(updates, refUpdates)
+
+		for refOldCID, refNewCID := range refUpdates {
+			if _, ok := updates[refOldCID]; !ok {
+				updates[refOldCID] = refNewCID
+			}
+
+			for updatesOldCID, updatesNewCID := range updates {
+				if ToCidString(updatesNewCID) == refOldCID {
+					updates[updatesOldCID] = refNewCID
+				}
+			}
+		}
 	}
+
 	return updates, nil
 }
 
@@ -219,7 +240,6 @@ func (sbs *StorageBasedStore) Resolve(tip cid.Cid, path []string) (val interface
 // StoreNode implements the NodeStore interface
 func (sbs *StorageBasedStore) StoreNode(node *cbornode.Node) error {
 	nodeCid := node.Cid()
-
 	sbs.locker.Lock(nodeCid.KeyString())
 	defer sbs.locker.UnlockAndDelete(nodeCid.KeyString())
 
@@ -279,8 +299,7 @@ func (sbs *StorageBasedStore) deleteReferences(to cid.Cid, from ...cid.Cid) erro
 
 // CborNodeToObj takes a cbornode and returns a map[string]interface{} representation
 // of the data. Useful for setting values, etc
-func CborNodeToObj(node *cbornode.Node) (obj map[string]interface{}, err error) {
-	obj = make(map[string]interface{})
+func CborNodeToObj(node *cbornode.Node) (obj interface{}, err error) {
 	err = cbornode.DecodeInto(node.RawData(), &obj)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding: %v", err)

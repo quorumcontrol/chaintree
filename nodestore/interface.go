@@ -53,7 +53,7 @@ type NodeStore interface {
 	// StoreNode just takes a cbornode and sets references, etc in the storage
 	StoreNode(node *cbornode.Node) error
 	// GetReferences returns a slice of CIDs that contain a link to the CID in the to argument
-	GetReferences(to cid.Cid) ([]cid.Cid, error)
+	GetReferences(to cid.Cid) (map[string]cid.Cid, error)
 	// UpdateNode adds the new obj to the NodeStore, then walks the references to the old
 	// CID and updates their links to reflect the new object. It then returns the new, updated cbor node
 	// for obj and the "tips" of the reference tree: that is the last objects with no parents

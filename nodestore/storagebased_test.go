@@ -54,7 +54,7 @@ func TestStorageBasedStoreGetReferences(t *testing.T) {
 
 	require.Len(t, refs, 1)
 
-	assert.Equal(t, refs[0].String(), rootNode.Cid().String())
+	assert.Equal(t, refs[rootNode.Cid().KeyString()].String(), rootNode.Cid().String())
 }
 
 func TestStorageBasedStoreSwap(t *testing.T) {
@@ -67,24 +67,52 @@ func TestStorageBasedStoreSwap(t *testing.T) {
 	newChild := map[string]string{"hi": "newValue"}
 	newChildNode := sw.WrapObject(newChild)
 
-	expectedNewRoot := map[string]cid.Cid{"child": newChildNode.Cid()}
+	sliceChild := []map[string]cid.Cid{map[string]cid.Cid{"child": childNode.Cid()}}
+	sliceChildNode := sw.WrapObject(sliceChild)
+	require.Len(t, sliceChildNode.Links(), 1)
+	require.True(t, sliceChildNode.Links()[0].Cid.Equals(childNode.Cid()))
+
+	expectedNewSliceChild := []map[string]cid.Cid{map[string]cid.Cid{"child": newChildNode.Cid()}}
+	expectedNewSliceChildNode := sw.WrapObject(expectedNewSliceChild)
+
+	expectedNewRoot := map[string]cid.Cid{
+		"child":      newChildNode.Cid(),
+		"sliceChild": expectedNewSliceChildNode.Cid(),
+	}
 	expectedNewRootNode := sw.WrapObject(expectedNewRoot)
 
 	require.Nil(t, sw.Err)
 
 	_, err := sbs.CreateNode(child)
 	require.Nil(t, err)
+	_, err = sbs.CreateNode(sliceChild)
+	require.Nil(t, err)
 
-	root := map[string]cid.Cid{"child": childNode.Cid()}
+	root := map[string]cid.Cid{
+		"child":      childNode.Cid(),
+		"sliceChild": sliceChildNode.Cid(),
+	}
 	rootNode, err := sbs.CreateNode(root)
 	require.Nil(t, err)
 
 	updates, err := sbs.Swap(childNode.Cid(), newChildNode)
 	require.Nil(t, err)
-	require.Len(t, updates, 2)
+	mappedUpdates := make(map[string]string)
+	for k, v := range updates {
+		mappedUpdates[k.Cid().String()] = v.String()
+	}
+	assert.Lenf(t, updates, 4, "updates: %v", mappedUpdates)
 
-	assert.Equal(t, updates[ToCidString(rootNode.Cid())].String(), expectedNewRootNode.Cid().String())
-	assert.Equal(t, updates[ToCidString(childNode.Cid())].String(), newChildNode.Cid().String())
+	var rootIsActually interface{}
+	node, err := sbs.GetNode(updates[ToCidString(rootNode.Cid())])
+	require.Nil(t, err)
+	err = cbornode.DecodeInto(node.RawData(), &rootIsActually)
+	require.Nil(t, err)
+
+	assert.Equal(t, expectedNewRootNode.Cid().String(), updates[ToCidString(rootNode.Cid())].String())
+	assert.Equal(t, newChildNode.Cid().String(), updates[ToCidString(childNode.Cid())].String())
+	assert.Equal(t, expectedNewSliceChildNode.Cid().String(), updates[ToCidString(sliceChildNode.Cid())].String())
+
 }
 
 func TestStorageBasedStoreUpdateNode(t *testing.T) {
