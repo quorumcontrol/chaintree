@@ -54,8 +54,8 @@
   name = "github.com/quorumcontrol/namedlocker"
 
 [[constraint]]
-  revision = "64192a5e84b28206ee33c6502170d68edeb32c67"
   name = "github.com/quorumcontrol/storage"
+  version = "0.0.1"
 
 [[constraint]]
   name = "github.com/stretchr/testify"
