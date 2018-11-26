@@ -202,11 +202,12 @@
   revision = "3f797c8b12b141e1e252cc202f43c27fce58ec9e"
 
 [[projects]]
-  digest = "1:e5d7525138b0637c99bd266f7cabe427c99b91bd5d884fad09e69229186e597e"
+  digest = "1:8f0d48eca8237ddd4a9cff21a41befe89f8a4f4f71a061fad776427fa3c7c6cc"
   name = "github.com/quorumcontrol/storage"
   packages = ["."]
   pruneopts = "UT"
-  revision = "64192a5e84b28206ee33c6502170d68edeb32c67"
+  revision = "ef2e4b7fe9df1595d34838f830d9798da33392be"
+  version = "v0.0.1"
 
 [[projects]]
   digest = "1:919bb3aa6d9d0b67648c219fa4925312bc3c2872da19e818fa769e9c97a2b643"
