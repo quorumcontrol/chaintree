@@ -51,7 +51,7 @@ func TestStorageBasedStoreGetReferences(t *testing.T) {
 	require.Nil(t, err)
 
 	refs, err := sbs.GetReferences(childNode.Cid())
-
+	require.Nil(t, err)
 	require.Len(t, refs, 1)
 
 	assert.Equal(t, refs[rootNode.Cid().KeyString()].String(), rootNode.Cid().String())
