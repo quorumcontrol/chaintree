@@ -81,7 +81,7 @@ func (sbs *StorageBasedStore) GetReferences(to cid.Cid) (refs map[string]cid.Cid
 	startAfterPrefix := len(prefix)
 
 	for _, keyBytesWithPrefix := range keys {
-		keyBytes := keyBytesWithPrefix[startAfterPrefix:len(keyBytesWithPrefix)]
+		keyBytes := keyBytesWithPrefix[startAfterPrefix:]
 		cid, err := cid.Cast(keyBytes)
 		if err != nil {
 			return nil, fmt.Errorf("error casting CID: %v", err)
