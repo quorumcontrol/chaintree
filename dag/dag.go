@@ -111,16 +111,6 @@ func (d *Dag) Update(existing cid.Cid, newObj interface{}) (*Dag, error) {
 	return d.WithNewTip(newTip), nil
 }
 
-// Swap returns a new Dag with the old node swapped out for the new node
-func (d *Dag) Swap(existing cid.Cid, newNode *cbornode.Node) (*Dag, error) {
-	updates, err := d.store.Swap(existing, newNode)
-	if err != nil {
-		return nil, fmt.Errorf("error updating node: %v", err)
-	}
-	newTip := updates[nodestore.ToCidString(d.Tip)]
-	return d.WithNewTip(newTip), nil
-}
-
 // Set sets a value at a path and returns a new dag with a new tip that reflects
 // the new state (and adds the old tip to oldTips)
 func (d *Dag) Set(pathAndKey []string, val interface{}) (*Dag, error) {

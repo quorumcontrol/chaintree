@@ -238,30 +238,3 @@ func TestDagUpdate(t *testing.T) {
 	assert.Equal(t, "changed", val)
 }
 
-func TestDagSwap(t *testing.T) {
-	sw := &safewrap.SafeWrap{}
-
-	child := sw.WrapObject(map[string]interface{}{
-		"name": "child",
-	})
-
-	root := sw.WrapObject(map[string]interface{}{
-		"child": child.Cid(),
-	})
-
-	require.Nil(t, sw.Err)
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-	dag, err := NewDagWithNodes(store, root, child)
-	require.Nil(t, err)
-
-	newChildNode := sw.WrapObject(map[string]interface{}{
-		"name": "changed",
-	})
-
-	dag, err = dag.Swap(child.Cid(), newChildNode)
-
-	val, remain, err := dag.Resolve([]string{"child", "name"})
-	require.Nil(t, err)
-	assert.Len(t, remain, 0)
-	assert.Equal(t, "changed", val)
-}

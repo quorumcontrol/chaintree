@@ -104,69 +104,6 @@ func (sbs *StorageBasedStore) UpdateNode(existing cid.Cid, obj interface{}) (upd
 	return
 }
 
-func (sbs *StorageBasedStore) Swap(existing cid.Cid, updatedNode *cbornode.Node) (updates UpdateMap, err error) {
-	err = sbs.StoreNode(updatedNode)
-	if err != nil {
-		return nil, fmt.Errorf("error storing: %v", err)
-	}
-	if updates == nil {
-		updates = make(UpdateMap)
-	}
-
-	updates[ToCidString(existing)] = updatedNode.Cid()
-
-	refs, err := sbs.GetReferences(existing)
-	if err != nil {
-		return nil, fmt.Errorf("error getting references: %v", err)
-	}
-
-	if len(refs) == 0 {
-		return updates, nil
-	}
-
-	updates[ToCidString(existing)] = updatedNode.Cid()
-
-	for _, ref := range refs {
-		refToUpdate := ref
-
-		if otherRef, exists := updates[ToCidString(ref)]; exists {
-			refToUpdate = otherRef
-		}
-
-		reffedNode, err := sbs.GetNode(refToUpdate)
-		if err != nil {
-			return nil, fmt.Errorf("error getting node (%s): %v", refToUpdate.String(), err)
-		}
-		reffedObj, err := CborNodeToObj(reffedNode)
-		if err != nil {
-			return nil, fmt.Errorf("error converting node to obj (%s): %v", refToUpdate.String(), err)
-		}
-		err = updateLinks(reffedObj, existing, updatedNode.Cid())
-		if err != nil {
-			return nil, fmt.Errorf("error updating links (%s): %v", refToUpdate.String(), err)
-		}
-		_, refUpdates, err := sbs.UpdateNode(refToUpdate, reffedObj)
-
-		if err != nil {
-			return nil, fmt.Errorf("error updating reference (%s): %v", refToUpdate.String(), err)
-		}
-
-		for refOldCID, refNewCID := range refUpdates {
-			if _, ok := updates[refOldCID]; !ok {
-				updates[refOldCID] = refNewCID
-			}
-
-			for updatesOldCID, updatesNewCID := range updates {
-				if ToCidString(updatesNewCID) == refOldCID {
-					updates[updatesOldCID] = refNewCID
-				}
-			}
-		}
-	}
-
-	return updates, nil
-}
-
 // DeleteIfUnreferenced implements the NodeStore DeleteIfUnreferenced interface.
 func (sbs *StorageBasedStore) DeleteIfUnreferenced(nodeCid cid.Cid) error {
 	refs, err := sbs.GetReferences(nodeCid)
