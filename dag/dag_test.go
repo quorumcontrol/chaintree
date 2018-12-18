@@ -230,7 +230,7 @@ func TestDagUpdate(t *testing.T) {
 	dag, err := NewDagWithNodes(store, root, child)
 	require.Nil(t, err)
 
-	dag, err = dag.Update(child.Cid(), map[string]interface{}{"name": "changed"})
+	dag, err = dag.Update([]string{"child"}, map[string]interface{}{"name": "changed"})
 
 	val, remain, err := dag.Resolve([]string{"child", "name"})
 	require.Nil(t, err)

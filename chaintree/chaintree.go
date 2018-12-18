@@ -15,8 +15,9 @@ const (
 	ErrInvalidTree            = 3
 	ErrUnknown                = 4
 
-	TreeLabel  = "tree"
-	ChainLabel = "chain"
+	TreeLabel     = "tree"
+	ChainLabel    = "chain"
+	ChainEndLabel = "end"
 )
 
 func init() {
@@ -186,7 +187,7 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting tree tip: %v", err)}
 	}
 
-	ct.Dag, err = ct.Dag.Swap(*root.Tree, newTreeRoot)
+	ct.Dag, err = ct.Dag.Update([]string{TreeLabel}, newTreeRoot.Cid())
 	if err != nil {
 		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error setting as link: %v", err)}
 	}
@@ -277,7 +278,7 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 
 			lastEntry.BlocksWithHeaders = append(lastEntry.BlocksWithHeaders, wrappedBlock.Cid())
 
-			ct.Dag, err = ct.Dag.Update(endNode.Cid(), lastEntry)
+			ct.Dag, err = ct.Dag.Update([]string{ChainLabel, ChainEndLabel}, lastEntry)
 			if err != nil {
 				return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error swapping object: %v", err)}
 			}

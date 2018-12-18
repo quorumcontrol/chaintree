@@ -49,7 +49,7 @@ func (d *Dag) AddNodes(nodes ...*cbornode.Node) error {
 	return nil
 }
 
-//WithNewTip returns a new Dag, but with the Tip set to the argument
+// WithNewTip returns a new Dag, but with the Tip set to the argument
 func (d *Dag) WithNewTip(tip cid.Cid) *Dag {
 	return &Dag{
 		Tip:     tip,
@@ -101,13 +101,12 @@ func (d *Dag) nodeAndDecendants(node *cbornode.Node) ([]*cbornode.Node, error) {
 	return nodes, nil
 }
 
-// Update returns a new Dag with the old node swapped out for the new object
-func (d *Dag) Update(existing cid.Cid, newObj interface{}) (*Dag, error) {
-	_, updates, err := d.store.UpdateNode(existing, newObj)
+// Update returns a new Dag with the old node at path swapped out for the new object
+func (d *Dag) Update(path []string, newObj interface{}) (*Dag, error) {
+	newTip, err := d.store.UpdateNode(d.Tip, path, newObj)
 	if err != nil {
 		return nil, fmt.Errorf("error updating node: %v", err)
 	}
-	newTip := updates[nodestore.ToCidString(d.Tip)]
 	return d.WithNewTip(newTip), nil
 }
 
@@ -175,12 +174,6 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 		return d.createDeepObject(path, wrapped)
 	}
 
-	sw := &safewrap.SafeWrap{}
-	existingCbor := sw.WrapObject(existing)
-	if sw.Err != nil {
-		return nil, fmt.Errorf("error wrapping (%v): %v", existing, sw.Err)
-	}
-
 	if asLink {
 		newNode, err := d.store.CreateNode(val)
 		if err != nil {
@@ -191,11 +184,10 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 		existing.(map[string]interface{})[key] = val
 	}
 
-	_, updates, err := d.store.UpdateNode(existingCbor.Cid(), existing)
+	newTip, err := d.store.UpdateNode(d.Tip, path, existing)
 	if err != nil {
-		return nil, fmt.Errorf("error updagint node: %v", err)
+		return nil, fmt.Errorf("error updating node: %v", err)
 	}
-	newTip := updates[nodestore.ToCidString(d.Tip)]
 
 	return &Dag{
 		store:   d.store,
