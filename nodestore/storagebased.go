@@ -92,16 +92,31 @@ func (sbs *StorageBasedStore) GetReferences(to cid.Cid) (refs map[string]cid.Cid
 }
 
 // UpdateNode implements NodeStore UpdateNode
-func (sbs *StorageBasedStore) UpdateNode(existing cid.Cid, obj interface{}) (updatedNode *cbornode.Node, updates UpdateMap, err error) {
-	updatedNode, err = objToCbor(obj)
+func (sbs *StorageBasedStore) UpdateNode(tip cid.Cid, path []string, obj interface{}) (newTip cid.Cid, err error) {
+	updatedNode, err := sbs.CreateNode(obj)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating node: %v", err)
+		return tip, fmt.Errorf("error creating node: %v", err)
 	}
-	updates, err = sbs.Swap(existing, updatedNode)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error swapping: %v", err)
+	if len(path) == 0 {
+		// We've updated all ancestors and have a new tip to return
+		return updatedNode.Cid(), nil
+	} else {
+		// We've got more path to recursively update; store this node & update its ref in its parent
+		parentPath := path[:len(path)-1]
+		parentObj, remaining, err := sbs.Resolve(tip, parentPath)
+		if err != nil {
+			return tip, fmt.Errorf("error resolving parent node: %v", err)
+		}
+		if len(remaining) > 0 {
+			return tip, fmt.Errorf("path elements remaining after resolving parent node: %v", remaining)
+		}
+		parentMap, ok := parentObj.(map[string]interface{})
+		if !ok {
+			return tip, fmt.Errorf("error asserting type map[string]interface{} of parent node: %v", parentObj)
+		}
+		parentMap[path[len(path)-1]] = updatedNode.Cid()
+		return sbs.UpdateNode(tip, parentPath, parentMap)
 	}
-	return
 }
 
 // DeleteIfUnreferenced implements the NodeStore DeleteIfUnreferenced interface.
@@ -246,42 +261,3 @@ func objToCbor(obj interface{}) (node *cbornode.Node, err error) {
 	return
 }
 
-func updateLinks(obj interface{}, oldCid cid.Cid, newCid cid.Cid) error {
-	switch obj := obj.(type) {
-	case map[interface{}]interface{}:
-		for _, v := range obj {
-			if err := updateLinks(v, oldCid, newCid); err != nil {
-				return err
-			}
-		}
-		return nil
-	case map[string]interface{}:
-		for ks, v := range obj {
-			switch v.(type) {
-			case cid.Cid:
-				if v.(cid.Cid).Equals(oldCid) {
-					obj[ks] = newCid
-				}
-			case *cid.Cid:
-				ptr := v.(cid.Cid)
-				if (&ptr).Equals(oldCid) {
-					obj[ks] = newCid
-				}
-			default:
-				if err := updateLinks(v, oldCid, newCid); err != nil {
-					return err
-				}
-			}
-		}
-		return nil
-	case []interface{}:
-		for _, v := range obj {
-			if err := updateLinks(v, oldCid, newCid); err != nil {
-				return err
-			}
-		}
-		return nil
-	default:
-		return nil
-	}
-}

@@ -54,10 +54,8 @@ type NodeStore interface {
 	StoreNode(node *cbornode.Node) error
 	// GetReferences returns a slice of CIDs that contain a link to the CID in the to argument
 	GetReferences(to cid.Cid) (map[string]cid.Cid, error)
-	// UpdateNode adds the new obj to the NodeStore, then walks the references to the old
-	// CID and updates their links to reflect the new object. It then returns the new, updated cbor node
-	// for obj and the "tips" of the reference tree: that is the last objects with no parents
-	UpdateNode(existing cid.Cid, obj interface{}) (updatedNode *cbornode.Node, updates UpdateMap, err error)
+	// UpdateNode adds the new obj to the NodeStore at the given path. It then returns the new tip CID.
+	UpdateNode(tip cid.Cid, path []string, obj interface{}) (newTip cid.Cid, err error)
 	// DeleteNode deletes a node from the store, it will no-op if the node is referenced by other nodes
 	DeleteIfUnreferenced(nodeCid cid.Cid) error
 	// DeleteTree removes everything in a tree starting from a tip as long as none of the nodes have
