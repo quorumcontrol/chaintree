@@ -221,18 +221,24 @@ func TestDagUpdate(t *testing.T) {
 		"name": "child",
 	})
 
+	intermediary := sw.WrapObject(map[string]interface{}{
+		"name": "intermediary",
+		"child2": child.Cid(),
+	})
+
 	root := sw.WrapObject(map[string]interface{}{
-		"child": child.Cid(),
+		"name": "root",
+		"child1": intermediary.Cid(),
 	})
 
 	require.Nil(t, sw.Err)
 	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-	dag, err := NewDagWithNodes(store, root, child)
+	dag, err := NewDagWithNodes(store, root, intermediary, child)
 	require.Nil(t, err)
 
-	dag, err = dag.Update([]string{"child"}, map[string]interface{}{"name": "changed"})
+	dag, err = dag.Update([]string{"child1", "child2"}, map[string]interface{}{"name": "changed"})
 
-	val, remain, err := dag.Resolve([]string{"child", "name"})
+	val, remain, err := dag.Resolve([]string{"child1", "child2", "name"})
 	require.Nil(t, err)
 	assert.Len(t, remain, 0)
 	assert.Equal(t, "changed", val)

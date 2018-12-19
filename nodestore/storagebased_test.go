@@ -57,68 +57,6 @@ func TestStorageBasedStoreGetReferences(t *testing.T) {
 	assert.Equal(t, refs[rootNode.Cid().KeyString()].String(), rootNode.Cid().String())
 }
 
-func TestStorageBasedStoreUpdateNode(t *testing.T) {
-	sbs := NewStorageBasedStore(storage.NewMemStorage())
-	sw := &safewrap.SafeWrap{}
-
-	child := map[string]string{"hi": "value"}
-	childNode := sw.WrapObject(child)
-	require.Nil(t, sw.Err)
-
-	intermediary := map[string]interface{}{
-		"name": "intermediary",
-		"child2": childNode.Cid(),
-	}
-	intermediaryNode := sw.WrapObject(intermediary)
-	require.Nil(t, sw.Err)
-
-	newChild := map[string]string{"hi": "newValue"}
-	newChildNode := sw.WrapObject(newChild)
-	require.Nil(t, sw.Err)
-
-	expectedNewIntermediary := map[string]interface{}{
-		"name": "intermediary",
-		"child2": newChildNode.Cid(),
-	}
-	expectedNewIntermediaryNode := sw.WrapObject(expectedNewIntermediary)
-	require.Nil(t, sw.Err)
-
-	expectedNewRoot := map[string]interface{}{
-		"name": "root",
-		"child1": expectedNewIntermediaryNode.Cid(),
-	}
-	expectedNewRootNode := sw.WrapObject(expectedNewRoot)
-	require.Nil(t, sw.Err)
-
-	_, err := sbs.CreateNode(child)
-	require.Nil(t, err)
-
-	_, err = sbs.CreateNode(intermediary)
-	require.Nil(t, err)
-
-	root := map[string]interface{}{
-		"name": "root",
-	    "child1": intermediaryNode.Cid(),
-	}
-	rootNode, err := sbs.CreateNode(root)
-	require.Nil(t, err)
-
-	newTip, err := sbs.UpdateNode(rootNode.Cid(), []string{"child1", "child2"}, newChild)
-	require.Nil(t, err)
-
-	newNodeVal, remaining, err := sbs.Resolve(newTip, []string{"child1", "child2", "hi"})
-	require.Nil(t, err)
-	assert.Empty(t, remaining)
-
-	newIntermediaryName, remaining, err := sbs.Resolve(newTip, []string{"child1", "name"})
-	require.Nil(t, err)
-	assert.Empty(t, remaining)
-
-	assert.Equal(t, newTip.String(), expectedNewRootNode.Cid().String())
-	assert.Equal(t, "intermediary", newIntermediaryName)
-	assert.Equal(t, "newValue", newNodeVal)
-}
-
 func TestStorageBasedStoreDeleteIfUnreferenced(t *testing.T) {
 	type testStruct struct {
 		description  string

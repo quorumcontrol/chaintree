@@ -91,34 +91,6 @@ func (sbs *StorageBasedStore) GetReferences(to cid.Cid) (refs map[string]cid.Cid
 	return
 }
 
-// UpdateNode implements NodeStore UpdateNode
-func (sbs *StorageBasedStore) UpdateNode(tip cid.Cid, path []string, obj interface{}) (newTip cid.Cid, err error) {
-	updatedNode, err := sbs.CreateNode(obj)
-	if err != nil {
-		return tip, fmt.Errorf("error creating node: %v", err)
-	}
-	if len(path) == 0 {
-		// We've updated all ancestors and have a new tip to return
-		return updatedNode.Cid(), nil
-	} else {
-		// We've got more path to recursively update; store this node & update its ref in its parent
-		parentPath := path[:len(path)-1]
-		parentObj, remaining, err := sbs.Resolve(tip, parentPath)
-		if err != nil {
-			return tip, fmt.Errorf("error resolving parent node: %v", err)
-		}
-		if len(remaining) > 0 {
-			return tip, fmt.Errorf("path elements remaining after resolving parent node: %v", remaining)
-		}
-		parentMap, ok := parentObj.(map[string]interface{})
-		if !ok {
-			return tip, fmt.Errorf("error asserting type map[string]interface{} of parent node: %v", parentObj)
-		}
-		parentMap[path[len(path)-1]] = updatedNode.Cid()
-		return sbs.UpdateNode(tip, parentPath, parentMap)
-	}
-}
-
 // DeleteIfUnreferenced implements the NodeStore DeleteIfUnreferenced interface.
 func (sbs *StorageBasedStore) DeleteIfUnreferenced(nodeCid cid.Cid) error {
 	refs, err := sbs.GetReferences(nodeCid)
