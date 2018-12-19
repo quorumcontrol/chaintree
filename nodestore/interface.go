@@ -19,27 +19,6 @@ func ToCidString(id cid.Cid) CidString {
 	return CidString(id.KeyString())
 }
 
-// UpdateMap is a map of the old CID (in CidString form) to new CID in CID form
-type UpdateMap map[CidString]cid.Cid
-
-// Contains returns true if the UpdateMap contains a CID for an existing node
-func (um UpdateMap) Contains(cid cid.Cid) bool {
-	_, ok := um[CidString(cid.KeyString())]
-	return ok
-}
-
-// MergeUpdateMap merges two UpdateMaps and returns a new UpdateMap
-func MergeUpdateMap(um UpdateMap, other UpdateMap) (newMap UpdateMap) {
-	newMap = make(UpdateMap)
-	for k, v := range um {
-		newMap[k] = v
-	}
-	for k, v := range other {
-		newMap[k] = v
-	}
-	return newMap
-}
-
 // NodeStore is an interface for getting and setting nodes
 // it allows you to keep track of referenced nodes so you can, for instance, update a whole tree
 // without having to manually update links
