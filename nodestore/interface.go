@@ -19,27 +19,6 @@ func ToCidString(id cid.Cid) CidString {
 	return CidString(id.KeyString())
 }
 
-// UpdateMap is a map of the old CID (in CidString form) to new CID in CID form
-type UpdateMap map[CidString]cid.Cid
-
-// Contains returns true if the UpdateMap contains a CID for an existing node
-func (um UpdateMap) Contains(cid cid.Cid) bool {
-	_, ok := um[CidString(cid.KeyString())]
-	return ok
-}
-
-// MergeUpdateMap merges two UpdateMaps and returns a new UpdateMap
-func MergeUpdateMap(um UpdateMap, other UpdateMap) (newMap UpdateMap) {
-	newMap = make(UpdateMap)
-	for k, v := range um {
-		newMap[k] = v
-	}
-	for k, v := range other {
-		newMap[k] = v
-	}
-	return newMap
-}
-
 // NodeStore is an interface for getting and setting nodes
 // it allows you to keep track of referenced nodes so you can, for instance, update a whole tree
 // without having to manually update links
@@ -54,13 +33,6 @@ type NodeStore interface {
 	StoreNode(node *cbornode.Node) error
 	// GetReferences returns a slice of CIDs that contain a link to the CID in the to argument
 	GetReferences(to cid.Cid) (map[string]cid.Cid, error)
-	// UpdateNode adds the new obj to the NodeStore, then walks the references to the old
-	// CID and updates their links to reflect the new object. It then returns the new, updated cbor node
-	// for obj and the "tips" of the reference tree: that is the last objects with no parents
-	UpdateNode(existing cid.Cid, obj interface{}) (updatedNode *cbornode.Node, updates UpdateMap, err error)
-	// Swap takes an existing CID, and just swaps it out for the new node.
-	// It is up to the caller to make sure that any child nodes are already part of the store.
-	Swap(existing cid.Cid, node *cbornode.Node) (updates UpdateMap, err error)
 	// DeleteNode deletes a node from the store, it will no-op if the node is referenced by other nodes
 	DeleteIfUnreferenced(nodeCid cid.Cid) error
 	// DeleteTree removes everything in a tree starting from a tip as long as none of the nodes have

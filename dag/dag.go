@@ -49,7 +49,7 @@ func (d *Dag) AddNodes(nodes ...*cbornode.Node) error {
 	return nil
 }
 
-//WithNewTip returns a new Dag, but with the Tip set to the argument
+// WithNewTip returns a new Dag, but with the Tip set to the argument
 func (d *Dag) WithNewTip(tip cid.Cid) *Dag {
 	return &Dag{
 		Tip:     tip,
@@ -101,24 +101,32 @@ func (d *Dag) nodeAndDecendants(node *cbornode.Node) ([]*cbornode.Node, error) {
 	return nodes, nil
 }
 
-// Update returns a new Dag with the old node swapped out for the new object
-func (d *Dag) Update(existing cid.Cid, newObj interface{}) (*Dag, error) {
-	_, updates, err := d.store.UpdateNode(existing, newObj)
+// Update returns a new Dag with the old node at path swapped out for the new object
+func (d *Dag) Update(path []string, newObj interface{}) (*Dag, error) {
+	updatedNode, err := d.CreateNode(newObj)
 	if err != nil {
-		return nil, fmt.Errorf("error updating node: %v", err)
+		return nil, fmt.Errorf("error creating node: %v", err)
 	}
-	newTip := updates[nodestore.ToCidString(d.Tip)]
-	return d.WithNewTip(newTip), nil
-}
-
-// Swap returns a new Dag with the old node swapped out for the new node
-func (d *Dag) Swap(existing cid.Cid, newNode *cbornode.Node) (*Dag, error) {
-	updates, err := d.store.Swap(existing, newNode)
-	if err != nil {
-		return nil, fmt.Errorf("error updating node: %v", err)
+	if len(path) == 0 {
+		// We've updated all ancestors and have a new tip to set
+		return d.WithNewTip(updatedNode.Cid()), nil
+	} else {
+		// We've got more path to recursively update; store this node & update its ref in its parent
+		parentPath := path[:len(path)-1]
+		parentObj, remaining, err := d.Resolve(parentPath)
+		if err != nil {
+			return nil, fmt.Errorf("error resolving parent node: %v", err)
+		}
+		if len(remaining) > 0 {
+			return nil, fmt.Errorf("path elements remaining after resolving parent node: %v", remaining)
+		}
+		parentMap, ok := parentObj.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("error asserting type map[string]interface{} of parent node: %v", parentObj)
+		}
+		parentMap[path[len(path)-1]] = updatedNode.Cid()
+		return d.Update(parentPath, parentMap)
 	}
-	newTip := updates[nodestore.ToCidString(d.Tip)]
-	return d.WithNewTip(newTip), nil
 }
 
 // Set sets a value at a path and returns a new dag with a new tip that reflects
@@ -185,12 +193,6 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 		return d.createDeepObject(path, wrapped)
 	}
 
-	sw := &safewrap.SafeWrap{}
-	existingCbor := sw.WrapObject(existing)
-	if sw.Err != nil {
-		return nil, fmt.Errorf("error wrapping (%v): %v", existing, sw.Err)
-	}
-
 	if asLink {
 		newNode, err := d.store.CreateNode(val)
 		if err != nil {
@@ -201,17 +203,14 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 		existing.(map[string]interface{})[key] = val
 	}
 
-	_, updates, err := d.store.UpdateNode(existingCbor.Cid(), existing)
+	newDag, err := d.Update(path, existing)
 	if err != nil {
-		return nil, fmt.Errorf("error updagint node: %v", err)
+		return nil, fmt.Errorf("error updating node: %v", err)
 	}
-	newTip := updates[nodestore.ToCidString(d.Tip)]
 
-	return &Dag{
-		store:   d.store,
-		Tip:     newTip,
-		oldTips: append(d.oldTips, d.Tip),
-	}, nil
+	newDag.oldTips = append(d.oldTips, newDag.Tip)
+
+	return newDag, nil
 }
 
 func (d *Dag) createDeepObject(path []string, node *cbornode.Node) (*Dag, error) {
