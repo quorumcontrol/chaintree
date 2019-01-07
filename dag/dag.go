@@ -5,7 +5,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	cid "github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipld-cbor"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
 )
@@ -141,6 +141,22 @@ func (d *Dag) SetAsLink(pathAndKey []string, val interface{}) (*Dag, error) {
 	return d.set(pathAndKey, val, true)
 }
 
+func (d *Dag) getExisting(path []string) (interface{}, error) {
+	existing, _, err := d.Resolve(path)
+	if err != nil {
+		return nil, err
+	}
+
+	switch existing.(type) {
+	case map[string]interface{}:
+		return existing.(map[string]interface{}), nil
+	case nil:
+		return nil, nil
+	default:
+		return make(map[string]interface{}), nil
+	}
+}
+
 func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, error) {
 	if !asLink {
 		switch val.(type) {
@@ -167,7 +183,7 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 		key = pathAndKey[len(pathAndKey)-1]
 	}
 
-	existing, _, err := d.Resolve(path)
+	existing, err := d.getExisting(path)
 	if err != nil {
 		return nil, fmt.Errorf("error resolving")
 	}

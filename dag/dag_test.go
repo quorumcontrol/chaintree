@@ -142,6 +142,68 @@ func TestDagSetAsLink(t *testing.T) {
 	assert.Equal(t, false, val)
 }
 
+func TestDagSetNestedAfterSet(t *testing.T) {
+	sw := &safewrap.SafeWrap{}
+
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	tip := sw.WrapObject(map[string]interface{}{})
+	dag, err := NewDagWithNodes(store, tip)
+	require.Nil(t, err)
+
+	// with string value
+	dag, err = dag.Set([]string{"test"}, "test-str")
+	assert.Nil(t, err)
+
+	dag, err = dag.Set([]string{"test", "test-key"}, "test-str-2")
+	assert.Nil(t, err)
+
+	val, _, err := dag.Resolve([]string{"test", "test-key"})
+	assert.Nil(t, err)
+	assert.Equal(t, "test-str-2", val)
+
+	// with int value
+	dag, err = dag.Set([]string{"test"}, 42)
+	assert.Nil(t, err)
+
+	dag, err = dag.Set([]string{"test", "test-key"}, 43)
+	assert.Nil(t, err)
+
+	val, _, err = dag.Resolve([]string{"test", "test-key"})
+	assert.Nil(t, err)
+	assert.Equal(t, uint64(43), val)
+}
+
+func TestDagSetAsLinkAfterSet(t *testing.T) {
+	sw := &safewrap.SafeWrap{}
+
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	tip := sw.WrapObject(map[string]interface{}{})
+	dag, err := NewDagWithNodes(store, tip)
+	require.Nil(t, err)
+
+	// with string value
+	dag, err = dag.Set([]string{"test"}, "test-str")
+	assert.Nil(t, err)
+
+	dag, err = dag.SetAsLink([]string{"test"}, map[string]interface{}{"test-key": "test-str-2"})
+	assert.Nil(t, err)
+
+	val, _, err := dag.Resolve([]string{"test", "test-key"})
+	assert.Nil(t, err)
+	assert.Equal(t, "test-str-2", val)
+
+	// with int value
+	dag, err = dag.Set([]string{"test"}, 42)
+	assert.Nil(t, err)
+
+	dag, err = dag.SetAsLink([]string{"test"}, map[string]interface{}{"test-key": 43})
+	assert.Nil(t, err)
+
+	val, _, err = dag.Resolve([]string{"test", "test-key"})
+	assert.Nil(t, err)
+	assert.Equal(t, uint64(43), val)
+}
+
 func TestDagInvalidSet(t *testing.T) {
 	sw := &safewrap.SafeWrap{}
 
@@ -222,12 +284,12 @@ func TestDagUpdate(t *testing.T) {
 	})
 
 	intermediary := sw.WrapObject(map[string]interface{}{
-		"name": "intermediary",
+		"name":   "intermediary",
 		"child2": child.Cid(),
 	})
 
 	root := sw.WrapObject(map[string]interface{}{
-		"name": "root",
+		"name":   "root",
 		"child1": intermediary.Cid(),
 	})
 
@@ -243,4 +305,3 @@ func TestDagUpdate(t *testing.T) {
 	assert.Len(t, remain, 0)
 	assert.Equal(t, "changed", val)
 }
-
