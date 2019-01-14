@@ -3,8 +3,8 @@ package chaintree
 import (
 	"fmt"
 
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipld-cbor"
+	cid "github.com/ipfs/go-cid"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/typecaster"
 )
@@ -182,14 +182,9 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		}
 	}
 
-	newTreeRoot, err := newTree.Get(newTree.Tip)
+	ct.Dag, err = ct.Dag.Update([]string{TreeLabel}, newTree.Tip)
 	if err != nil {
-		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting tree tip: %v", err)}
-	}
-
-	ct.Dag, err = ct.Dag.Update([]string{TreeLabel}, newTreeRoot.Cid())
-	if err != nil {
-		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error setting as link: %v", err)}
+		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error updating tree: %v", err)}
 	}
 
 	/*
