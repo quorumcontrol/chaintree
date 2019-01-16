@@ -6,11 +6,11 @@ import (
 	"testing"
 
 	"github.com/ipfs/go-cid"
+	ds "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-datastore"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/chaintree/typecaster"
-	"github.com/quorumcontrol/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -64,7 +64,7 @@ func TestChainTree_Id(t *testing.T) {
 		"id":    "test",
 	})
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.NewStorageBasedStore(ds.NewMapDatastore())
 	dag, err := dag.NewDagWithNodes(store, root, tree, chain)
 	require.Nil(t, err)
 	chainTree, err := NewChainTree(
@@ -98,7 +98,7 @@ func TestBuildingUpAChain(t *testing.T) {
 
 	assert.Nil(t, sw.Err)
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.NewStorageBasedStore(ds.NewMapDatastore())
 	dag, err := dag.NewDagWithNodes(store, root, treeNode, chainNode)
 	require.Nil(t, err)
 
@@ -310,7 +310,7 @@ func TestBlockProcessing(t *testing.T) {
 			},
 		},
 	} {
-		store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+		store := nodestore.NewStorageBasedStore(ds.NewMapDatastore())
 		dag, err := dag.NewDagWithNodes(store, root, tree, chain)
 		require.Nil(t, err)
 
@@ -355,7 +355,7 @@ func BenchmarkEncodeDecode(b *testing.B) {
 		"chain": chain.Cid(),
 		"tree":  tree.Cid(),
 	})
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.NewStorageBasedStore(ds.NewMapDatastore())
 	dag, err := dag.NewDagWithNodes(store, root, tree, chain)
 	require.Nil(b, err)
 

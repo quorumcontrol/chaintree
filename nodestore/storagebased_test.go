@@ -5,14 +5,14 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipld-cbor"
+	ds "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-datastore"
 	"github.com/quorumcontrol/chaintree/safewrap"
-	"github.com/quorumcontrol/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestStorageBasedStoreCreateNode(t *testing.T) {
-	sbs := NewStorageBasedStore(storage.NewMemStorage())
+	sbs := NewStorageBasedStore(ds.NewMapDatastore())
 	obj := map[string]string{"hi": "value"}
 	sw := &safewrap.SafeWrap{}
 	testNode := sw.WrapObject(obj)
@@ -23,7 +23,7 @@ func TestStorageBasedStoreCreateNode(t *testing.T) {
 }
 
 func TestStorageBasedStoreGetNode(t *testing.T) {
-	sbs := NewStorageBasedStore(storage.NewMemStorage())
+	sbs := NewStorageBasedStore(ds.NewMapDatastore())
 	obj := map[string]string{"hi": "value"}
 	sw := &safewrap.SafeWrap{}
 	testNode := sw.WrapObject(obj)
@@ -37,7 +37,7 @@ func TestStorageBasedStoreGetNode(t *testing.T) {
 }
 
 func TestStorageBasedStoreGetReferences(t *testing.T) {
-	sbs := NewStorageBasedStore(storage.NewMemStorage())
+	sbs := NewStorageBasedStore(ds.NewMapDatastore())
 	sw := &safewrap.SafeWrap{}
 
 	child := map[string]string{"hi": "value"}
@@ -73,7 +73,7 @@ func TestStorageBasedStoreDeleteIfUnreferenced(t *testing.T) {
 			shouldErr:    false,
 			shouldDelete: true,
 			setup: func(t *testing.T) (cid.Cid, NodeStore) {
-				sbs := NewStorageBasedStore(storage.NewMemStorage())
+				sbs := NewStorageBasedStore(ds.NewMapDatastore())
 				node, err := sbs.CreateNode(defaultMap)
 				require.Nil(t, err)
 				return node.Cid(), sbs
@@ -84,7 +84,7 @@ func TestStorageBasedStoreDeleteIfUnreferenced(t *testing.T) {
 			shouldErr:    false,
 			shouldDelete: false,
 			setup: func(t *testing.T) (cid.Cid, NodeStore) {
-				sbs := NewStorageBasedStore(storage.NewMemStorage())
+				sbs := NewStorageBasedStore(ds.NewMapDatastore())
 				node, err := sbs.CreateNode(defaultMap)
 				require.Nil(t, err)
 				root := map[string]cid.Cid{
@@ -101,7 +101,7 @@ func TestStorageBasedStoreDeleteIfUnreferenced(t *testing.T) {
 			shouldErr:    false,
 			shouldDelete: true,
 			setup: func(t *testing.T) (cid.Cid, NodeStore) {
-				sbs := NewStorageBasedStore(storage.NewMemStorage())
+				sbs := NewStorageBasedStore(ds.NewMapDatastore())
 				node, err := sbs.CreateNode(defaultMap)
 				require.Nil(t, err)
 				root := map[string]cid.Cid{
@@ -208,7 +208,7 @@ func TestStorageBasedStoreDeleteTree(t *testing.T) {
 			},
 		},
 	} {
-		sbs := NewStorageBasedStore(storage.NewMemStorage())
+		sbs := NewStorageBasedStore(ds.NewMapDatastore())
 		nodes, tipToDelete := tc.setup()
 		for _, node := range nodes {
 			_, err := sbs.CreateNodeFromBytes(node.RawData())
@@ -236,7 +236,7 @@ func TestStorageBasedStoreResolve(t *testing.T) {
 	})
 
 	assert.Nil(t, sw.Err)
-	sbs := NewStorageBasedStore(storage.NewMemStorage())
+	sbs := NewStorageBasedStore(ds.NewMapDatastore())
 	sbs.CreateNodeFromBytes(child.RawData())
 	sbs.CreateNodeFromBytes(root.RawData())
 

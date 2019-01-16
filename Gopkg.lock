@@ -2,22 +2,6 @@
 
 
 [[projects]]
-  branch = "master"
-  digest = "1:b02e5e3f836f077a3249d1dfe3c57d305e007f71a98f2e69c170a2dd8d2b266c"
-  name = "github.com/AndreasBriese/bbloom"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "343706a395b76e5ca5c7dca46a5d937b48febc74"
-
-[[projects]]
-  digest = "1:c28625428387b63dd7154eb857f51e700465cfbf7c06f619e71f2da33cefe47e"
-  name = "github.com/coreos/bbolt"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "583e8937c61f1af6513608ccc75c97b6abdf4ff9"
-  version = "v1.3.0"
-
-[[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -26,51 +10,12 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:5f5090f05382959db941fa45acbeb7f4c5241aa8ac0f8f4393dec696e5953f53"
-  name = "github.com/dgraph-io/badger"
-  packages = [
-    ".",
-    "options",
-    "protos",
-    "skl",
-    "table",
-    "y",
-  ]
-  pruneopts = "UT"
-  revision = "99233d725dbdd26d156c61b2f42ae1671b794656"
-  version = "v1.5.4"
-
-[[projects]]
-  branch = "master"
-  digest = "1:8583eab935e3d99d3a7ac489cd2ee7c8e95eecd7c64ab1fc8382746dacaf8563"
-  name = "github.com/dgryski/go-farm"
+  digest = "1:236d7e1bdb50d8f68559af37dbcf9d142d56b431c9b2176d41e2a009b664cda8"
+  name = "github.com/google/uuid"
   packages = ["."]
   pruneopts = "UT"
-  revision = "2de33835d10275975374b37b2dcfd22c9020a1f5"
-
-[[projects]]
-  digest = "1:654e9b37e6d657dc6b2182e126c3e15d05ed7afd94f960e367c6e98dd853b8fe"
-  name = "github.com/ethereum/go-ethereum"
-  packages = ["log"]
-  pruneopts = "UT"
-  revision = "8bbe72075e4e16442c4e28d999edee12e294329e"
-  version = "v1.8.17"
-
-[[projects]]
-  digest = "1:33542eaf895b5489ccfb059502a721f0e8875379da8b3ff60fdd9212d503705c"
-  name = "github.com/go-stack/stack"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "54be5f394ed2c3e19dac9134a40a95ba5a017f7b"
-  version = "v1.5.4"
-
-[[projects]]
-  digest = "1:97df918963298c287643883209a2c3f642e6593379f97ab400c2a2e219ab647d"
-  name = "github.com/golang/protobuf"
-  packages = ["proto"]
-  pruneopts = "UT"
-  revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
-  version = "v1.2.0"
+  revision = "9b3b1e0f5f99ae461456d768e7d301a7acdaa2d8"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -123,6 +68,18 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:56d53ce0cae3d982b17f6096cc000f5905935b2c39cc9254aa01231d5e505c15"
+  name = "github.com/ipsn/go-ipfs"
+  packages = [
+    "gxlibs/github.com/ipfs/go-datastore",
+    "gxlibs/github.com/ipfs/go-datastore/query",
+    "gxlibs/github.com/jbenet/goprocess",
+  ]
+  pruneopts = "UT"
+  revision = "4b3ab38e3ef37ded722bab7ee9f3c4cf69fbaeff"
+
+[[projects]]
+  branch = "master"
   digest = "1:130cefe87d7eeefc824978dcb78e35672d4c49a11f25c153fbf0cfd952756fa3"
   name = "github.com/minio/blake2b-simd"
   packages = ["."]
@@ -162,14 +119,6 @@
   version = "v1.0.8"
 
 [[projects]]
-  digest = "1:40e195917a951a8bf867cd05de2a46aaf1806c50cf92eebf4c16f78cd196f747"
-  name = "github.com/pkg/errors"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
-  version = "v0.8.0"
-
-[[projects]]
   digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"
   name = "github.com/pmezard/go-difflib"
   packages = ["difflib"]
@@ -202,15 +151,6 @@
   revision = "3f797c8b12b141e1e252cc202f43c27fce58ec9e"
 
 [[projects]]
-  digest = "1:c0a61f187d800cd91007dc84cdc7bc427e9388a4198699930a7877feb37e5977"
-  name = "github.com/quorumcontrol/storage"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "02ffa9bf3a02b122b2f7970c34d2e62a4e49bb3d"
-  source = "git@github.com:quorumcontrol/storage.git"
-  version = "v1.0.1"
-
-[[projects]]
   digest = "1:919bb3aa6d9d0b67648c219fa4925312bc3c2872da19e818fa769e9c97a2b643"
   name = "github.com/spaolacci/murmur3"
   packages = ["."]
@@ -239,16 +179,10 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:ecddf8fe5119918b6c62b599fc1b956885ff92bda33c661db6d2936f8fd947c7"
+  digest = "1:f8974feab547e330cb0b0e4296740f12c5886c9da973014cfea8336eed971a47"
   name = "golang.org/x/crypto"
   packages = [
     "blake2s",
-    "internal/subtle",
-    "nacl/secretbox",
-    "pbkdf2",
-    "poly1305",
-    "salsa20/salsa",
-    "scrypt",
     "sha3",
   ]
   pruneopts = "UT"
@@ -256,24 +190,9 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a7b3aa11890fbe342ed4bf76a27986473d13103ae14796dcf2b55521c93e2547"
-  name = "golang.org/x/net"
-  packages = [
-    "context",
-    "internal/timeseries",
-    "trace",
-  ]
-  pruneopts = "UT"
-  revision = "c44066c5c816ec500d459a2a324a753f78531ae0"
-
-[[projects]]
-  branch = "master"
-  digest = "1:6f86e2f2e2217cd4d74dec6786163cf80e4d2b99adb341ecc60a45113b844dca"
+  digest = "1:8392490b249a3602a13813be12324d3b16eca044ae185ff32cdd9e267706e208"
   name = "golang.org/x/sys"
-  packages = [
-    "cpu",
-    "unix",
-  ]
+  packages = ["cpu"]
   pruneopts = "UT"
   revision = "7e31e0c00fa05cb5fbf4347b585621d6709e19a4"
 
@@ -285,12 +204,13 @@
     "github.com/ipfs/go-cid",
     "github.com/ipfs/go-ipld-cbor",
     "github.com/ipfs/go-ipld-format",
+    "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-datastore",
+    "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-datastore/query",
     "github.com/multiformats/go-multihash",
     "github.com/polydawn/refmt/obj",
     "github.com/polydawn/refmt/obj/atlas",
     "github.com/polydawn/refmt/shared",
     "github.com/quorumcontrol/namedlocker",
-    "github.com/quorumcontrol/storage",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
   ]

@@ -3,9 +3,9 @@ package dag
 import (
 	"testing"
 
+	ds "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-datastore"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
-	"github.com/quorumcontrol/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,7 +17,7 @@ func newDeepDag(t *testing.T) *Dag {
 	root := sw.WrapObject(map[string]interface{}{"child": child.Cid(), "root": true})
 	require.Nil(t, sw.Err)
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.NewStorageBasedStore(ds.NewMapDatastore())
 	dag, err := NewDagWithNodes(store, root, deepChild, child)
 	require.Nil(t, err)
 	return dag
@@ -55,7 +55,7 @@ func TestDagSet(t *testing.T) {
 
 	assert.Nil(t, sw.Err)
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.NewStorageBasedStore(ds.NewMapDatastore())
 	dag, err := NewDagWithNodes(store, root, child)
 	require.Nil(t, err)
 
@@ -119,7 +119,7 @@ func TestDagSetAsLink(t *testing.T) {
 		"child": child.Cid(),
 	})
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.NewStorageBasedStore(ds.NewMapDatastore())
 	dag, err := NewDagWithNodes(store, root, child)
 	require.Nil(t, err)
 
@@ -145,7 +145,7 @@ func TestDagSetAsLink(t *testing.T) {
 func TestDagSetNestedAfterSet(t *testing.T) {
 	sw := &safewrap.SafeWrap{}
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.NewStorageBasedStore(ds.NewMapDatastore())
 	tip := sw.WrapObject(map[string]interface{}{})
 	dag, err := NewDagWithNodes(store, tip)
 	require.Nil(t, err)
@@ -176,7 +176,7 @@ func TestDagSetNestedAfterSet(t *testing.T) {
 func TestDagSetAsLinkAfterSet(t *testing.T) {
 	sw := &safewrap.SafeWrap{}
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.NewStorageBasedStore(ds.NewMapDatastore())
 	tip := sw.WrapObject(map[string]interface{}{})
 	dag, err := NewDagWithNodes(store, tip)
 	require.Nil(t, err)
@@ -217,7 +217,7 @@ func TestDagInvalidSet(t *testing.T) {
 
 	assert.Nil(t, sw.Err)
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.NewStorageBasedStore(ds.NewMapDatastore())
 	dag, err := NewDagWithNodes(store, root, child)
 	require.Nil(t, err)
 
@@ -240,7 +240,7 @@ func TestDagGet(t *testing.T) {
 		"child": child.Cid(),
 	})
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.NewStorageBasedStore(ds.NewMapDatastore())
 	dag, err := NewDagWithNodes(store, root, child)
 	require.Nil(t, err)
 	n, err := dag.Get(child.Cid())
@@ -265,7 +265,7 @@ func TestDagWithNewTip(t *testing.T) {
 		"child": child.Cid(),
 	})
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.NewStorageBasedStore(ds.NewMapDatastore())
 	dag, err := NewDagWithNodes(store, root, child)
 	require.Nil(t, err)
 
@@ -294,7 +294,7 @@ func TestDagUpdate(t *testing.T) {
 	})
 
 	require.Nil(t, sw.Err)
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.NewStorageBasedStore(ds.NewMapDatastore())
 	dag, err := NewDagWithNodes(store, root, intermediary, child)
 	require.Nil(t, err)
 

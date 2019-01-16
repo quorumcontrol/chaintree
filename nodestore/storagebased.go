@@ -6,23 +6,24 @@ import (
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
+	ds "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-datastore"
+	dsq "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-datastore/query"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/namedlocker"
-	"github.com/quorumcontrol/storage"
 )
 
 var trueByte = []byte{byte(1)}
 
 // StorageBasedStore is a NodeStore that can take an arbitrary storage back end
 type StorageBasedStore struct {
-	store  storage.Storage
+	store  ds.Datastore
 	locker *namedlocker.NamedLocker
 }
 
 var _ NodeStore = (*StorageBasedStore)(nil)
 
 // NewStorageBasedStore creates a new NodeStore using the store argument for the backend
-func NewStorageBasedStore(store storage.Storage) *StorageBasedStore {
+func NewStorageBasedStore(store ds.Datastore) *StorageBasedStore {
 	return &StorageBasedStore{
 		store:  store,
 		locker: namedlocker.NewNamedLocker(),
@@ -50,8 +51,8 @@ func (sbs *StorageBasedStore) CreateNodeFromBytes(data []byte) (node *cbornode.N
 
 // GetNode returns a cbornode for a CID
 func (sbs *StorageBasedStore) GetNode(cid cid.Cid) (node *cbornode.Node, err error) {
-	nodeBytes, err := sbs.store.Get([]byte(cid.KeyString()))
-	if err != nil {
+	nodeBytes, err := sbs.store.Get(ds.NewKey(cid.KeyString()))
+	if err != nil && err != ds.ErrNotFound {
 		return nil, fmt.Errorf("error getting cid: %v", err)
 	}
 	if len(nodeBytes) == 0 {
@@ -67,9 +68,26 @@ func (sbs *StorageBasedStore) GetReferences(to cid.Cid) (refs map[string]cid.Cid
 	prefix := refPrefix(to)
 	sbs.locker.RLock(string(prefix))
 	defer sbs.locker.RUnlockAndDelete(string(prefix))
-	keys, err := sbs.store.GetKeysByPrefix(prefix)
+
+	var keys []string
+
+	storedPrefix := ds.NewKey(prefix).String()
+	resp, err := sbs.store.Query(dsq.Query{Prefix: storedPrefix, KeysOnly: true})
 	if err != nil {
 		return nil, fmt.Errorf("error getting keys from storage: %v", err)
+	}
+
+	for {
+		res, ok := resp.NextSync()
+		if res.Error != nil {
+			return nil, fmt.Errorf("error iterating keys from storage: %v", res.Error)
+		}
+
+		if !ok {
+			break
+		}
+
+		keys = append(keys, res.Key)
 	}
 
 	if len(keys) == 0 {
@@ -78,11 +96,12 @@ func (sbs *StorageBasedStore) GetReferences(to cid.Cid) (refs map[string]cid.Cid
 
 	refs = make(map[string]cid.Cid)
 
-	startAfterPrefix := len(prefix)
+	startAfterPrefix := len(storedPrefix)
 
-	for _, keyBytesWithPrefix := range keys {
-		keyBytes := keyBytesWithPrefix[startAfterPrefix:]
-		cid, err := cid.Cast(keyBytes)
+	for _, keyWithPrefix := range keys {
+		key := keyWithPrefix[startAfterPrefix:]
+
+		cid, err := cid.Cast([]byte(key))
 		if err != nil {
 			return nil, fmt.Errorf("error casting CID: %v", err)
 		}
@@ -109,7 +128,7 @@ func (sbs *StorageBasedStore) DeleteIfUnreferenced(nodeCid cid.Cid) error {
 		sbs.deleteReferences(link.Cid, nodeCid)
 	}
 
-	return sbs.store.Delete([]byte(nodeCid.KeyString()))
+	return sbs.store.Delete(ds.NewKey(nodeCid.KeyString()))
 }
 
 // DeleteTree implements the NodeStore DeleteTree interface
@@ -168,7 +187,7 @@ func (sbs *StorageBasedStore) StoreNode(node *cbornode.Node) error {
 	sbs.locker.Lock(nodeCid.KeyString())
 	defer sbs.locker.UnlockAndDelete(nodeCid.KeyString())
 
-	err := sbs.store.Set([]byte(node.Cid().KeyString()), node.RawData())
+	err := sbs.store.Put(ds.NewKey(node.Cid().KeyString()), node.RawData())
 	if err != nil {
 		return fmt.Errorf("error saving storage: %v", err)
 	}
@@ -187,16 +206,12 @@ func (sbs *StorageBasedStore) saveReferences(to cid.Cid, from ...cid.Cid) error 
 	sbs.locker.Lock(string(prefix))
 	defer sbs.locker.UnlockAndDelete(string(prefix))
 	for _, fromID := range from {
-		err := sbs.store.Set(append(prefix, []byte(fromID.KeyString())...), trueByte)
+		err := sbs.store.Put(ds.NewKey(prefix+fromID.KeyString()), trueByte)
 		if err != nil {
 			return fmt.Errorf("error storing reference: %v", err)
 		}
 	}
 	return nil
-}
-
-func refPrefix(nodeID cid.Cid) []byte {
-	return []byte(nodeID.KeyString() + "-r-")
 }
 
 func (sbs *StorageBasedStore) deleteReferences(to cid.Cid, from ...cid.Cid) error {
@@ -205,13 +220,17 @@ func (sbs *StorageBasedStore) deleteReferences(to cid.Cid, from ...cid.Cid) erro
 	defer sbs.locker.UnlockAndDelete(string(prefix))
 
 	for _, fromID := range from {
-		err := sbs.store.Delete(append(prefix, []byte(fromID.KeyString())...))
+		err := sbs.store.Delete(ds.NewKey(prefix + fromID.KeyString()))
 		if err != nil {
 			return fmt.Errorf("error deleting: %v", err)
 		}
 	}
 
 	return nil
+}
+
+func refPrefix(nodeID cid.Cid) string {
+	return nodeID.KeyString() + "-r-"
 }
 
 // CborNodeToObj takes a cbornode and returns a map[string]interface{} representation
@@ -232,4 +251,3 @@ func objToCbor(obj interface{}) (node *cbornode.Node, err error) {
 	}
 	return
 }
-
