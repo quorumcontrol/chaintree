@@ -51,7 +51,7 @@ func (sbs *StorageBasedStore) CreateNodeFromBytes(data []byte) (node *cbornode.N
 
 // GetNode returns a cbornode for a CID
 func (sbs *StorageBasedStore) GetNode(cid cid.Cid) (node *cbornode.Node, err error) {
-	nodeBytes, err := sbs.store.Get(ds.NewKey(cid.KeyString()))
+	nodeBytes, err := sbs.store.Get(ds.NewKey(cid.String()))
 	if err != nil && err != ds.ErrNotFound {
 		return nil, fmt.Errorf("error getting cid: %v", err)
 	}
@@ -105,7 +105,7 @@ func (sbs *StorageBasedStore) GetReferences(to cid.Cid) (refs map[string]cid.Cid
 		if err != nil {
 			return nil, fmt.Errorf("error casting CID: %v", err)
 		}
-		refs[cid.KeyString()] = cid
+		refs[cid.String()] = cid
 	}
 	return
 }
@@ -128,7 +128,7 @@ func (sbs *StorageBasedStore) DeleteIfUnreferenced(nodeCid cid.Cid) error {
 		sbs.deleteReferences(link.Cid, nodeCid)
 	}
 
-	return sbs.store.Delete(ds.NewKey(nodeCid.KeyString()))
+	return sbs.store.Delete(ds.NewKey(nodeCid.String()))
 }
 
 // DeleteTree implements the NodeStore DeleteTree interface
@@ -184,10 +184,10 @@ func (sbs *StorageBasedStore) Resolve(tip cid.Cid, path []string) (val interface
 // StoreNode implements the NodeStore interface
 func (sbs *StorageBasedStore) StoreNode(node *cbornode.Node) error {
 	nodeCid := node.Cid()
-	sbs.locker.Lock(nodeCid.KeyString())
-	defer sbs.locker.UnlockAndDelete(nodeCid.KeyString())
+	sbs.locker.Lock(nodeCid.String())
+	defer sbs.locker.UnlockAndDelete(nodeCid.String())
 
-	err := sbs.store.Put(ds.NewKey(node.Cid().KeyString()), node.RawData())
+	err := sbs.store.Put(ds.NewKey(node.Cid().String()), node.RawData())
 	if err != nil {
 		return fmt.Errorf("error saving storage: %v", err)
 	}
@@ -206,7 +206,7 @@ func (sbs *StorageBasedStore) saveReferences(to cid.Cid, from ...cid.Cid) error 
 	sbs.locker.Lock(string(prefix))
 	defer sbs.locker.UnlockAndDelete(string(prefix))
 	for _, fromID := range from {
-		err := sbs.store.Put(ds.NewKey(prefix+fromID.KeyString()), trueByte)
+		err := sbs.store.Put(ds.NewKey(prefix+fromID.String()), trueByte)
 		if err != nil {
 			return fmt.Errorf("error storing reference: %v", err)
 		}
@@ -220,7 +220,7 @@ func (sbs *StorageBasedStore) deleteReferences(to cid.Cid, from ...cid.Cid) erro
 	defer sbs.locker.UnlockAndDelete(string(prefix))
 
 	for _, fromID := range from {
-		err := sbs.store.Delete(ds.NewKey(prefix + fromID.KeyString()))
+		err := sbs.store.Delete(ds.NewKey(prefix + fromID.String()))
 		if err != nil {
 			return fmt.Errorf("error deleting: %v", err)
 		}
@@ -230,7 +230,7 @@ func (sbs *StorageBasedStore) deleteReferences(to cid.Cid, from ...cid.Cid) erro
 }
 
 func refPrefix(nodeID cid.Cid) string {
-	return nodeID.KeyString() + "-r-"
+	return nodeID.String() + "-r-"
 }
 
 // CborNodeToObj takes a cbornode and returns a map[string]interface{} representation

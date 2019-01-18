@@ -1,9 +1,14 @@
 package dag
 
 import (
+	"os"
 	"testing"
 
+	"github.com/ipsn/go-ipfs/core"
 	ds "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-datastore"
+	config "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-ipfs-config"
+	"github.com/ipsn/go-ipfs/plugin/loader"
+	"github.com/ipsn/go-ipfs/repo/fsrepo"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/stretchr/testify/assert"
@@ -39,6 +44,52 @@ func TestDagResolve(t *testing.T) {
 }
 
 func TestDagSet(t *testing.T) {
+	os.RemoveAll(".tmp-test")
+	os.MkdirAll(".tmp-test", 0700)
+	defer os.RemoveAll(".tmp-test")
+
+	repoPath := ".tmp-test/ipfs"
+	ncfg := &core.BuildCfg{
+		Online:    false,
+		Permanent: true,
+		Routing:   core.DHTOption,
+	}
+	plugins, err := loader.NewPluginLoader("")
+
+	if err := plugins.Initialize(); err != nil {
+		require.Nil(t, err)
+	}
+	if err := plugins.Run(); err != nil {
+		// require.Nil(t, err)
+	}
+	if ncfg.Repo == nil {
+		if !fsrepo.IsInitialized(repoPath) {
+			nBitsForKeypairDefault := 2048
+			conf, err := config.Init(os.Stdout, nBitsForKeypairDefault)
+			if err != nil {
+				require.Nil(t, err)
+			}
+
+			// for _, profile := range []string{"server", "badgerds"} {
+			for _, profile := range []string{"badgerds"} {
+				transformer, ok := config.Profiles[profile]
+				if !ok {
+					require.Nil(t, err)
+				}
+
+				if err := transformer.Transform(conf); err != nil {
+					require.Nil(t, err)
+				}
+			}
+
+			if err := fsrepo.Init(repoPath, conf); err != nil {
+				require.Nil(t, err)
+			}
+		}
+	}
+
+	datastore := NewIpfsDatastore(ncfg)
+
 	sw := &safewrap.SafeWrap{}
 
 	child := sw.WrapObject(map[string]interface{}{
@@ -55,7 +106,7 @@ func TestDagSet(t *testing.T) {
 
 	assert.Nil(t, sw.Err)
 
-	store := nodestore.NewStorageBasedStore(ds.NewMapDatastore())
+	store := nodestore.NewStorageBasedStore(datastore)
 	dag, err := NewDagWithNodes(store, root, child)
 	require.Nil(t, err)
 
@@ -119,7 +170,53 @@ func TestDagSetAsLink(t *testing.T) {
 		"child": child.Cid(),
 	})
 
-	store := nodestore.NewStorageBasedStore(ds.NewMapDatastore())
+	os.RemoveAll(".tmp-test")
+	os.MkdirAll(".tmp-test", 0700)
+	defer os.RemoveAll(".tmp-test")
+
+	repoPath := ".tmp-test/ipfs"
+	ncfg := &core.BuildCfg{
+		Online:    false,
+		Permanent: true,
+		Routing:   core.DHTOption,
+	}
+	plugins, err := loader.NewPluginLoader("")
+
+	if err := plugins.Initialize(); err != nil {
+		require.Nil(t, err)
+	}
+	if err := plugins.Run(); err != nil {
+		// require.Nil(t, err)
+	}
+	if ncfg.Repo == nil {
+		if !fsrepo.IsInitialized(repoPath) {
+			nBitsForKeypairDefault := 2048
+			conf, err := config.Init(os.Stdout, nBitsForKeypairDefault)
+			if err != nil {
+				require.Nil(t, err)
+			}
+
+			// for _, profile := range []string{"server", "badgerds"} {
+			for _, profile := range []string{"badgerds"} {
+				transformer, ok := config.Profiles[profile]
+				if !ok {
+					require.Nil(t, err)
+				}
+
+				if err := transformer.Transform(conf); err != nil {
+					require.Nil(t, err)
+				}
+			}
+
+			if err := fsrepo.Init(repoPath, conf); err != nil {
+				require.Nil(t, err)
+			}
+		}
+	}
+
+	datastore := NewIpfsDatastore(ncfg)
+
+	store := nodestore.NewStorageBasedStore(datastore)
 	dag, err := NewDagWithNodes(store, root, child)
 	require.Nil(t, err)
 
@@ -145,7 +242,53 @@ func TestDagSetAsLink(t *testing.T) {
 func TestDagSetNestedAfterSet(t *testing.T) {
 	sw := &safewrap.SafeWrap{}
 
-	store := nodestore.NewStorageBasedStore(ds.NewMapDatastore())
+	os.RemoveAll(".tmp-test")
+	os.MkdirAll(".tmp-test", 0700)
+	defer os.RemoveAll(".tmp-test")
+
+	repoPath := ".tmp-test/ipfs"
+	ncfg := &core.BuildCfg{
+		Online:    false,
+		Permanent: true,
+		Routing:   core.DHTOption,
+	}
+	plugins, err := loader.NewPluginLoader("")
+
+	if err := plugins.Initialize(); err != nil {
+		require.Nil(t, err)
+	}
+	if err := plugins.Run(); err != nil {
+		// require.Nil(t, err)
+	}
+	if ncfg.Repo == nil {
+		if !fsrepo.IsInitialized(repoPath) {
+			nBitsForKeypairDefault := 2048
+			conf, err := config.Init(os.Stdout, nBitsForKeypairDefault)
+			if err != nil {
+				require.Nil(t, err)
+			}
+
+			// for _, profile := range []string{"server", "badgerds"} {
+			for _, profile := range []string{"badgerds"} {
+				transformer, ok := config.Profiles[profile]
+				if !ok {
+					require.Nil(t, err)
+				}
+
+				if err := transformer.Transform(conf); err != nil {
+					require.Nil(t, err)
+				}
+			}
+
+			if err := fsrepo.Init(repoPath, conf); err != nil {
+				require.Nil(t, err)
+			}
+		}
+	}
+
+	datastore := NewIpfsDatastore(ncfg)
+
+	store := nodestore.NewStorageBasedStore(datastore)
 	tip := sw.WrapObject(map[string]interface{}{})
 	dag, err := NewDagWithNodes(store, tip)
 	require.Nil(t, err)
@@ -176,7 +319,53 @@ func TestDagSetNestedAfterSet(t *testing.T) {
 func TestDagSetAsLinkAfterSet(t *testing.T) {
 	sw := &safewrap.SafeWrap{}
 
-	store := nodestore.NewStorageBasedStore(ds.NewMapDatastore())
+	os.RemoveAll(".tmp-test2")
+	os.MkdirAll(".tmp-test2", 0700)
+	defer os.RemoveAll(".tmp-test2")
+
+	repoPath := ".tmp-test/ipfs"
+	ncfg := &core.BuildCfg{
+		Online:    false,
+		Permanent: true,
+		Routing:   core.DHTOption,
+	}
+	plugins, err := loader.NewPluginLoader("")
+
+	if err := plugins.Initialize(); err != nil {
+		require.Nil(t, err)
+	}
+	if err := plugins.Run(); err != nil {
+		// require.Nil(t, err)
+	}
+	if ncfg.Repo == nil {
+		if !fsrepo.IsInitialized(repoPath) {
+			nBitsForKeypairDefault := 2048
+			conf, err := config.Init(os.Stdout, nBitsForKeypairDefault)
+			if err != nil {
+				require.Nil(t, err)
+			}
+
+			// for _, profile := range []string{"server", "badgerds"} {
+			for _, profile := range []string{"badgerds"} {
+				transformer, ok := config.Profiles[profile]
+				if !ok {
+					require.Nil(t, err)
+				}
+
+				if err := transformer.Transform(conf); err != nil {
+					require.Nil(t, err)
+				}
+			}
+
+			if err := fsrepo.Init(repoPath, conf); err != nil {
+				require.Nil(t, err)
+			}
+		}
+	}
+
+	datastore := NewIpfsDatastore(ncfg)
+
+	store := nodestore.NewStorageBasedStore(datastore)
 	tip := sw.WrapObject(map[string]interface{}{})
 	dag, err := NewDagWithNodes(store, tip)
 	require.Nil(t, err)
@@ -217,7 +406,53 @@ func TestDagInvalidSet(t *testing.T) {
 
 	assert.Nil(t, sw.Err)
 
-	store := nodestore.NewStorageBasedStore(ds.NewMapDatastore())
+	os.RemoveAll(".tmp-test")
+	os.MkdirAll(".tmp-test", 0700)
+	defer os.RemoveAll(".tmp-test")
+
+	repoPath := ".tmp-test/ipfs"
+	ncfg := &core.BuildCfg{
+		Online:    false,
+		Permanent: true,
+		Routing:   core.DHTOption,
+	}
+	plugins, err := loader.NewPluginLoader("")
+
+	if err := plugins.Initialize(); err != nil {
+		require.Nil(t, err)
+	}
+	if err := plugins.Run(); err != nil {
+		// require.Nil(t, err)
+	}
+	if ncfg.Repo == nil {
+		if !fsrepo.IsInitialized(repoPath) {
+			nBitsForKeypairDefault := 2048
+			conf, err := config.Init(os.Stdout, nBitsForKeypairDefault)
+			if err != nil {
+				require.Nil(t, err)
+			}
+
+			// for _, profile := range []string{"server", "badgerds"} {
+			for _, profile := range []string{"badgerds"} {
+				transformer, ok := config.Profiles[profile]
+				if !ok {
+					require.Nil(t, err)
+				}
+
+				if err := transformer.Transform(conf); err != nil {
+					require.Nil(t, err)
+				}
+			}
+
+			if err := fsrepo.Init(repoPath, conf); err != nil {
+				require.Nil(t, err)
+			}
+		}
+	}
+
+	datastore := NewIpfsDatastore(ncfg)
+
+	store := nodestore.NewStorageBasedStore(datastore)
 	dag, err := NewDagWithNodes(store, root, child)
 	require.Nil(t, err)
 

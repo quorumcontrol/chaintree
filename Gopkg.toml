@@ -57,6 +57,10 @@
   name = "github.com/stretchr/testify"
   version = "1.2.2"
 
+[[override]]
+  revision = "10e1ee8dd41927fff4aa5cf1c205ad30f1a39e43"
+  name = "github.com/dgraph-io/badger"
+
 [prune]
   go-tests = true
   unused-packages = true
