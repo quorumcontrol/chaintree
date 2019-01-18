@@ -182,12 +182,17 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		}
 	}
 
-	newTreeRoot, err := newTree.Get(newTree.Tip)
+	unmarshaledTreeTip, err := newTree.Get(newTree.Tip)
 	if err != nil {
-		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting tree tip: %v", err)}
+		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting new tree root: %v", err)}
+	}
+	newTreeMap := make(map[string]interface{})
+	err = cbornode.DecodeInto(unmarshaledTreeTip.RawData(), &newTreeMap)
+	if err != nil {
+		return false, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error decoding new tree root into map: %v", err)}
 	}
 
-	ct.Dag, err = ct.Dag.Update([]string{TreeLabel}, newTreeRoot.Cid())
+	ct.Dag, err = ct.Dag.SetAsLink([]string{TreeLabel}, newTreeMap)
 	if err != nil {
 		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error setting as link: %v", err)}
 	}
