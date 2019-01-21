@@ -2,6 +2,7 @@ package dag
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/davecgh/go-spew/spew"
 	cid "github.com/ipfs/go-cid"
@@ -299,17 +300,22 @@ func (d *Dag) Dump() string {
 	nodes, _ := d.Nodes()
 	nodeStrings := make([]string, len(nodes))
 	for i, node := range nodes {
-		nodeStrings[i] = node.Cid().String()
+		nodeJSON, err := node.MarshalJSON()
+		if err != nil {
+			fmt.Errorf("error marshalling JSON for node %v: %v", node, err)
+		}
+		nodeStrings[i] = fmt.Sprintf("%v : %v", node.Cid().String(), string(nodeJSON))
 	}
 	return fmt.Sprintf(`
 Tip: %s,
 Tree:	
 %s
 
-Nodes: %v
+Nodes:
+%v
 
 	`,
 		d.Tip.String(),
 		spew.Sdump(d.dumpNode(rootNode, false)),
-		nodes)
+		strings.Join(nodeStrings, "\n\n"))
 }
