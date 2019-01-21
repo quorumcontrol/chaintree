@@ -184,7 +184,7 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 
 	unmarshaledTreeTip, err := newTree.Get(newTree.Tip)
 	if err != nil {
-		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting new tree root: %v", err)}
+		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting new tree tip: %v", err)}
 	}
 	newTreeMap := make(map[string]interface{})
 	err = cbornode.DecodeInto(unmarshaledTreeTip.RawData(), &newTreeMap)
