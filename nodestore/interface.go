@@ -29,14 +29,11 @@ type NodeStore interface {
 	CreateNode(obj interface{}) (*cbornode.Node, error)
 	// CreateNodeFromBytes creates a new node, but using cbor bytes instead of a native GO object
 	CreateNodeFromBytes(nodeBytes []byte) (*cbornode.Node, error)
-	// StoreNode just takes a cbornode and sets references, etc in the storage
+	// StoreNode just takes a cbornode and saves it in the storage
 	StoreNode(node *cbornode.Node) error
-	// GetReferences returns a slice of CIDs that contain a link to the CID in the to argument
-	GetReferences(to cid.Cid) (map[string]cid.Cid, error)
-	// DeleteNode deletes a node from the store, it will no-op if the node is referenced by other nodes
-	DeleteIfUnreferenced(nodeCid cid.Cid) error
-	// DeleteTree removes everything in a tree starting from a tip as long as none of the nodes have
-	// references
+	// DeleteNode deletes a node from the store
+	DeleteNode(nodeCid cid.Cid) error
+	// DeleteTree removes everything in a tree starting from a tip
 	DeleteTree(tip cid.Cid) error
 
 	// Resolve takes a tip, and walks through the NodeStore until finding a value

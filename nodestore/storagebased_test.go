@@ -36,28 +36,7 @@ func TestStorageBasedStoreGetNode(t *testing.T) {
 	assert.Equal(t, testNode.Cid().String(), node.String())
 }
 
-func TestStorageBasedStoreGetReferences(t *testing.T) {
-	sbs := NewStorageBasedStore(storage.NewMemStorage())
-	sw := &safewrap.SafeWrap{}
-
-	child := map[string]string{"hi": "value"}
-	childNode := sw.WrapObject(child)
-	root := map[string]cid.Cid{"child": childNode.Cid()}
-	rootNode := sw.WrapObject(root)
-
-	_, err := sbs.CreateNode(child)
-	require.Nil(t, err)
-	_, err = sbs.CreateNode(root)
-	require.Nil(t, err)
-
-	refs, err := sbs.GetReferences(childNode.Cid())
-	require.Nil(t, err)
-	require.Len(t, refs, 1)
-
-	assert.Equal(t, refs[rootNode.Cid().KeyString()].String(), rootNode.Cid().String())
-}
-
-func TestStorageBasedStoreDeleteIfUnreferenced(t *testing.T) {
+func TestStorageBasedStoreDeleteNode(t *testing.T) {
 	type testStruct struct {
 		description  string
 		setup        func(t *testing.T) (cid.Cid, NodeStore)
@@ -82,7 +61,7 @@ func TestStorageBasedStoreDeleteIfUnreferenced(t *testing.T) {
 		{
 			description:  "a referenced node",
 			shouldErr:    false,
-			shouldDelete: false,
+			shouldDelete: true,
 			setup: func(t *testing.T) (cid.Cid, NodeStore) {
 				sbs := NewStorageBasedStore(storage.NewMemStorage())
 				node, err := sbs.CreateNode(defaultMap)
@@ -115,7 +94,7 @@ func TestStorageBasedStoreDeleteIfUnreferenced(t *testing.T) {
 		},
 	} {
 		toDelete, store := test.setup(t)
-		err := store.DeleteIfUnreferenced(toDelete)
+		err := store.DeleteNode(toDelete)
 		existing, err := store.GetNode(toDelete)
 		require.Nil(t, err, test.description)
 
@@ -178,33 +157,6 @@ func TestStorageBasedStoreDeleteTree(t *testing.T) {
 				saved, err = sbs.GetNode(nodes[1].Cid())
 				assert.Nil(t, err)
 				assert.Nil(t, saved)
-			},
-		},
-		{
-			description: "a tree with another reference",
-			shouldErr:   false,
-			setup: func() (nodesToCreate []*cbornode.Node, tipToDelete cid.Cid) {
-				sw := safewrap.SafeWrap{}
-				node := sw.WrapObject(defaultMap)
-				root := map[string]cid.Cid{"child": node.Cid()}
-				rootNode := sw.WrapObject(root)
-				otherRefHolder := map[string]cid.Cid{"diferentNode": node.Cid()}
-				otherRefHolderNode := sw.WrapObject(otherRefHolder)
-				require.Nil(t, sw.Err)
-				return []*cbornode.Node{node, rootNode, otherRefHolderNode}, rootNode.Cid()
-			},
-			tests: func(sbs NodeStore, nodes []*cbornode.Node) {
-				saved, err := sbs.GetNode(nodes[0].Cid())
-				assert.Nil(t, err)
-				assert.NotNil(t, saved)
-
-				saved, err = sbs.GetNode(nodes[1].Cid())
-				assert.Nil(t, err)
-				assert.Nil(t, saved)
-
-				saved, err = sbs.GetNode(nodes[2].Cid())
-				assert.Nil(t, err)
-				assert.NotNil(t, saved)
 			},
 		},
 	} {
