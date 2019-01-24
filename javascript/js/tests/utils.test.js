@@ -18,9 +18,16 @@ describe('utils', ()=> {
         expect(deserialized).to.eql(obj);
     });
 
-    it('calculates a cid', async ()=> {
+    it('calculates a cid from an object', async ()=> {
         let obj = {foo: 1};
         let cid = await utils.cid(obj);
-        expect(cid).to.eql("qmasdf");
+        expect(cid.toBaseEncodedString()).to.eql("zdpuAo2cQJdBnUa3PorWFLWK7ijsFD2KRcs2YDRQ38pe1mQ8M");
     });
+
+    it('calculates a cid from a serialized', async ()=> {
+        let obj = {foo: 1};
+        let serialized = await utils.serialize(obj);
+        let cid = await utils.cidOfSerialized(serialized);
+        expect(cid.toBaseEncodedString()).to.eql("zdpuAo2cQJdBnUa3PorWFLWK7ijsFD2KRcs2YDRQ38pe1mQ8M"); 
+    })
 })

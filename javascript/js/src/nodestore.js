@@ -1,15 +1,17 @@
 const utils = require('./utils');
 
-const nodestore = {};
+class Nodestore {
+    constructor() {
+        this.storage = {};
+    }
 
-nodestore.store = {};
+    get(cid) {
+        return this.storage[cid.toBaseEncodedString()];
+    }
 
-nodestore.Get = (cid)=> {
-    return this.store[cid];
+    store(cid, node) {
+        this.storage[cid.toBaseEncodedString()] = node;
+    }
 }
 
-nodestore.Store = (cid,node)=> {
-    this.store[cid] = node;
-}
-
-module.exports = nodestore;
+module.exports = Nodestore;
