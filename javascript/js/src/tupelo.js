@@ -1,6 +1,12 @@
 const dagCBOR = require('ipld-dag-cbor');
 
-const tupelo = {};
+class Tupelo {
+    constructor(webv8worker) {
+        this.worker = webv8worker;
+    }
+
+    
+}
 
 
 

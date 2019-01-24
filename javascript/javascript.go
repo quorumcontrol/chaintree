@@ -9,6 +9,5 @@ func Run() error {
 		panic("should not receive err")
 		return nil
 	})
-	worker.SendBytes()
 	return worker.Load("code.js", `V8Worker2.print("ready");`)
 }
