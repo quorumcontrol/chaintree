@@ -48,4 +48,17 @@ utils.cidOfSerialized = function(serialized) {
         });
 }
 
+utils.resolve = async function(blob, path) {
+    return new Promise((resolve,reject)=> {
+        dagCBOR.resolver.resolve(blob, path, (err,resp) => {
+            if (err) {
+                reject(err);
+                return
+            }
+
+            resolve(resp);
+        });
+    });
+}
+
 module.exports = utils;
