@@ -3,6 +3,7 @@ package messages
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
@@ -11,9 +12,16 @@ import (
 
 var registry = make(map[string]reflect.Type)
 
+func typeStringToRegistry(str string) string {
+	str = strings.Split(str, ".")[1]
+	str = strings.ToLower(str)
+	return str
+}
 func register(obj interface{}) {
 	typ := reflect.TypeOf(obj)
-	registry[typ.String()] = typ
+	str := typeStringToRegistry(typ.String())
+	registry[str] = typ
+	cbornode.RegisterCborType(obj)
 }
 
 func init() {
@@ -21,7 +29,6 @@ func init() {
 	register(GetNode{})
 	register(GetNodeResponse{})
 	register(Start{})
-	cbornode.RegisterCborType(Start{})
 	register(Finished{})
 }
 
@@ -39,7 +46,7 @@ func ToAny(other interface{}) (*Any, error) {
 	}
 
 	return &Any{
-		Type:    typeStr,
+		Type:    typeStringToRegistry(typeStr),
 		Payload: payload.RawData(),
 	}, nil
 }
