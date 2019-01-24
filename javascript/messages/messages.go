@@ -51,6 +51,19 @@ func ToAny(other interface{}) (*Any, error) {
 	}, nil
 }
 
+func FromAny(any *Any) (interface{}, error) {
+	typ, ok := registry[any.Type]
+	if !ok {
+		return nil, fmt.Errorf("error, unknown type %s", any.Type)
+	}
+	ptr := reflect.New(typ).Interface()
+	err := cbornode.DecodeInto(any.Payload, ptr)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding: %v", err)
+	}
+	return ptr, nil
+}
+
 type Start struct {
 	Tip   cid.Cid
 	Nodes [][]byte
