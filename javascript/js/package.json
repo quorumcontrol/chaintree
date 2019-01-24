@@ -1,0 +1,26 @@
+{
+  "name": "chaintree",
+  "version": "0.0.1",
+  "description": "this is the boot code present in all v8workers for chaintrees",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha -r ts-node/register tests/**/*.test.*",
+    "testWithCoverage": "nyc -r lcov -e .ts -x \"*.test.ts\" mocha -r ts-node/register tests/**/*.test.* && nyc report"
+  },
+  "author": "info@quorumcontrol.com",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@types/chai": "^4.1.7",
+    "@types/mocha": "^5.2.5",
+    "chai": "^4.2.0",
+    "mocha": "^5.2.0",
+    "nyc": "^13.1.0",
+    "ts-node": "^8.0.1",
+    "typescript": "^3.2.4"
+  },
+  "dependencies": {
+    "@types/node": "^10.12.18",
+    "cids": "^0.5.7",
+    "ipld-dag-cbor": "^0.13.1"
+  }
+}

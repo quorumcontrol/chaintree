@@ -62,6 +62,10 @@
   name = "github.com/stretchr/testify"
   version = "1.2.2"
 
+[[override]]
+  name = "github.com/ry/v8worker2"
+  source = "https://github.com/brandonmanke/v8worker2.git"
+  revision = "c7360731adb6727a4cbfd61c7a0441a96a131275"
+
 [prune]
   go-tests = true
-  unused-packages = true
