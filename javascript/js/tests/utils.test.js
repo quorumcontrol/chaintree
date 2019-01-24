@@ -17,4 +17,10 @@ describe('utils', ()=> {
         let deserialized = await utils.deserialize(serialized);
         expect(deserialized).to.eql(obj);
     });
+
+    it('calculates a cid', async ()=> {
+        let obj = {foo: 1};
+        let cid = await utils.cid(obj);
+        expect(cid).to.eql("qmasdf");
+    });
 })
