@@ -171,6 +171,17 @@ func TestDagSetNestedAfterSet(t *testing.T) {
 	val, _, err = dag.Resolve([]string{"test", "test-key"})
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(43), val)
+
+	// with multiple levels of non-existent path
+	dag, err = dag.Set([]string{"test"}, "test-str")
+	assert.Nil(t, err)
+
+	dag, err = dag.Set([]string{"test", "down", "in", "the", "thing"}, "test-str-2")
+	assert.Nil(t, err)
+
+	val, _, err = dag.Resolve([]string{"test", "down", "in", "the", "thing"})
+	assert.Nil(t, err)
+	assert.Equal(t, "test-str-2", val)
 }
 
 func TestDagSetAsLinkAfterSet(t *testing.T) {
@@ -185,7 +196,7 @@ func TestDagSetAsLinkAfterSet(t *testing.T) {
 	dag, err = dag.Set([]string{"test"}, "test-str")
 	assert.Nil(t, err)
 
-	dag, err = dag.SetAsLink([]string{"test"}, map[string]interface{}{"test-key": "test-str-2"})
+	dag, err = dag.SetAsLink([]string{"test"}, map[string]string{"test-key": "test-str-2"})
 	assert.Nil(t, err)
 
 	val, _, err := dag.Resolve([]string{"test", "test-key"})
@@ -196,12 +207,25 @@ func TestDagSetAsLinkAfterSet(t *testing.T) {
 	dag, err = dag.Set([]string{"test"}, 42)
 	assert.Nil(t, err)
 
-	dag, err = dag.SetAsLink([]string{"test"}, map[string]interface{}{"test-key": 43})
+	dag, err = dag.SetAsLink([]string{"test"}, map[string]int{"test-key": 43})
 	assert.Nil(t, err)
 
 	val, _, err = dag.Resolve([]string{"test", "test-key"})
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(43), val)
+
+	// with multiple levels of non-existent path
+	dag, err = dag.SetAsLink([]string{"test"}, map[string]string{
+		"foo": "bar",
+	})
+	assert.Nil(t, err)
+
+	dag, err = dag.Set([]string{"test", "down", "in", "the", "thing"}, "test-str-2")
+	assert.Nil(t, err)
+
+	val, _, err = dag.Resolve([]string{"test", "down", "in", "the", "thing"})
+	assert.Nil(t, err)
+	assert.Equal(t, "test-str-2", val)
 }
 
 func TestDagInvalidSet(t *testing.T) {
