@@ -35,32 +35,36 @@
 
 [[constraint]]
   name = "github.com/ipfs/go-ipld-cbor"
-  revision = "4f6fa492b20fed2df7d3453912c61730d3618ef3"
+  revision = "5a60a3a4a7ccddcc717bbac9f8e0a65dd982ad46"
 
 [[constraint]]
   name = "github.com/ipfs/go-ipld-format"
   revision = "b2d848bada9dbd11ec27b9a38e8726555e249fd4"
 
 [[constraint]]
+  name = "github.com/ipsn/go-ipfs"
+  revision = "4b3ab38e3ef37ded722bab7ee9f3c4cf69fbaeff"
+
+[[constraint]]
   name = "github.com/multiformats/go-multihash"
   version = "1.0.8"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/polydawn/refmt"
+  revision = "8b1e46de349b0c099d425ed8fddee3ff6eff3eef"
 
 [[constraint]]
   branch = "master"
   name = "github.com/quorumcontrol/namedlocker"
 
 [[constraint]]
-  name = "github.com/quorumcontrol/storage"
-  source = "git@github.com:quorumcontrol/storage.git"
-  version = "1.0.1"
-
-[[constraint]]
   name = "github.com/stretchr/testify"
   version = "1.2.2"
+
+[[constraint]]
+  source = "git@github.com:quorumcontrol/storage.git"
+  name = "github.com/quorumcontrol/storage"
+  version = "1.1.1"
 
 [prune]
   go-tests = true
