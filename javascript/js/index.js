@@ -1,5 +1,5 @@
-const Tupelo = require('src/tupelo');
+import Tupelo from './src/tupelo';
 
-global.tupelo = new Tupelo();
+let tupelo = new Tupelo(global.V8Worker2);
 
-module.exports = global.tupelo;
+export default tupelo;

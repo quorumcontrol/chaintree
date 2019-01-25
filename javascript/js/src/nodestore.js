@@ -1,5 +1,5 @@
-const utils = require('./utils');
-const CID = require('cids');
+import utils from './utils';
+import CID from 'cids';
 
 class Nodestore {
     constructor() {
@@ -24,4 +24,4 @@ class Nodestore {
     }
 }
 
-module.exports = Nodestore;
+export default Nodestore;
