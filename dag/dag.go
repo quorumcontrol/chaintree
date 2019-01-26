@@ -142,19 +142,19 @@ func (d *Dag) SetAsLink(pathAndKey []string, val interface{}) (*Dag, error) {
 	return d.set(pathAndKey, val, true)
 }
 
-func (d *Dag) getExisting(path []string) (interface{}, error) {
-	existing, _, err := d.Resolve(path)
+func (d *Dag) getExisting(path []string) (remainingPath []string, val interface{}, err error) {
+	existing, remaining, err := d.Resolve(path)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	switch existing.(type) {
 	case map[string]interface{}:
-		return existing.(map[string]interface{}), nil
+		return remaining, existing.(map[string]interface{}), nil
 	case nil:
-		return nil, nil
+		return nil, nil, nil
 	default:
-		return make(map[string]interface{}), nil
+		return remaining, make(map[string]interface{}), nil
 	}
 }
 
@@ -184,11 +184,12 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 		key = pathAndKey[len(pathAndKey)-1]
 	}
 
-	existing, err := d.getExisting(path)
+	remainingPath, existing, err := d.getExisting(path)
 	if err != nil {
-		return nil, fmt.Errorf("error resolving")
+		return nil, fmt.Errorf("error resolving path %s: %v", path, err)
 	}
-	if existing == nil {
+
+	if existing == nil || len(remainingPath) > 0 {
 		var newObj interface{}
 
 		if asLink {
@@ -235,11 +236,11 @@ func (d *Dag) createDeepObject(path []string, node *cbornode.Node) (*Dag, error)
 	var indexOfLastExistingNode int
 
 	for i := len(path); i >= 0; i-- {
-		val, _, err := d.Resolve(path[0:i])
+		val, remaining, err := d.Resolve(path[0:i])
 		if err != nil {
 			return nil, fmt.Errorf("error resolving: %v", err)
 		}
-		if val != nil {
+		if val != nil && len(remaining) == 0 {
 			indexOfLastExistingNode = i
 			break
 		}

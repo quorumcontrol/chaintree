@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	cid "github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipld-cbor"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/namedlocker"
@@ -93,10 +93,27 @@ func (sbs *StorageBasedStore) Resolve(tip cid.Cid, path []string) (val interface
 	}
 	val, remaining, err = node.Resolve(path)
 	if err != nil {
-		// If the link is just missing, then just return the whole path as remaining, with a nil value
-		// instead of an error
-		if err == cbornode.ErrNoSuchLink {
+		switch err {
+		case cbornode.ErrNoSuchLink:
+			// If the link is just missing, then just return the whole path as remaining, with a nil value
+			// instead of an error
 			return nil, path, nil
+		case cbornode.ErrNoLinks:
+			// this means there was a simple value somewhere along the path
+			// try resolving less of the path to find the existing boundary
+			var err error
+			for i := 1; i < len(path); i++ {
+				val, remaining, err = node.Resolve(path[:len(path)-i])
+				if err != nil {
+					continue
+				} else {
+					// return the simple value and the rest of the path as remaining
+					return val, path[len(path)-i:], nil
+				}
+			}
+			if err != nil {
+				return nil, nil, err
+			}
 		}
 		return nil, nil, err
 	}
