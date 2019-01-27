@@ -9,6 +9,9 @@
   },
   "author": "info@quorumcontrol.com",
   "license": "UNLICENSED",
+  "browserslist": [
+    "since 2018-10"
+  ],
   "devDependencies": {
     "@types/chai": "^4.1.7",
     "@types/mocha": "^5.2.5",
@@ -19,10 +22,9 @@
     "typescript": "^3.2.4"
   },
   "dependencies": {
-    "@types/node": "^10.12.18",
-    "bignumber.js": "^8.0.2",
+    "babel-core": "^6.26.3",
+    "babel-polyfill": "^6.26.0",
     "cids": "^0.5.7",
-    "i": "^0.3.6",
     "ipld-dag-cbor": "^0.13.1"
   }
 }
