@@ -1,6 +1,6 @@
-const dagCBOR = require('ipld-dag-cbor');
-const multihashing = require('multihashing-async');
-const CID = require('cids');
+import dagCBOR from 'ipld-dag-cbor';
+import multihashing from 'multihashing-async';
+import CID from 'cids';
 
 const utils = {};
 
@@ -61,4 +61,4 @@ utils.resolve = async function(blob, path) {
     });
 }
 
-module.exports = utils;
+export default utils;

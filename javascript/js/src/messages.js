@@ -1,4 +1,4 @@
-const utils = require('./utils');
+import utils from './utils';
 
 let messages = {}
 
@@ -12,4 +12,4 @@ messages.toAny = async function(typeName, msg) {
     return serialized;
 }
 
-module.exports = messages;
+export default messages;
