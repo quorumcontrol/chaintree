@@ -1,7 +1,7 @@
-import dagCBOR from 'ipld-dag-cbor';
-import Nodestore from  './nodestore';
-import utils from './utils';
-import messages from './messages';
+const dagCBOR = require('ipld-dag-cbor');
+const Nodestore = require('./nodestore');
+const utils = require('./utils');
+const messages = require('./messages');
 
 class Tupelo {
     constructor(webv8worker) {
@@ -29,4 +29,4 @@ class Tupelo {
 
 }
 
-export default Tupelo;
+module.exports = Tupelo;
