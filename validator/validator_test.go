@@ -42,5 +42,14 @@ func TestValidate(t *testing.T) {
 	res, err := Validate(chainTree)
 	require.Nil(t, err)
 
+	assert.Equal(t, res, []byte("invalid"))
+
+	// now set the node that the validator looks at
+	dag, err = dag.Set([]string{"tree", "ok"}, true)
+	require.Nil(t, err)
+	chainTree.Dag = dag
+	res, err = Validate(chainTree)
+	require.Nil(t, err)
+
 	assert.Equal(t, res, []byte("ok"))
 }

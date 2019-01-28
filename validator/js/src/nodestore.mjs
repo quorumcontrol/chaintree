@@ -20,8 +20,9 @@ class Nodestore {
 
     async resolve(cid, path) {
         let blob = this.get(cid)
-        let resp = await utils.resolve(blob, path)
+        let resp = await utils.resolve(blob, path);
         if (CID.isCID(resp.value) && resp.remainderPath.length > 0) {
+            V8Worker2.print("resolve");
             return this.resolve(resp.value, resp.remainderPath);
         }
         return resp;
