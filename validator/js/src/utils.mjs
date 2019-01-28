@@ -18,18 +18,14 @@ utils.serialize = function(obj) {
 
 utils.deserialize = function(serialized) {
     return new Promise((resolve, reject) => {
-        V8Worker2.print("deserialize:", serialized.toString('base64'));
-
         dagCBOR.util.deserialize(serialized, (err, obj) => {
-            V8Worker2.print(" obj", obj);
+            V8Worker2.print("deserialized:", obj)
 
             if (err) {
                 V8Worker2.print("err:", err)
                 reject(err);
                 return
             }
-            // V8Worker2.print("resolve:", obj)
-
             resolve(obj);
         });
     });   

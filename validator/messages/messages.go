@@ -51,6 +51,15 @@ func ToAny(other interface{}) (*Any, error) {
 	}, nil
 }
 
+func FromSerialized(bits []byte) (interface{}, error) {
+	any := &Any{}
+	err := cbornode.DecodeInto(bits, any)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding: %v", err)
+	}
+	return FromAny(any)
+}
+
 func FromAny(any *Any) (interface{}, error) {
 	typ, ok := registry[any.Type]
 	if !ok {
@@ -66,11 +75,11 @@ func FromAny(any *Any) (interface{}, error) {
 
 type Start struct {
 	Tip   cid.Cid
-	Nodes [][]byte
+	Nodes map[string][]byte
 }
 
 type Finished struct {
-	Result []byte
+	Result string
 }
 
 type GetNode struct {

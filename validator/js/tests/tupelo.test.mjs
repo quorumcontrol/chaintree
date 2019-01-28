@@ -42,11 +42,11 @@ describe('Tupelo', ()=> {
             }
         }
     });
-    it('can receive a start message', async ()=> {
-        let worker = new FakeWorker();
-        let tupelo = new Tupelo(worker);
-        let b64 = "omR0eXBlZXN0YXJ0Z3BheWxvYWRYP6JjdGlw2CpYJQABcRIgKwOmSdbOCT4qapCrRjj4ltQ2Kn+wk6xKLyqmiGEDg7xlbm9kZXOBSaFjZm9vY2Jhcg=="
-        let buf = Buffer.from(b64, "base64");
-        worker.testOnlyRemoteSend(toArrayBuffer(buf));
-    });
+    // it('can receive a start message', async ()=> {
+    //     let worker = new FakeWorker();
+    //     let tupelo = new Tupelo(worker);
+    //     let b64 = "omR0eXBlZXN0YXJ0Z3BheWxvYWRYP6JjdGlw2CpYJQABcRIgKwOmSdbOCT4qapCrRjj4ltQ2Kn+wk6xKLyqmiGEDg7xlbm9kZXOBSaFjZm9vY2Jhcg=="
+    //     let buf = Buffer.from(b64, "base64");
+    //     worker.testOnlyRemoteSend(toArrayBuffer(buf));
+    // });
 });

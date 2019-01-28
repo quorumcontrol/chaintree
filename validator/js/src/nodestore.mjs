@@ -11,6 +11,10 @@ class Nodestore {
     }
 
     store(cid, node) {
+        if (!CID.isCID(cid)) {
+            console.log("converting cid: ", cid)
+            cid = new CID(cid);
+        }
         this.storage[cid.toBaseEncodedString()] = node;
     }
 

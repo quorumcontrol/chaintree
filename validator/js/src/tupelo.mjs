@@ -19,22 +19,29 @@ class Tupelo {
         this.worker.recv(this.receive.bind(this));
     }
 
+    onStart(fn) {
+        this.onStart = fn;
+        if (this.started) {
+            this.onStart(this);
+        }
+    }
+
     receive(buf) {
        let p = this.receiveMsg(buf);
-       this.worker.print("receiveMsg return: ", p);
        p.then(() => {}, (err) => {this.worker.print("errored")});
        return null;
     }
 
-    send(buf) {
-        let bits = toArrayBuffer(buf);
+    async send(typeName, obj) {
+        let any = await messages.toAny(typeName, obj);
+        let bits = toArrayBuffer(any);
         this.worker.send(bits);
     }
 
     async receiveMsg(buf) {
-        let newBuf = Buffer.from(buf);
-        this.worker.print("receive ", newBuf.toString('base64'));
+        this.worker.print("receive")
 
+        let newBuf = Buffer.from(buf);
         let any = await utils.deserialize(newBuf);
         let msg = await utils.deserialize(any.payload);
         
@@ -47,10 +54,18 @@ class Tupelo {
     }
 
     async handleStart(msg) {
-        let bits = await messages.toAny({
-            result: "ok",
-        });
-        this.send(bits);
+        console.log(msg.nodes);
+        this.worker.print("starting : ",msg.nodes);
+        for (const k in msg.nodes) {
+            this.worker.print("storing")
+            this.nodestore.store(k, msg.nodes[k]);
+            this.tip = msg.tip;
+        }
+        this.started = true;
+        if (this.onStart) {
+            this.worker.print("calling onStart")
+            this.onStart(this);
+        }
     }
 
 }

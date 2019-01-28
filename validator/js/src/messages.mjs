@@ -12,4 +12,8 @@ messages.toAny = async function(typeName, msg) {
     return serialized;
 }
 
+// type Finished struct {
+//	 Result []byte
+// }
+
 export default messages;
