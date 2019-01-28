@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	cid "github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipld-cbor"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/namedlocker"
