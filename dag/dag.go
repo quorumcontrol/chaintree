@@ -2,14 +2,12 @@ package dag
 
 import (
 	"fmt"
-	//"os"
 	"strings"
 
 	"github.com/davecgh/go-spew/spew"
-	cid "github.com/ipfs/go-cid"
-	cbornode "github.com/ipfs/go-ipld-cbor"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/nodestore"
-	//"github.com/quorumcontrol/chaintree/safewrap"
 )
 
 // Dag is a convenience wrapper around a node store for setting and pruning
@@ -188,12 +186,8 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 		key = pathAndKey[len(pathAndKey)-1]
 	}
 
-	fmt.Printf("setting %v at %v\n", val, pathAndKey)
-
 	// lookup existing portion of path & leaf node's value
 	leafNodeObj, remainingPath, err := d.getExisting(path)
-
-	fmt.Printf("remaining path: %v\n", remainingPath)
 
 	existingPath := path[:len(path)-len(remainingPath)]
 	if err != nil {
@@ -218,13 +212,10 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 		leafNodeObj[key] = val
 	}
 
-	fmt.Printf("leaf node: %v\n", leafNodeObj)
-
 	// create new nodes if needed
 	var nextNodeObj map[string]interface{}
 	if len(remainingPath) > 0 {
 		leafNode, err := d.store.CreateNode(leafNodeObj)
-		fmt.Printf("created leaf node %s\n", leafNode.Cid())
 		if err != nil {
 			return nil, fmt.Errorf("error creating node: %v", err)
 		}
@@ -236,7 +227,6 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 			nextNodeObj = make(map[string]interface{})
 			nextNodeObj[remainingPath[i]] = nextNode.Cid()
 			nextNode, err = d.store.CreateNode(nextNodeObj)
-			fmt.Printf("created link node: %s: %v\n", nextNode.Cid(), nextNodeObj)
 			if err != nil {
 				return nil, fmt.Errorf("error creating node for path element %s: %v", remainingPath[i], err)
 			}
@@ -245,12 +235,10 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 			remainingPath[0]: nextNode.Cid(),
 		}
 	} else {
-		fmt.Println("no new nodes needed")
 		nextNodeObj = leafNodeObj
 	}
 
 	// update former leaf node to (link to) new val
-	fmt.Printf("updating %v to %v\n", existingPath, nextNodeObj)
 	newDag, err := d.Update(existingPath, nextNodeObj)
 	if err != nil {
 		return nil, fmt.Errorf("error updating DAG: %v", err)
