@@ -1,8 +1,8 @@
-const chai = require('chai')
-const expect = chai.expect
+import chai from 'chai';
+const expect = chai.expect;
 
-const utils = require('../src/utils');
-const Nodestore = require('../src/nodestore');
+import utils from '../src/utils.mjs';
+import Nodestore from '../src/nodestore.mjs';
 
 describe('nodestore', ()=> {
     it('stores', async ()=>{

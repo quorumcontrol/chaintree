@@ -1,10 +1,10 @@
-import utils from './utils';
+import utils from './utils.mjs';
 
 let messages = {}
 
 messages.toAny = async function(typeName, msg) {
     let serialized = await utils.serialize(msg);
-    any = {
+    let any = {
         type: typeName,
         payload: serialized,
     }
