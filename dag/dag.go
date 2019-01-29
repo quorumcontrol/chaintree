@@ -5,10 +5,9 @@ import (
 	"strings"
 
 	"github.com/davecgh/go-spew/spew"
-	cid "github.com/ipfs/go-cid"
-	cbornode "github.com/ipfs/go-ipld-cbor"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/nodestore"
-	"github.com/quorumcontrol/chaintree/safewrap"
 )
 
 // Dag is a convenience wrapper around a node store for setting and pruning
@@ -130,9 +129,23 @@ func (d *Dag) Update(path []string, newObj interface{}) (*Dag, error) {
 	}
 }
 
+func isComplexObj(val interface{}) bool {
+	switch val.(type) {
+	// These are the built in type of go (excluding map) plus cid.Cid
+	// Use SetAsLink if attempting to set map
+	case bool, byte, complex64, complex128, error, float32, float64, int, int8, int16, int32, int64, string, uint, uint16, uint32, uint64, uintptr, *cid.Cid, *bool, *byte, *complex64, *complex128, *error, *float32, *float64, *int, *int8, *int16, *int32, *int64, *string, *uint, *uint16, *uint32, *uint64, *uintptr, cid.Cid, []bool, []byte, []complex64, []complex128, []error, []float32, []float64, []int, []int8, []int16, []int32, []int64, []string, []uint, []uint16, []uint32, []uint64, []uintptr, []*cid.Cid, []*bool, []*byte, []*complex64, []*complex128, []*error, []*float32, []*float64, []*int, []*int8, []*int16, []*int32, []*int64, []*string, []*uint, []*uint16, []*uint32, []*uint64, []*uintptr, []cid.Cid:
+		return false
+	default:
+		return true
+	}
+}
+
 // Set sets a value at a path and returns a new dag with a new tip that reflects
 // the new state (and adds the old tip to oldTips)
 func (d *Dag) Set(pathAndKey []string, val interface{}) (*Dag, error) {
+	if isComplexObj(val) {
+		return nil, fmt.Errorf("can not set complex objects, use asLink=true: %v", val)
+	}
 	return d.set(pathAndKey, val, false)
 }
 
@@ -142,7 +155,7 @@ func (d *Dag) SetAsLink(pathAndKey []string, val interface{}) (*Dag, error) {
 	return d.set(pathAndKey, val, true)
 }
 
-func (d *Dag) getExisting(path []string) (remainingPath []string, val interface{}, err error) {
+func (d *Dag) getExisting(path []string) (val map[string]interface{}, remainingPath []string, err error) {
 	existing, remaining, err := d.Resolve(path)
 	if err != nil {
 		return nil, nil, err
@@ -150,26 +163,15 @@ func (d *Dag) getExisting(path []string) (remainingPath []string, val interface{
 
 	switch existing.(type) {
 	case map[string]interface{}:
-		return remaining, existing.(map[string]interface{}), nil
+		return existing.(map[string]interface{}), remaining,nil
 	case nil:
-		return nil, nil, nil
+		return nil, path, nil
 	default:
-		return remaining, make(map[string]interface{}), nil
+		return make(map[string]interface{}), remaining, nil
 	}
 }
 
 func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, error) {
-	if !asLink {
-		switch val.(type) {
-		// These are the built in type of go (excluding map) plus cid.Cid
-		// Use SetAsLink if attempting to set map
-		case bool, byte, complex64, complex128, error, float32, float64, int, int8, int16, int32, int64, string, uint, uint16, uint32, uint64, uintptr, *cid.Cid, *bool, *byte, *complex64, *complex128, *error, *float32, *float64, *int, *int8, *int16, *int32, *int64, *string, *uint, *uint16, *uint32, *uint64, *uintptr, cid.Cid, []bool, []byte, []complex64, []complex128, []error, []float32, []float64, []int, []int8, []int16, []int32, []int64, []string, []uint, []uint16, []uint32, []uint64, []uintptr, []*cid.Cid, []*bool, []*byte, []*complex64, []*complex128, []*error, []*float32, []*float64, []*int, []*int8, []*int16, []*int32, []*int64, []*string, []*uint, []*uint16, []*uint32, []*uint64, []*uintptr, []cid.Cid:
-			// Noop here, its a valid type, continue on
-		default:
-			return nil, fmt.Errorf("can not set complex objects, use asLink=true: %v", val)
-		}
-	}
-
 	var path []string
 	var key string
 
@@ -184,80 +186,67 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 		key = pathAndKey[len(pathAndKey)-1]
 	}
 
-	remainingPath, existing, err := d.getExisting(path)
+	// lookup existing portion of path & leaf node's value
+	leafNodeObj, remainingPath, err := d.getExisting(path)
 	if err != nil {
 		return nil, fmt.Errorf("error resolving path %s: %v", path, err)
 	}
 
-	if existing == nil || len(remainingPath) > 0 {
-		var newObj interface{}
+	existingPath := path[:len(path)-len(remainingPath)]
 
-		if asLink {
-			path = append(path, key)
-			newObj = val
-		} else {
-			newObj = map[string]interface{}{key: val}
-		}
-
-		sw := &safewrap.SafeWrap{}
-		wrapped := sw.WrapObject(newObj)
-		if sw.Err != nil {
-			return nil, fmt.Errorf("error wrapping (%v): %v", newObj, sw.Err)
-		}
-		err = d.store.StoreNode(wrapped)
-		if err != nil {
-			return nil, fmt.Errorf("error storing node: %v", err)
-		}
-		return d.createDeepObject(path, wrapped)
+	// create new leaf node obj if needed
+	if leafNodeObj == nil {
+		leafNodeObj = make(map[string]interface{})
 	}
 
+	// set (link to) val under key in leaf node
 	if asLink {
-		newNode, err := d.store.CreateNode(val)
+		// create val as new node and set its CID under key in new leaf node
+		newLinkNode, err := d.store.CreateNode(val)
 		if err != nil {
 			return nil, fmt.Errorf("error creating node: %v", err)
 		}
-		existing.(map[string]interface{})[key] = newNode.Cid()
+		leafNodeObj[key] = newLinkNode.Cid()
 	} else {
-		existing.(map[string]interface{})[key] = val
+		// set val as key in new leaf node
+		leafNodeObj[key] = val
 	}
 
-	newDag, err := d.Update(path, existing)
+	// create new nodes if needed
+	var nextNodeObj map[string]interface{}
+	if len(remainingPath) > 0 {
+		leafNode, err := d.store.CreateNode(leafNodeObj)
+		if err != nil {
+			return nil, fmt.Errorf("error creating node: %v", err)
+		}
+
+		// create missing path segments
+		// go down the path in reverse (i.e. up / right-to-left) linking nodes as we go
+		nextNode := leafNode
+		for i := len(remainingPath) - 1; i > 0; i-- {
+			nextNodeObj = make(map[string]interface{})
+			nextNodeObj[remainingPath[i]] = nextNode.Cid()
+			nextNode, err = d.store.CreateNode(nextNodeObj)
+			if err != nil {
+				return nil, fmt.Errorf("error creating node for path element %s: %v", remainingPath[i], err)
+			}
+		}
+		nextNodeObj = map[string]interface{}{
+			remainingPath[0]: nextNode.Cid(),
+		}
+	} else {
+		nextNodeObj = leafNodeObj
+	}
+
+	// update former leaf node to (link to) new val
+	newDag, err := d.Update(existingPath, nextNodeObj)
 	if err != nil {
-		return nil, fmt.Errorf("error updating node: %v", err)
+		return nil, fmt.Errorf("error updating DAG: %v", err)
 	}
 
 	newDag.oldTips = append(d.oldTips, newDag.Tip)
 
 	return newDag, nil
-}
-
-func (d *Dag) createDeepObject(path []string, node *cbornode.Node) (*Dag, error) {
-
-	var indexOfLastExistingNode int
-
-	for i := len(path); i >= 0; i-- {
-		val, remaining, err := d.Resolve(path[0:i])
-		if err != nil {
-			return nil, fmt.Errorf("error resolving: %v", err)
-		}
-		if val != nil && len(remaining) == 0 {
-			indexOfLastExistingNode = i
-			break
-		}
-	}
-
-	var last = node
-	var err error
-
-	for i := len(path) - 1; i > indexOfLastExistingNode; i-- {
-		last, err = d.store.CreateNode(map[string]cid.Cid{path[i]: last.Cid()})
-		if err != nil {
-			return nil, fmt.Errorf("error creating node: %v", err)
-		}
-	}
-
-	setPath := path[0 : indexOfLastExistingNode+1]
-	return d.set(setPath, last.Cid(), false)
 }
 
 func (d *Dag) dumpNode(node *cbornode.Node, isLink bool) interface{} {
