@@ -291,11 +291,12 @@
   revision = "b2d848bada9dbd11ec27b9a38e8726555e249fd4"
 
 [[projects]]
-  digest = "1:fcc5a668ffff877a3440e2ce7a8d87dce080cb20514d9622c03903e6a003de12"
+  digest = "1:36f721d7ad30c52efade27d8307ea302434145b6e4f4116e2a8adc9270db1515"
   name = "github.com/ipsn/go-ipfs"
   packages = [
     ".",
     "blocks/blockstoreutil",
+    "commands",
     "core",
     "core/coreapi",
     "core/coreapi/interface",
@@ -303,6 +304,7 @@
     "core/coredag",
     "core/corerepo",
     "core/coreunix",
+    "core/mock",
     "dagutils",
     "exchange/reprovide",
     "filestore",
@@ -351,6 +353,9 @@
     "gxlibs/github.com/ipfs/go-ipfs-addr",
     "gxlibs/github.com/ipfs/go-ipfs-blockstore",
     "gxlibs/github.com/ipfs/go-ipfs-chunker",
+    "gxlibs/github.com/ipfs/go-ipfs-cmdkit",
+    "gxlibs/github.com/ipfs/go-ipfs-cmds",
+    "gxlibs/github.com/ipfs/go-ipfs-cmds/debug",
     "gxlibs/github.com/ipfs/go-ipfs-config",
     "gxlibs/github.com/ipfs/go-ipfs-config/serialize",
     "gxlibs/github.com/ipfs/go-ipfs-delay",
@@ -888,12 +893,11 @@
     "github.com/ipsn/go-ipfs/core/coreapi",
     "github.com/ipsn/go-ipfs/core/coreapi/interface",
     "github.com/ipsn/go-ipfs/core/coreapi/interface/options",
+    "github.com/ipsn/go-ipfs/core/mock",
     "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-cid",
-    "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-ipfs-config",
     "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-ipld-cbor",
     "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-ipld-format",
-    "github.com/ipsn/go-ipfs/plugin/loader",
-    "github.com/ipsn/go-ipfs/repo/fsrepo",
+    "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p/p2p/net/mock",
     "github.com/multiformats/go-multihash",
     "github.com/polydawn/refmt/obj",
     "github.com/polydawn/refmt/obj/atlas",

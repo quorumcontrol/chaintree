@@ -103,6 +103,7 @@ func SubtestInterfaceDeleteNode(t *testing.T, ns NodeStore) {
 	} {
 		toDelete := test.setup(t)
 		err := ns.DeleteNode(toDelete)
+		require.Nil(t, err, test.description)
 		existing, err := ns.GetNode(toDelete)
 		require.Nil(t, err, test.description)
 
