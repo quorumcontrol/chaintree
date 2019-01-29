@@ -188,11 +188,11 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 
 	// lookup existing portion of path & leaf node's value
 	leafNodeObj, remainingPath, err := d.getExisting(path)
-
-	existingPath := path[:len(path)-len(remainingPath)]
 	if err != nil {
 		return nil, fmt.Errorf("error resolving path %s: %v", path, err)
 	}
+
+	existingPath := path[:len(path)-len(remainingPath)]
 
 	// create new leaf node obj if needed
 	if leafNodeObj == nil {
