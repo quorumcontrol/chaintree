@@ -16,14 +16,12 @@ import (
 	ipsnCbornode "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-ipld-cbor"
 	ipldFormat "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-ipld-format"
 	"github.com/quorumcontrol/chaintree/safewrap"
-	"github.com/quorumcontrol/namedlocker"
 )
 
 // IpldStore is a NodeStore that uses IPLD
 type IpldStore struct {
-	node   *core.IpfsNode
-	api    ipfsCoreApiIface.CoreAPI
-	locker *namedlocker.NamedLocker
+	node *core.IpfsNode
+	api  ipfsCoreApiIface.CoreAPI
 }
 
 // var _ NodeStore = (*IpldStore)(nil)
@@ -36,9 +34,8 @@ func NewIpldStore(node *core.IpfsNode) *IpldStore {
 	}
 
 	return &IpldStore{
-		node:   node,
-		api:    api,
-		locker: namedlocker.NewNamedLocker(),
+		node: node,
+		api:  api,
 	}
 }
 
@@ -206,9 +203,6 @@ func (ipld *IpldStore) Resolve(tip cid.Cid, path []string) (interface{}, []strin
 // StoreNode implements the NodeStore interface
 func (ipld *IpldStore) StoreNode(node *cbornode.Node) error {
 	nodeCid := node.Cid()
-	ipld.locker.Lock(nodeCid.String())
-	defer ipld.locker.UnlockAndDelete(nodeCid.String())
-
 	ctx := context.Background()
 	path, err := ipld.dag().Put(ctx, bytes.NewReader(node.RawData()), ipfsCoreApiOpt.Dag.InputEnc("cbor"))
 	if err != nil {
