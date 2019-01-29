@@ -10,14 +10,6 @@
   revision = "343706a395b76e5ca5c7dca46a5d937b48febc74"
 
 [[projects]]
-  digest = "1:c28625428387b63dd7154eb857f51e700465cfbf7c06f619e71f2da33cefe47e"
-  name = "github.com/coreos/bbolt"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "583e8937c61f1af6513608ccc75c97b6abdf4ff9"
-  version = "v1.3.0"
-
-[[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -26,19 +18,18 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:5f5090f05382959db941fa45acbeb7f4c5241aa8ac0f8f4393dec696e5953f53"
+  digest = "1:220c380c682114017176ff56552522f0997ed6e98bc158ed0ff5a9f8be6c4eec"
   name = "github.com/dgraph-io/badger"
   packages = [
     ".",
     "options",
-    "protos",
+    "pb",
     "skl",
     "table",
     "y",
   ]
   pruneopts = "UT"
-  revision = "99233d725dbdd26d156c61b2f42ae1671b794656"
-  version = "v1.5.4"
+  revision = "10e1ee8dd41927fff4aa5cf1c205ad30f1a39e43"
 
 [[projects]]
   branch = "master"
@@ -49,20 +40,12 @@
   revision = "2de33835d10275975374b37b2dcfd22c9020a1f5"
 
 [[projects]]
-  digest = "1:654e9b37e6d657dc6b2182e126c3e15d05ed7afd94f960e367c6e98dd853b8fe"
-  name = "github.com/ethereum/go-ethereum"
-  packages = ["log"]
-  pruneopts = "UT"
-  revision = "8bbe72075e4e16442c4e28d999edee12e294329e"
-  version = "v1.8.17"
-
-[[projects]]
-  digest = "1:33542eaf895b5489ccfb059502a721f0e8875379da8b3ff60fdd9212d503705c"
-  name = "github.com/go-stack/stack"
+  digest = "1:6f9339c912bbdda81302633ad7e99a28dfa5a639c864061f1929510a9a64aa74"
+  name = "github.com/dustin/go-humanize"
   packages = ["."]
   pruneopts = "UT"
-  revision = "54be5f394ed2c3e19dac9134a40a95ba5a017f7b"
-  version = "v1.5.4"
+  revision = "9f541cc9db5d55bce703bd99987c9d5cb8eea45e"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:97df918963298c287643883209a2c3f642e6593379f97ab400c2a2e219ab647d"
@@ -79,6 +62,22 @@
   packages = ["keccakpg"]
   pruneopts = "UT"
   revision = "d9f6b97f8db22dd1e090fd0bbbe98f09cc7dd0a8"
+
+[[projects]]
+  digest = "1:2be5a35f0c5b35162c41bb24971e5dcf6ce825403296ee435429cdcc4e1e847e"
+  name = "github.com/hashicorp/go-immutable-radix"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "27df80928bb34bb1b0d6d0e01b9e679902e7a6b5"
+  version = "v1.0.0"
+
+[[projects]]
+  digest = "1:67474f760e9ac3799f740db2c489e6423a4cde45520673ec123ac831ad849cb8"
+  name = "github.com/hashicorp/golang-lru"
+  packages = ["simplelru"]
+  pruneopts = "UT"
+  revision = "20f1fb78b0740ba8c3cb143a61e86ba5c8669768"
+  version = "v0.5.0"
 
 [[projects]]
   digest = "1:f147b9478d08ff3880ddf082e61ee9de8b8ea5143c35fbc4571df59abd837753"
@@ -194,6 +193,19 @@
   revision = "57f76afce9084f1463337a5856388c5b458e062e"
 
 [[projects]]
+  digest = "1:7730216cdf0e362c0ca6fb470f31f96479820120d1458ace9a4bb1a91af73989"
+  name = "github.com/quorumcontrol/chaintree"
+  packages = [
+    "dag",
+    "nodestore",
+    "safewrap",
+    "typecaster",
+  ]
+  pruneopts = "UT"
+  revision = "7a5c55be000cea9173ffbaf8e108aaa068874240"
+  version = "v3.0.3"
+
+[[projects]]
   branch = "master"
   digest = "1:32e760f00b355161f1c67a6fc91ae3b3d5baacb94682a3d7b45aeeecd0d7a2f5"
   name = "github.com/quorumcontrol/namedlocker"
@@ -202,13 +214,13 @@
   revision = "3f797c8b12b141e1e252cc202f43c27fce58ec9e"
 
 [[projects]]
-  digest = "1:c0a61f187d800cd91007dc84cdc7bc427e9388a4198699930a7877feb37e5977"
+  digest = "1:a5ebdb4a994513ca79103270af3711e6329693325bc0ac89bbcf21fdf87cedb7"
   name = "github.com/quorumcontrol/storage"
   packages = ["."]
   pruneopts = "UT"
-  revision = "02ffa9bf3a02b122b2f7970c34d2e62a4e49bb3d"
+  revision = "c5e9df97b7f4aa63a9de7f3c30405f5acac9b4d9"
   source = "git@github.com:quorumcontrol/storage.git"
-  version = "v1.0.1"
+  version = "v1.1.1"
 
 [[projects]]
   digest = "1:919bb3aa6d9d0b67648c219fa4925312bc3c2872da19e818fa769e9c97a2b643"
@@ -289,6 +301,10 @@
     "github.com/polydawn/refmt/obj",
     "github.com/polydawn/refmt/obj/atlas",
     "github.com/polydawn/refmt/shared",
+    "github.com/quorumcontrol/chaintree/dag",
+    "github.com/quorumcontrol/chaintree/nodestore",
+    "github.com/quorumcontrol/chaintree/safewrap",
+    "github.com/quorumcontrol/chaintree/typecaster",
     "github.com/quorumcontrol/namedlocker",
     "github.com/quorumcontrol/storage",
     "github.com/stretchr/testify/assert",
