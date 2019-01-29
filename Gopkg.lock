@@ -193,19 +193,6 @@
   revision = "57f76afce9084f1463337a5856388c5b458e062e"
 
 [[projects]]
-  digest = "1:7730216cdf0e362c0ca6fb470f31f96479820120d1458ace9a4bb1a91af73989"
-  name = "github.com/quorumcontrol/chaintree"
-  packages = [
-    "dag",
-    "nodestore",
-    "safewrap",
-    "typecaster",
-  ]
-  pruneopts = "UT"
-  revision = "7a5c55be000cea9173ffbaf8e108aaa068874240"
-  version = "v3.0.3"
-
-[[projects]]
   branch = "master"
   digest = "1:32e760f00b355161f1c67a6fc91ae3b3d5baacb94682a3d7b45aeeecd0d7a2f5"
   name = "github.com/quorumcontrol/namedlocker"
@@ -301,10 +288,6 @@
     "github.com/polydawn/refmt/obj",
     "github.com/polydawn/refmt/obj/atlas",
     "github.com/polydawn/refmt/shared",
-    "github.com/quorumcontrol/chaintree/dag",
-    "github.com/quorumcontrol/chaintree/nodestore",
-    "github.com/quorumcontrol/chaintree/safewrap",
-    "github.com/quorumcontrol/chaintree/typecaster",
     "github.com/quorumcontrol/namedlocker",
     "github.com/quorumcontrol/storage",
     "github.com/stretchr/testify/assert",
