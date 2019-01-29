@@ -77,6 +77,24 @@ func (ipld *IpldStore) CreateNodeFromBytes(data []byte) (node *cbornode.Node, er
 func (ipld *IpldStore) GetNode(cid cid.Cid) (node *cbornode.Node, err error) {
 	ctx := context.Background()
 	castCid, _ := ipsnCid.Parse(cid.String())
+
+	pins, err := ipld.pin().Ls(ctx, ipfsCoreApiOpt.Pin.Type.Direct())
+	if err != nil {
+		return nil, fmt.Errorf("error fetching pins: %v", err)
+	}
+
+	foundNode := false
+	for _, p := range pins {
+		if p.Path().Cid().Equals(castCid) {
+			foundNode = true
+			break
+		}
+	}
+
+	if !foundNode {
+		return nil, nil
+	}
+
 	dagNode, err := ipld.dag().Get(ctx, ipfsCoreApiIface.IpldPath(castCid))
 
 	if err == ipldFormat.ErrNotFound {
