@@ -29,6 +29,10 @@ func NewStorageBasedStore(store storage.Storage) *StorageBasedStore {
 	}
 }
 
+func (sbs *StorageBasedStore) Close() {
+	sbs.store.Close()
+}
+
 // CreateNode takes any object and converts it to a cbornode and then returns the saved CID
 func (sbs *StorageBasedStore) CreateNode(obj interface{}) (node *cbornode.Node, err error) {
 	node, err = objToCbor(obj)
