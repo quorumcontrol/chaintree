@@ -86,27 +86,7 @@ func Validate(tree *chaintree.ChainTree) (result []byte, err error) {
 		return nil, fmt.Errorf("error loading script: %v", err)
 	}
 
-	nodes, err := tree.Dag.Nodes()
-	if err != nil {
-		return nil, fmt.Errorf("error getting nodes: %v", err)
-	}
-
-	bitNodes := make(map[string][]byte)
-	for _, n := range nodes {
-		bitNodes[n.Cid().String()] = n.RawData()
-	}
-
-	sw := safewrap.SafeWrap{}
-
-	start := &messages.Start{
-		Tip:   tree.Dag.Tip,
-		Nodes: bitNodes,
-	}
-
-	any, err := messages.ToAny(start)
-	if err != nil {
-		return nil, fmt.Errorf("error turning into any: %v", err)
-	}
+	w
 
 	worker.toJS <- sw.WrapObject(any).RawData()
 
