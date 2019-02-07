@@ -165,7 +165,7 @@ func (d *Dag) getExisting(path []string) (val map[string]interface{}, remainingP
 	case map[string]interface{}:
 		return existing.(map[string]interface{}), remaining,nil
 	case nil:
-		return nil, path, nil
+		return nil, remaining, nil
 	default:
 		return make(map[string]interface{}), remaining, nil
 	}
