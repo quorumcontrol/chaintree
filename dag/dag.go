@@ -194,48 +194,49 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 
 	existingPath := path[:len(path)-len(remainingPath)]
 
-	// create new leaf node obj if needed
-	if leafNodeObj == nil {
-		leafNodeObj = make(map[string]interface{})
+	/*
+	Alright, there are basically three possible scenarios now:
+	1. The path we're setting doesn't exist at all.
+	   leafNodeObj will be nil and remainingPath will be == path
+	2. The path we're setting partially exists.
+	   leafNodeObj will be the last existing node and remainingPath will be
+	   the path elements that don't exist yet.
+	3. The path we're setting fully exists.
+	   leafNodeObj will be the node we want to set key and val in
+	   (respecting asLink) and remainingPath will be empty.
+	*/
+
+	// create the new leaf node object or use the existing one if the path fully exists
+	var newLeafNodeObj map[string]interface{}
+	if len(remainingPath) > 0 {
+		newLeafNodeObj = make(map[string]interface{})
+	} else {
+		newLeafNodeObj = leafNodeObj
 	}
 
-	// set (link to) val under key in leaf node
+	// set key to (link to) val in new leaf node
 	if asLink {
 		// create val as new node and set its CID under key in new leaf node
 		newLinkNode, err := d.store.CreateNode(val)
 		if err != nil {
 			return nil, fmt.Errorf("error creating node: %v", err)
 		}
-		leafNodeObj[key] = newLinkNode.Cid()
+		newLeafNodeObj[key] = newLinkNode.Cid()
 	} else {
-		// set val as key in new leaf node
-		leafNodeObj[key] = val
+		// set key to val in new leaf node
+		newLeafNodeObj[key] = val
 	}
 
-	// create new nodes if needed
-	var nextNodeObj map[string]interface{}
-	if len(remainingPath) > 0 {
-		leafNode, err := d.store.CreateNode(leafNodeObj)
+	// create any missing path segments, starting with the new leaf node
+	// go up (i.e. right to left) the path segments, linking them as we go
+	nextNodeObj := newLeafNodeObj
+	for i := len(remainingPath) - 1; i >= 0; i-- {
+		nextNode, err := d.store.CreateNode(nextNodeObj)
 		if err != nil {
-			return nil, fmt.Errorf("error creating node: %v", err)
+			return nil, fmt.Errorf("error creating node for path element %s: %v", remainingPath[i], err)
 		}
-
-		// create missing path segments
-		// go down the path in reverse (i.e. up / right-to-left) linking nodes as we go
-		nextNode := leafNode
-		for i := len(remainingPath) - 1; i > 0; i-- {
-			nextNodeObj = make(map[string]interface{})
-			nextNodeObj[remainingPath[i]] = nextNode.Cid()
-			nextNode, err = d.store.CreateNode(nextNodeObj)
-			if err != nil {
-				return nil, fmt.Errorf("error creating node for path element %s: %v", remainingPath[i], err)
-			}
-		}
-		nextNodeObj = map[string]interface{}{
-			remainingPath[0]: nextNode.Cid(),
-		}
-	} else {
-		nextNodeObj = leafNodeObj
+		nextNodeObj = make(map[string]interface{})
+		nextNodeObj[remainingPath[i]] = nextNode.Cid()
 	}
 
 	// update former leaf node to (link to) new val
