@@ -161,6 +161,11 @@ func (d *Dag) getExisting(path []string) (val map[string]interface{}, remainingP
 		return nil, nil, err
 	}
 
+	if len(remaining) == len(path) {
+		// special case so we don't clobber other keys set at the root level
+		existing, _, _ = d.Resolve([]string{})
+	}
+
 	switch existing.(type) {
 	case map[string]interface{}:
 		return existing.(map[string]interface{}), remaining,nil
