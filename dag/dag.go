@@ -240,7 +240,11 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 		if err != nil {
 			return nil, fmt.Errorf("error creating node for path element %s: %v", remainingPath[i], err)
 		}
-		nextNodeObj = make(map[string]interface{})
+		if i > 0 || leafNodeObj == nil {
+			nextNodeObj = make(map[string]interface{})
+		} else {
+			nextNodeObj = leafNodeObj
+		}
 		nextNodeObj[remainingPath[i]] = nextNode.Cid()
 	}
 
