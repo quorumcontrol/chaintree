@@ -25,14 +25,12 @@ const (
 func init() {
 	cbornode.RegisterCborType(RootNode{})
 	cbornode.RegisterCborType(Chain{})
-	cbornode.RegisterCborType(ChainEntry{})
 	cbornode.RegisterCborType(BlockWithHeaders{})
 	cbornode.RegisterCborType(Block{})
 	cbornode.RegisterCborType(Transaction{})
 
 	typecaster.AddType(RootNode{})
 	typecaster.AddType(Chain{})
-	typecaster.AddType(ChainEntry{})
 	typecaster.AddType(BlockWithHeaders{})
 	typecaster.AddType(Block{})
 	typecaster.AddType(Transaction{})
@@ -62,26 +60,19 @@ type Transaction struct {
 }
 
 type Block struct {
-	PreviousTip  string         `refmt:"previousTip,omitempty" json:"previousTip,omitempty" cbor:"previousTip,omitempty"`
+	PreviousTip  *cid.Cid       `refmt:"previousTip,omitempty" json:"previousTip,omitempty" cbor:"previousTip,omitempty"`
+	Height       uint64         `refmt:"height,omitempty" json:"height,omitempty" cbor:"height,omitempty"`
 	Transactions []*Transaction `refmt:"transactions" json:"transactions" cbor:"transactions"`
-	Height       uint64
 }
 
 type BlockWithHeaders struct {
 	Block
-	Headers map[string]interface{} `refmt:"headers" json:"headers" cbor:"headers"`
+	PreviousBlock *cid.Cid               `refmt:"previousBlock,omitempty" json:"previousBlock,omitempty" cbor:"previousBlock,omitempty"`
+	Headers       map[string]interface{} `refmt:"headers" json:"headers" cbor:"headers"`
 }
 
 type Chain struct {
 	End *cid.Cid `refmt:"end" json:"end" cbor:"end"`
-}
-
-type ChainEntry struct {
-	// this is a string so that CID links aren't automatically adjusted
-	PreviousTip       string `refmt:"previousTip,omitempty" json:"previousTip,omitempty" cbor:"previousTip,omitempty"`
-	Height            uint64
-	BlocksWithHeaders []cid.Cid `refmt:"blocksWithHeaders" json:"blocksWithHeaders" cbor:"blocksWithHeaders"`
-	Previous          *cid.Cid  `refmt:"previous" json:"previous" cbor:"previous"`
 }
 
 func (e *ErrorCode) GetCode() int {
@@ -199,11 +190,6 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error setting as link: %v", err)}
 	}
 
-	/*
-		if there are no chain entries, then the PreviousTip should be nil
-		if there are chain entries than the tip should be either the current tip OR
-			the PreviousTip of the last ChainEntry
-	*/
 	chainNode, err := ct.Dag.Get(*root.Chain)
 	chain := &Chain{}
 	err = cbornode.DecodeInto(chainNode.RawData(), chain)
@@ -211,30 +197,26 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting map: %v", err)}
 	}
 
-	wrappedBlock, err := ct.Dag.CreateNode(blockWithHeaders)
-	if err != nil {
-		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error wrapping block: %v", err)}
-	}
+	/*
+		if there are no chain entries, then the PreviousTip should be nil
+		if there are chain entries than the tip should be either the current tip
+	*/
 
-	// this is the first block
+	// if this is the first block
 	if chain.End == nil {
 		if height := blockWithHeaders.Block.Height; height != 0 {
 			return false, &ErrorCode{Code: ErrBadHeight, Memo: fmt.Sprintf("first block must have a height of 0, had: %d", height)}
 		}
-		if tip := blockWithHeaders.Block.PreviousTip; tip != "" {
+		if tip := blockWithHeaders.Block.PreviousTip; tip != nil {
 			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("invalid previous tip: %v, expecting nil", tip)}
 		}
 
-		lastEntry := &ChainEntry{
-			PreviousTip:       "",
-			Height:            0,
-			BlocksWithHeaders: []cid.Cid{wrappedBlock.Cid()},
-		}
-		entryNode, err := ct.Dag.CreateNode(lastEntry)
+		wrappedBlock, err := ct.Dag.CreateNode(blockWithHeaders)
 		if err != nil {
-			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error creating: %v", err)}
+			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error wrapping block: %v", err)}
 		}
-		endCid := entryNode.Cid()
+
+		endCid := wrappedBlock.Cid()
 		chain.End = &endCid
 
 		ct.Dag, err = ct.Dag.SetAsLink([]string{ChainLabel}, chain)
@@ -251,13 +233,14 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("missing end node in chain tree")}
 	}
 
-	lastEntry := &ChainEntry{}
+	lastEntry := &BlockWithHeaders{}
 
 	err = cbornode.DecodeInto(endNode.RawData(), lastEntry)
 	if err != nil {
 		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error casting lastEntry: %v", err)}
 	}
-	if tip := blockWithHeaders.PreviousTip; tip != root.cid.String() {
+
+	if tip := blockWithHeaders.PreviousTip; tip == nil || !tip.Equals(root.cid) {
 		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error, tip must be current tip, tip: %v endMap: %v, rootNode: %v", tip, lastEntry.PreviousTip, root.cid)}
 	}
 
@@ -265,18 +248,14 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		return false, &ErrorCode{Code: ErrBadHeight, Memo: fmt.Sprintf("block must have a height of %d, had: %d", (lastEntry.Height + uint64(1)), height)}
 	}
 
-	endCid := endNode.Cid()
-	newEntry := &ChainEntry{
-		PreviousTip:       ct.Dag.Tip.String(),
-		BlocksWithHeaders: []cid.Cid{wrappedBlock.Cid()},
-		Previous:          &endCid,
+	blockWithHeaders.PreviousBlock = chain.End
+
+	wrappedBlock, err := ct.Dag.CreateNode(blockWithHeaders)
+	if err != nil {
+		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error wrapping block: %v", err)}
 	}
 
-	entryNode, err := ct.Dag.CreateNode(newEntry)
-	if err != nil {
-		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error casting lastEntry: %v", err)}
-	}
-	newEnd := entryNode.Cid()
+	newEnd := wrappedBlock.Cid()
 	chain.End = &newEnd
 
 	ct.Dag, err = ct.Dag.SetAsLink([]string{ChainLabel}, chain)

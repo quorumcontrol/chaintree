@@ -184,7 +184,7 @@ func TestHeightValidation(t *testing.T) {
 		// then succeed with a 1
 		block2 = &BlockWithHeaders{
 			Block: Block{
-				PreviousTip: tree.Dag.Tip.String(),
+				PreviousTip: &tree.Dag.Tip,
 				Height:      1,
 				Transactions: []*Transaction{
 					{
@@ -258,16 +258,14 @@ func TestBuildingUpAChain(t *testing.T) {
 	require.Nil(t, err)
 	require.True(t, valid)
 
-	entry, _, err := tree.Dag.Resolve([]string{"chain", "end", "blocksWithHeaders"})
+	entry, _, err := tree.Dag.Resolve([]string{"chain", "end"})
 	require.Nil(t, err)
 	//assert.Equal(t, blockCid, entry.([]interface{})[0].(cid.Cid))
-
-	currAndOldTip := tree.Dag.Tip.String()
 
 	block2 := &BlockWithHeaders{
 		Block: Block{
 			Height:      1,
-			PreviousTip: currAndOldTip,
+			PreviousTip: &tree.Dag.Tip,
 			Transactions: []*Transaction{
 				{
 					Type: "SET_DATA",
@@ -287,13 +285,14 @@ func TestBuildingUpAChain(t *testing.T) {
 	require.Nil(t, err)
 	assert.True(t, valid)
 
-	block2Cid := sw.WrapObject(block2).Cid()
+	block1Cid := sw.WrapObject(block).Cid()
 	assert.Nil(t, sw.Err)
 
-	entry, remain, err := tree.Dag.Resolve([]string{"chain", "end", "blocksWithHeaders"})
+	entry, remain, err := tree.Dag.Resolve([]string{"chain", "end"})
 	assert.Nil(t, err)
 	assert.Len(t, remain, 0)
-	assert.True(t, block2Cid.Equals(entry.([]interface{})[0].(cid.Cid)))
+	t.Log("previousTip", entry.(map[string]interface{}), "block1Cid", block1Cid.String())
+	assert.True(t, entry.(map[string]interface{})["previousBlock"].(cid.Cid).Equals(block1Cid))
 }
 
 func TestBlockProcessing(t *testing.T) {
