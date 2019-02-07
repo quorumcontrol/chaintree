@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
@@ -109,7 +109,7 @@ func TestBuildingUpAChain(t *testing.T) {
 			"SET_DATA": setData,
 		},
 	)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	block := &BlockWithHeaders{
 		Block: Block{
@@ -132,19 +132,15 @@ func TestBuildingUpAChain(t *testing.T) {
 	require.Nil(t, err)
 	require.True(t, valid)
 
-	//blockCid := sw.WrapObject(block).Cid()
-	assert.Nil(t, sw.Err)
-
-	tree.Dag.Dump()
-
 	entry, _, err := tree.Dag.Resolve([]string{"chain", "end", "blocksWithHeaders"})
-	assert.Nil(t, err)
+	require.Nil(t, err)
 	//assert.Equal(t, blockCid, entry.([]interface{})[0].(cid.Cid))
 
 	currAndOldTip := tree.Dag.Tip.String()
 
 	block2 := &BlockWithHeaders{
 		Block: Block{
+			Height:      1,
 			PreviousTip: currAndOldTip,
 			Transactions: []*Transaction{
 				{
@@ -162,53 +158,16 @@ func TestBuildingUpAChain(t *testing.T) {
 	}
 
 	valid, err = tree.ProcessBlock(block2)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 	assert.True(t, valid)
 
 	block2Cid := sw.WrapObject(block2).Cid()
 	assert.Nil(t, sw.Err)
-	//defer func() {
-	//	if r := recover(); r != nil {
-	//		t.Log(spew.Sdump(entry))
-	//		t.Logf("Recovered in f: %v", r)
-	//		t.Log(tree.Dag.Dump())
-	//	}
-	//}()
+
 	entry, remain, err := tree.Dag.Resolve([]string{"chain", "end", "blocksWithHeaders"})
 	assert.Nil(t, err)
 	assert.Len(t, remain, 0)
 	assert.True(t, block2Cid.Equals(entry.([]interface{})[0].(cid.Cid)))
-
-	// you can build on the same segment of the chain
-	block3 := &BlockWithHeaders{
-		Block: Block{
-			PreviousTip: currAndOldTip,
-			Transactions: []*Transaction{
-				{
-					Type: "SET_DATA",
-					Payload: map[string]string{
-						"path":  "down/in/the/thing",
-						"value": "hi",
-					},
-				},
-			},
-		},
-		Headers: map[string]interface{}{
-			"cool": "cool",
-		},
-	}
-
-	valid, err = tree.ProcessBlock(block3)
-	assert.Nil(t, err)
-	assert.True(t, valid)
-
-	block3Cid := sw.WrapObject(block3).Cid()
-	assert.Nil(t, sw.Err)
-
-	entry, _, err = tree.Dag.Resolve([]string{"chain", "end", "blocksWithHeaders"})
-	assert.Nil(t, err)
-	assert.Len(t, entry, 2)
-	assert.True(t, block3Cid.Equals(entry.([]interface{})[1].(cid.Cid)))
 }
 
 func TestBlockProcessing(t *testing.T) {
