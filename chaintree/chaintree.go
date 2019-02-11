@@ -48,10 +48,11 @@ type ErrorCode struct {
 }
 
 type RootNode struct {
-	Chain *cid.Cid `refmt:"chain"`
-	Tree  *cid.Cid `refmt:"tree"`
-	Id    string   `refmt:"id"`
-	cid   cid.Cid
+	Chain  *cid.Cid `refmt:"chain"`
+	Tree   *cid.Cid `refmt:"tree"`
+	Id     string   `refmt:"id"`
+	Height uint64   `refmt:"height" json:"height" cbor:"height"`
+	cid    cid.Cid
 }
 
 type Transaction struct {
@@ -61,7 +62,7 @@ type Transaction struct {
 
 type Block struct {
 	PreviousTip  *cid.Cid       `refmt:"previousTip,omitempty" json:"previousTip,omitempty" cbor:"previousTip,omitempty"`
-	Height       uint64         `refmt:"height,omitempty" json:"height,omitempty" cbor:"height,omitempty"`
+	Height       uint64         `refmt:"height" json:"height" cbor:"height"`
 	Transactions []*Transaction `refmt:"transactions" json:"transactions" cbor:"transactions"`
 }
 
@@ -223,6 +224,11 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		if err != nil {
 			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error updating: %v", err)}
 		}
+
+		ct.Dag, err = ct.Dag.Set([]string{"height"}, uint64(0))
+		if err != nil {
+			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error setting height: %v", err)}
+		}
 		return true, nil
 	}
 
@@ -261,6 +267,10 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 	ct.Dag, err = ct.Dag.SetAsLink([]string{ChainLabel}, chain)
 	if err != nil {
 		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error swapping object: %v", err)}
+	}
+	ct.Dag, err = ct.Dag.Set([]string{"height"}, blockWithHeaders.Block.Height)
+	if err != nil {
+		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error setting root height: %v", err)}
 	}
 	return true, nil
 }

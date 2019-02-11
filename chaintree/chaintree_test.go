@@ -157,8 +157,11 @@ func TestHeightValidation(t *testing.T) {
 		valid, err := tree.ProcessBlock(block)
 		require.Nil(t, err)
 		require.True(t, valid)
+		height, _, err := tree.Dag.Resolve([]string{"height"})
+		require.Nil(t, err)
+		assert.Equal(t, uint64(0), height)
 
-		// first fail with a zero
+		// next fail with a zero
 		block2 := &BlockWithHeaders{
 			Block: Block{
 				Height: 0,
@@ -204,6 +207,10 @@ func TestHeightValidation(t *testing.T) {
 		valid, err = tree.ProcessBlock(block2)
 		require.Nil(t, err)
 		require.True(t, valid)
+
+		height, _, err = tree.Dag.Resolve([]string{"height"})
+		require.Nil(t, err)
+		assert.Equal(t, uint64(1), height)
 	})
 
 }
