@@ -38,12 +38,12 @@
   revision = "5a60a3a4a7ccddcc717bbac9f8e0a65dd982ad46"
 
 [[constraint]]
-  name = "github.com/ipfs/go-ipld-format"
-  revision = "b2d848bada9dbd11ec27b9a38e8726555e249fd4"
-
-[[constraint]]
   name = "github.com/ipsn/go-ipfs"
   revision = "4b3ab38e3ef37ded722bab7ee9f3c4cf69fbaeff"
+
+[[constraint]]
+  name = "github.com/ipfs/go-ipld-format"
+  revision = "b2d848bada9dbd11ec27b9a38e8726555e249fd4"
 
 [[constraint]]
   name = "github.com/multiformats/go-multihash"
