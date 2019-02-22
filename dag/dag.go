@@ -168,9 +168,15 @@ func (d *Dag) getExisting(path []string) (val map[string]interface{}, remainingP
 
 	switch existing.(type) {
 	case map[string]interface{}:
-		return existing.(map[string]interface{}), remaining,nil
+		return existing.(map[string]interface{}), remaining, nil
 	case nil:
-		return nil, remaining, nil
+		// nil can be returned when an object exists at a part of the path, but the next
+		// segment of the path (a key in the object) does not exist.
+		// In those cases, fetch the next object up (parent of remaining) and use that
+		// as the existing object. Still needs to return remaining from the original call though
+		// since thats where the caller needs to manipulate up to
+		existingAncestor, _, err := d.getExisting(path[:len(path)-len(remaining)])
+		return existingAncestor, remaining, err
 	default:
 		return make(map[string]interface{}), remaining, nil
 	}
@@ -198,17 +204,16 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 	}
 
 	existingPath := path[:len(path)-len(remainingPath)]
-
 	/*
-	Alright, there are basically three possible scenarios now:
-	1. The path we're setting doesn't exist at all.
-	   leafNodeObj will be nil and remainingPath will be == path
-	2. The path we're setting partially exists.
-	   leafNodeObj will be the last existing node and remainingPath will be
-	   the path elements that don't exist yet.
-	3. The path we're setting fully exists.
-	   leafNodeObj will be the node we want to set key and val in
-	   (respecting asLink) and remainingPath will be empty.
+		Alright, there are basically three possible scenarios now:
+		1. The path we're setting doesn't exist at all.
+		   leafNodeObj will be nil and remainingPath will be == path
+		2. The path we're setting partially exists.
+		   leafNodeObj will be the last existing node and remainingPath will be
+		   the path elements that don't exist yet.
+		3. The path we're setting fully exists.
+		   leafNodeObj will be the node we want to set key and val in
+		   (respecting asLink) and remainingPath will be empty.
 	*/
 
 	// create the new leaf node object or use the existing one if the path fully exists
@@ -240,11 +245,13 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 		if err != nil {
 			return nil, fmt.Errorf("error creating node for path element %s: %v", remainingPath[i], err)
 		}
+
 		if i > 0 || leafNodeObj == nil {
 			nextNodeObj = make(map[string]interface{})
 		} else {
 			nextNodeObj = leafNodeObj
 		}
+
 		nextNodeObj[remainingPath[i]] = nextNode.Cid()
 	}
 

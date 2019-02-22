@@ -67,6 +67,18 @@ func TestDagSet(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "bob", val)
 
+	// test top level sibling
+	dag, err = dag.Set([]string{"test2"}, "alice")
+	assert.Nil(t, err)
+
+	val, _, err = dag.Resolve([]string{"test"})
+	assert.Nil(t, err)
+	assert.Equal(t, "bob", val)
+
+	val2, _, err := dag.Resolve([]string{"test2"})
+	assert.Nil(t, err)
+	assert.Equal(t, "alice", val2)
+
 	// test works with a CID
 	dag.AddNodes(unlinked)
 
@@ -102,6 +114,26 @@ func TestDagSet(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.Equal(t, "sue", siblingVal)
+
+	// Test sibling of partially existing path
+	partiallyExistingPath := []string{"child", "non-existant-nested", "other-objects", "nestedtest"}
+	dag, err = dag.Set(partiallyExistingPath, "carol")
+	assert.Nil(t, err)
+
+	// original sibling is still available
+	val, _, err = dag.Resolve(path)
+	assert.Nil(t, err)
+	assert.Equal(t, "bob", val)
+
+	// second sibling is still available
+	siblingVal, _, err = dag.Resolve(siblingPath)
+	assert.Nil(t, err)
+	assert.Equal(t, "sue", siblingVal)
+
+	// check partially existing path set
+	partiallyExistingVal, _, err := dag.Resolve(partiallyExistingPath)
+	assert.Nil(t, err)
+	assert.Equal(t, "carol", partiallyExistingVal)
 }
 
 func TestDagSetAsLink(t *testing.T) {
