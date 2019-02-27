@@ -2,57 +2,57 @@ package nodestore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	cid "github.com/ipfs/go-cid"
+	ipfsHttpClient "github.com/ipfs/go-ipfs-http-client"
 	cbornode "github.com/ipfs/go-ipld-cbor"
+	ipldFormat "github.com/ipfs/go-ipld-format"
+	ipfsCoreApiIface "github.com/ipfs/interface-go-ipfs-core"
+	ipfsCoreApiOpt "github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipsn/go-ipfs/core"
-	"github.com/ipsn/go-ipfs/core/coreapi"
-	ipsnCid "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-cid"
-	ipsnCbornode "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-ipld-cbor"
-	ipldFormat "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-ipld-format"
-	ipfsCoreApiIface "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/interface-go-ipfs-core"
-	ipfsCoreApiOpt "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/interface-go-ipfs-core/options"
-	multihash "github.com/multiformats/go-multihash"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/quorumcontrol/chaintree/safewrap"
 )
 
-// IpldStore is a NodeStore that uses IPLD
-type IpldStore struct {
+type IpldHttpStoreConfig struct {
+	Address ma.Multiaddr
+}
+
+// IpldHttpStore is a NodeStore that uses IPLD HTTP api
+type IpldHttpStore struct {
 	node *core.IpfsNode
 	api  ipfsCoreApiIface.CoreAPI
 }
 
-// var _ NodeStore = (*IpldStore)(nil)
+var ErrHTTPNoSuchLink = errors.New("no such link found")
 
-// NewIpldStore creates a new NodeStore using the store argument for the backend
-func NewIpldStore(node *core.IpfsNode) *IpldStore {
-	api, err := coreapi.NewCoreAPI(node)
-	if err != nil {
-		panic("Could not instantiate new core IPFS API")
-	}
+// var _ NodeStore = (*IpldHttpStore)(nil)
 
-	return &IpldStore{
-		node: node,
-		api:  api,
+// NewIpldHttpStore creates a new NodeStore using the store argument for the backend
+func NewIpldHttpStore(cfg *IpldHttpStoreConfig) *IpldHttpStore {
+	api, _ := ipfsHttpClient.NewApi(cfg.Address)
+	return &IpldHttpStore{
+		api: api,
 	}
 }
 
-func (ipld *IpldStore) dag() ipfsCoreApiIface.APIDagService {
+func (ipld *IpldHttpStore) dag() ipfsCoreApiIface.APIDagService {
 	return ipld.api.Dag()
 }
 
-func (ipld *IpldStore) pin() ipfsCoreApiIface.PinAPI {
+func (ipld *IpldHttpStore) pin() ipfsCoreApiIface.PinAPI {
 	return ipld.api.Pin()
 }
 
-func (ipld *IpldStore) block() ipfsCoreApiIface.BlockAPI {
+func (ipld *IpldHttpStore) block() ipfsCoreApiIface.BlockAPI {
 	return ipld.api.Block()
 }
 
 // CreateNode takes any object and converts it to a cbornode and then returns the saved CID
-func (ipld *IpldStore) CreateNode(obj interface{}) (node *cbornode.Node, err error) {
+func (ipld *IpldHttpStore) CreateNode(obj interface{}) (node *cbornode.Node, err error) {
 	node, err = objToCbor(obj)
 	if err != nil {
 		return nil, fmt.Errorf("error converting obj: %v", err)
@@ -61,7 +61,7 @@ func (ipld *IpldStore) CreateNode(obj interface{}) (node *cbornode.Node, err err
 }
 
 // CreateNodeFromBytes implements the NodeStore interface
-func (ipld *IpldStore) CreateNodeFromBytes(data []byte) (node *cbornode.Node, err error) {
+func (ipld *IpldHttpStore) CreateNodeFromBytes(data []byte) (node *cbornode.Node, err error) {
 	sw := safewrap.SafeWrap{}
 	node = sw.Decode(data)
 	if sw.Err != nil {
@@ -71,10 +71,11 @@ func (ipld *IpldStore) CreateNodeFromBytes(data []byte) (node *cbornode.Node, er
 }
 
 // GetNode returns a cbornode for a CID
-func (ipld *IpldStore) GetNode(nodeCid cid.Cid) (node *cbornode.Node, err error) {
+func (ipld *IpldHttpStore) GetNode(nodeCid cid.Cid) (node *cbornode.Node, err error) {
 	ctx := context.Background()
-	castCid, _ := ipsnCid.Parse(nodeCid.String())
+	// castCid, _ := ipsnCid.Parse(nodeCid.String())
 
+	// IPLDFIXME
 	pins, err := ipld.pin().Ls(ctx, ipfsCoreApiOpt.Pin.Type.Direct())
 	if err != nil {
 		return nil, fmt.Errorf("error fetching pins: %v", err)
@@ -82,7 +83,7 @@ func (ipld *IpldStore) GetNode(nodeCid cid.Cid) (node *cbornode.Node, err error)
 
 	foundNode := false
 	for _, p := range pins {
-		if p.Path().Cid().Equals(castCid) {
+		if p.Path().Cid().Equals(nodeCid) {
 			foundNode = true
 			break
 		}
@@ -92,7 +93,8 @@ func (ipld *IpldStore) GetNode(nodeCid cid.Cid) (node *cbornode.Node, err error)
 		return nil, nil
 	}
 
-	dagNode, err := ipld.dag().Get(ctx, castCid)
+	// IPLDFIXMEA
+	dagNode, err := ipld.dag().Get(ctx, nodeCid)
 
 	if err == ipldFormat.ErrNotFound {
 		return nil, nil
@@ -111,16 +113,19 @@ func (ipld *IpldStore) GetNode(nodeCid cid.Cid) (node *cbornode.Node, err error)
 }
 
 // DeleteNode implements the NodeStore DeleteNode interface.
-func (ipld *IpldStore) DeleteNode(nodeCid cid.Cid) error {
+func (ipld *IpldHttpStore) DeleteNode(nodeCid cid.Cid) error {
 	ctx := context.Background()
-	castCid, _ := ipsnCid.Parse(nodeCid.String())
-	err := ipld.node.Pinning.Unpin(ctx, castCid, false)
+	path := ipfsCoreApiIface.IpldPath(nodeCid)
+
+	// IPLDFIXME
+	err := ipld.pin().Rm(ctx, path, ipfsCoreApiOpt.Pin.RmRecursive(false))
 
 	if err != nil {
 		return fmt.Errorf("error unpinning cid %s: %v", nodeCid.String(), err)
 	}
 
-	err = ipld.block().Rm(ctx, ipfsCoreApiIface.IpldPath(castCid))
+	// IPLDFIXME
+	err = ipld.block().Rm(ctx, ipfsCoreApiIface.IpldPath(nodeCid))
 	if err != nil {
 		return fmt.Errorf("error removing block cid %s: %v", nodeCid.String(), err)
 	}
@@ -129,7 +134,7 @@ func (ipld *IpldStore) DeleteNode(nodeCid cid.Cid) error {
 }
 
 // DeleteTree implements the NodeStore DeleteTree interface
-func (ipld *IpldStore) DeleteTree(tip cid.Cid) error {
+func (ipld *IpldHttpStore) DeleteTree(tip cid.Cid) error {
 	tipNode, err := ipld.GetNode(tip)
 	if err != nil {
 		return fmt.Errorf("error getting tip: %v", err)
@@ -146,13 +151,15 @@ func (ipld *IpldStore) DeleteTree(tip cid.Cid) error {
 	return ipld.DeleteNode(tip)
 }
 
-func (ipld *IpldStore) resolveNode(tip cid.Cid, path []string) (ipldFormat.Node, []string, error) {
+func (ipld *IpldHttpStore) resolveNode(tip cid.Cid, path []string) (ipldFormat.Node, []string, error) {
 	ctx := context.Background()
-	castCid, _ := ipsnCid.Parse(tip.String())
-	resolvedPath, err := ipld.api.ResolvePath(ctx, ipfsCoreApiIface.Join(ipfsCoreApiIface.IpldPath(castCid), path...))
+	// castCid, _ := ipsnCid.Parse(tip.String())
+	// IPLDFIXME
+	resolvedPath, err := ipld.api.ResolvePath(ctx, ipfsCoreApiIface.Join(ipfsCoreApiIface.IpldPath(tip), path...))
 
-	if err == ipsnCbornode.ErrNoSuchLink && len(path) > 0 {
+	if err != nil && err.Error() == ErrHTTPNoSuchLink.Error() && len(path) > 0 {
 		parentPath := path[:len(path)-1]
+		// IPLDFIXME
 		parentNode, parentRemainder, parentErr := ipld.resolveNode(tip, parentPath)
 		return parentNode, append(parentRemainder, path[len(parentPath):]...), parentErr
 	}
@@ -176,20 +183,15 @@ func (ipld *IpldStore) resolveNode(tip cid.Cid, path []string) (ipldFormat.Node,
 }
 
 // Resolve implements the NodeStore interface
-func (ipld *IpldStore) Resolve(tip cid.Cid, path []string) (interface{}, []string, error) {
+func (ipld *IpldHttpStore) Resolve(tip cid.Cid, path []string) (interface{}, []string, error) {
 	dagNode, dagRemaining, err := ipld.resolveNode(tip, path)
-
-	if err == ipsnCbornode.ErrNoSuchLink {
-		return nil, dagRemaining, nil
-	}
 
 	if err != nil {
 		return nil, dagRemaining, nil
 	}
-
 	nodeValue, remaining, err := dagNode.Resolve(dagRemaining)
 
-	if err == ipsnCbornode.ErrNoSuchLink {
+	if err != nil && err.Error() == ErrHTTPNoSuchLink.Error() {
 		return nil, dagRemaining, nil
 	}
 
@@ -201,20 +203,13 @@ func (ipld *IpldStore) Resolve(tip cid.Cid, path []string) (interface{}, []strin
 }
 
 // StoreNode implements the NodeStore interface
-func (ipld *IpldStore) StoreNode(node *cbornode.Node) error {
+func (ipld *IpldHttpStore) StoreNode(node *cbornode.Node) error {
 	nodeCid := node.Cid()
-	castCid, _ := ipsnCid.Parse(nodeCid.String())
-	path := ipfsCoreApiIface.IpldPath(castCid)
+	path := ipfsCoreApiIface.IpldPath(nodeCid)
 	ctx := context.Background()
 
-	// ipsnNode := &ipsnCbornode.Node{}
-	ipsnNode, err := ipsnCbornode.Decode(node.RawData(), multihash.SHA2_256, -1)
-	if err != nil {
-		return fmt.Errorf("error decoding %v err: %v", nodeCid.String(), err)
-	}
-
 	// IPLDFIXME
-	err = ipld.dag().Add(ctx, ipsnNode)
+	err := ipld.dag().Add(ctx, node)
 	if err != nil {
 		return fmt.Errorf("error putting key %v err: %v", nodeCid.String(), err)
 	}

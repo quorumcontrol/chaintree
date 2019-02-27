@@ -39,7 +39,7 @@
 
 [[constraint]]
   name = "github.com/ipsn/go-ipfs"
-  revision = "4b3ab38e3ef37ded722bab7ee9f3c4cf69fbaeff"
+  revision = "30b2b298240fb29ae96ebc1dce5c7ce6f541bf78"
 
 [[constraint]]
   name = "github.com/ipfs/go-ipld-format"
@@ -47,7 +47,7 @@
 
 [[constraint]]
   name = "github.com/multiformats/go-multihash"
-  version = "1.0.8"
+  revision = "8be2a682ab9f254311de1375145a2f78a809b07d"
 
 [[constraint]]
   name = "github.com/polydawn/refmt"
@@ -65,6 +65,14 @@
   source = "git@github.com:quorumcontrol/storage.git"
   name = "github.com/quorumcontrol/storage"
   version = "1.1.1"
+
+[[override]]
+  name = "github.com/cheggaaa/pb"
+  version = "v1.0.27"
+
+[[override]]
+  name = "github.com/ipfs/go-verifcid"
+  revision = "865373a504719870762158d7b9b0e7272783aad7"
 
 [prune]
   go-tests = true
