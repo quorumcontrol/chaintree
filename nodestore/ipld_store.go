@@ -1,53 +1,46 @@
 package nodestore
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"strings"
 
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
-	"github.com/ipsn/go-ipfs/core"
-	"github.com/ipsn/go-ipfs/core/coreapi"
-	ipfsCoreApiIface "github.com/ipsn/go-ipfs/core/coreapi/interface"
-	ipfsCoreApiOpt "github.com/ipsn/go-ipfs/core/coreapi/interface/options"
 	ipsnCid "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-cid"
 	ipsnCbornode "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-ipld-cbor"
 	ipldFormat "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-ipld-format"
+	ipsnCoreApiIface "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/interface-go-ipfs-core"
+	ipsnCoreApiOpt "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/interface-go-ipfs-core/options"
+	multihash "github.com/multiformats/go-multihash"
 	"github.com/quorumcontrol/chaintree/safewrap"
 )
 
 // IpldStore is a NodeStore that uses IPLD
 type IpldStore struct {
-	node *core.IpfsNode
-	api  ipfsCoreApiIface.CoreAPI
+	api ipsnCoreApiIface.CoreAPI
 }
 
-// var _ NodeStore = (*IpldStore)(nil)
+var errNoSuchLink = ipsnCbornode.ErrNoSuchLink
 
-// NewIpldStore creates a new NodeStore using the store argument for the backend
-func NewIpldStore(node *core.IpfsNode) *IpldStore {
-	api, err := coreapi.NewCoreAPI(node)
-	if err != nil {
-		panic("Could not instantiate new core IPFS API")
-	}
+var _ NodeStore = (*IpldStore)(nil)
 
+// NewIpldStore creates a new NodeStore using an IPLD api
+func NewIpldStore(api ipsnCoreApiIface.CoreAPI) *IpldStore {
 	return &IpldStore{
-		node: node,
-		api:  api,
+		api: api,
 	}
 }
 
-func (ipld *IpldStore) dag() ipfsCoreApiIface.DagAPI {
+func (ipld *IpldStore) dag() ipsnCoreApiIface.APIDagService {
 	return ipld.api.Dag()
 }
 
-func (ipld *IpldStore) pin() ipfsCoreApiIface.PinAPI {
+func (ipld *IpldStore) pin() ipsnCoreApiIface.PinAPI {
 	return ipld.api.Pin()
 }
 
-func (ipld *IpldStore) block() ipfsCoreApiIface.BlockAPI {
+func (ipld *IpldStore) block() ipsnCoreApiIface.BlockAPI {
 	return ipld.api.Block()
 }
 
@@ -71,11 +64,11 @@ func (ipld *IpldStore) CreateNodeFromBytes(data []byte) (node *cbornode.Node, er
 }
 
 // GetNode returns a cbornode for a CID
-func (ipld *IpldStore) GetNode(cid cid.Cid) (node *cbornode.Node, err error) {
+func (ipld *IpldStore) GetNode(nodeCid cid.Cid) (node *cbornode.Node, err error) {
 	ctx := context.Background()
-	castCid, _ := ipsnCid.Parse(cid.String())
+	castCid, _ := ipsnCid.Parse(nodeCid.String())
 
-	pins, err := ipld.pin().Ls(ctx, ipfsCoreApiOpt.Pin.Type.Direct())
+	pins, err := ipld.pin().Ls(ctx, ipsnCoreApiOpt.Pin.Type.Direct())
 	if err != nil {
 		return nil, fmt.Errorf("error fetching pins: %v", err)
 	}
@@ -92,7 +85,7 @@ func (ipld *IpldStore) GetNode(cid cid.Cid) (node *cbornode.Node, err error) {
 		return nil, nil
 	}
 
-	dagNode, err := ipld.dag().Get(ctx, ipfsCoreApiIface.IpldPath(castCid))
+	dagNode, err := ipld.dag().Get(ctx, castCid)
 
 	if err == ipldFormat.ErrNotFound {
 		return nil, nil
@@ -114,13 +107,15 @@ func (ipld *IpldStore) GetNode(cid cid.Cid) (node *cbornode.Node, err error) {
 func (ipld *IpldStore) DeleteNode(nodeCid cid.Cid) error {
 	ctx := context.Background()
 	castCid, _ := ipsnCid.Parse(nodeCid.String())
-	err := ipld.node.Pinning.Unpin(ctx, castCid, false)
+	path := ipsnCoreApiIface.IpldPath(castCid)
+
+	err := ipld.pin().Rm(ctx, path, ipsnCoreApiOpt.Pin.RmRecursive(false))
 
 	if err != nil {
 		return fmt.Errorf("error unpinning cid %s: %v", nodeCid.String(), err)
 	}
 
-	err = ipld.block().Rm(ctx, ipfsCoreApiIface.IpldPath(castCid))
+	err = ipld.block().Rm(ctx, ipsnCoreApiIface.IpldPath(castCid))
 	if err != nil {
 		return fmt.Errorf("error removing block cid %s: %v", nodeCid.String(), err)
 	}
@@ -149,9 +144,9 @@ func (ipld *IpldStore) DeleteTree(tip cid.Cid) error {
 func (ipld *IpldStore) resolveNode(tip cid.Cid, path []string) (ipldFormat.Node, []string, error) {
 	ctx := context.Background()
 	castCid, _ := ipsnCid.Parse(tip.String())
-	resolvedPath, err := ipld.api.ResolvePath(ctx, ipfsCoreApiIface.Join(ipfsCoreApiIface.IpldPath(castCid), path...))
+	resolvedPath, err := ipld.api.ResolvePath(ctx, ipsnCoreApiIface.Join(ipsnCoreApiIface.IpldPath(castCid), path...))
 
-	if err == ipsnCbornode.ErrNoSuchLink && len(path) > 0 {
+	if err != nil && err.Error() == errNoSuchLink.Error() && len(path) > 0 {
 		parentPath := path[:len(path)-1]
 		parentNode, parentRemainder, parentErr := ipld.resolveNode(tip, parentPath)
 		return parentNode, append(parentRemainder, path[len(parentPath):]...), parentErr
@@ -179,17 +174,12 @@ func (ipld *IpldStore) resolveNode(tip cid.Cid, path []string) (ipldFormat.Node,
 func (ipld *IpldStore) Resolve(tip cid.Cid, path []string) (interface{}, []string, error) {
 	dagNode, dagRemaining, err := ipld.resolveNode(tip, path)
 
-	if err == ipsnCbornode.ErrNoSuchLink {
-		return nil, dagRemaining, nil
-	}
-
 	if err != nil {
 		return nil, dagRemaining, nil
 	}
-
 	nodeValue, remaining, err := dagNode.Resolve(dagRemaining)
 
-	if err == ipsnCbornode.ErrNoSuchLink {
+	if err != nil && err.Error() == errNoSuchLink.Error() {
 		return nil, dagRemaining, nil
 	}
 
@@ -203,13 +193,21 @@ func (ipld *IpldStore) Resolve(tip cid.Cid, path []string) (interface{}, []strin
 // StoreNode implements the NodeStore interface
 func (ipld *IpldStore) StoreNode(node *cbornode.Node) error {
 	nodeCid := node.Cid()
+	castCid, _ := ipsnCid.Parse(nodeCid.String())
+	path := ipsnCoreApiIface.IpldPath(castCid)
 	ctx := context.Background()
-	path, err := ipld.dag().Put(ctx, bytes.NewReader(node.RawData()), ipfsCoreApiOpt.Dag.InputEnc("cbor"))
+
+	ipsnNode, err := ipsnCbornode.Decode(node.RawData(), multihash.SHA2_256, -1)
+	if err != nil {
+		return fmt.Errorf("error decoding %v err: %v", nodeCid.String(), err)
+	}
+
+	err = ipld.dag().Add(ctx, ipsnNode)
 	if err != nil {
 		return fmt.Errorf("error putting key %v err: %v", nodeCid.String(), err)
 	}
 
-	err = ipld.pin().Add(ctx, path, ipfsCoreApiOpt.Pin.Recursive(false))
+	err = ipld.pin().Add(ctx, path, ipsnCoreApiOpt.Pin.Recursive(false))
 	if err != nil {
 		return fmt.Errorf("error pinning key %v err: %v", nodeCid.String(), err)
 	}
