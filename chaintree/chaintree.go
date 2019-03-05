@@ -28,12 +28,22 @@ func init() {
 	cbornode.RegisterCborType(BlockWithHeaders{})
 	cbornode.RegisterCborType(Block{})
 	cbornode.RegisterCborType(Transaction{})
+	cbornode.RegisterCborType(SetDataPayload{})
+	cbornode.RegisterCborType(SetOwnershipPayload{})
+	cbornode.RegisterCborType(EstablishCoinPayload{})
+	cbornode.RegisterCborType(MintCoinPayload{})
+	cbornode.RegisterCborType(CoinMonetaryPolicy{})
 
 	typecaster.AddType(RootNode{})
 	typecaster.AddType(Chain{})
 	typecaster.AddType(BlockWithHeaders{})
 	typecaster.AddType(Block{})
 	typecaster.AddType(Transaction{})
+	typecaster.AddType(SetDataPayload{})
+	typecaster.AddType(SetOwnershipPayload{})
+	typecaster.AddType(EstablishCoinPayload{})
+	typecaster.AddType(MintCoinPayload{})
+	typecaster.AddType(CoinMonetaryPolicy{})
 	typecaster.AddType(cid.Cid{})
 }
 
@@ -53,11 +63,6 @@ type RootNode struct {
 	Id     string   `refmt:"id"`
 	Height uint64   `refmt:"height" json:"height" cbor:"height"`
 	cid    cid.Cid
-}
-
-type Transaction struct {
-	Type    string      `refmt:"type" json:"type" cbor:"type"`
-	Payload interface{} `refmt:"payload" json:"payload" cbor:"payload"`
 }
 
 type Block struct {
