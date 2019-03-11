@@ -183,9 +183,12 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:97df918963298c287643883209a2c3f642e6593379f97ab400c2a2e219ab647d"
+  digest = "1:8e61458e9fd6d83dbc2d9796534e180e5bf478b1845b25dd2bf5e52b116c52c3"
   name = "github.com/golang/protobuf"
-  packages = ["proto"]
+  packages = [
+    "proto",
+    "ptypes/any",
+  ]
   pruneopts = "UT"
   revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
   version = "v1.2.0"
@@ -840,6 +843,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:a677928dcf253d7ccff3b81c27689ed826061249fa8ba8fce5f9de07ddc2834f"
+  name = "github.com/quorumcontrol/messages"
+  packages = ["transactions"]
+  pruneopts = "UT"
+  revision = "a5947a4b73ecf04ad4a5d2ec18131f6180a7b2a1"
+
+[[projects]]
+  branch = "master"
   digest = "1:32e760f00b355161f1c67a6fc91ae3b3d5baacb94682a3d7b45aeeecd0d7a2f5"
   name = "github.com/quorumcontrol/namedlocker"
   packages = ["."]
@@ -1013,6 +1024,8 @@
   analyzer-version = 1
   input-imports = [
     "github.com/davecgh/go-spew/spew",
+    "github.com/golang/protobuf/proto",
+    "github.com/golang/protobuf/ptypes/any",
     "github.com/ipfs/go-cid",
     "github.com/ipfs/go-ipfs-http-client",
     "github.com/ipfs/go-ipld-cbor",
@@ -1033,6 +1046,7 @@
     "github.com/polydawn/refmt/obj",
     "github.com/polydawn/refmt/obj/atlas",
     "github.com/polydawn/refmt/shared",
+    "github.com/quorumcontrol/messages/transactions",
     "github.com/quorumcontrol/namedlocker",
     "github.com/quorumcontrol/storage",
     "github.com/stretchr/testify/assert",

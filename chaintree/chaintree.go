@@ -7,6 +7,7 @@ import (
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/typecaster"
+	"github.com/quorumcontrol/messages/transactions"
 )
 
 const (
@@ -27,23 +28,23 @@ func init() {
 	cbornode.RegisterCborType(Chain{})
 	cbornode.RegisterCborType(BlockWithHeaders{})
 	cbornode.RegisterCborType(Block{})
-	cbornode.RegisterCborType(Transaction{})
-	cbornode.RegisterCborType(SetDataPayload{})
-	cbornode.RegisterCborType(SetOwnershipPayload{})
-	cbornode.RegisterCborType(EstablishCoinPayload{})
-	cbornode.RegisterCborType(MintCoinPayload{})
-	cbornode.RegisterCborType(CoinMonetaryPolicy{})
+	cbornode.RegisterCborType(transactions.SetDataPayload{})
+	cbornode.RegisterCborType(transactions.SetOwnershipPayload{})
+	cbornode.RegisterCborType(transactions.CoinMonetaryPolicy{})
+	cbornode.RegisterCborType(transactions.EstablishCoinPayload{})
+	cbornode.RegisterCborType(transactions.MintCoinPayload{})
+	cbornode.RegisterCborType(transactions.Transaction{})
 
 	typecaster.AddType(RootNode{})
 	typecaster.AddType(Chain{})
 	typecaster.AddType(BlockWithHeaders{})
 	typecaster.AddType(Block{})
-	typecaster.AddType(Transaction{})
-	typecaster.AddType(SetDataPayload{})
-	typecaster.AddType(SetOwnershipPayload{})
-	typecaster.AddType(EstablishCoinPayload{})
-	typecaster.AddType(MintCoinPayload{})
-	typecaster.AddType(CoinMonetaryPolicy{})
+	typecaster.AddType(transactions.SetDataPayload{})
+	typecaster.AddType(transactions.SetOwnershipPayload{})
+	typecaster.AddType(transactions.CoinMonetaryPolicy{})
+	typecaster.AddType(transactions.EstablishCoinPayload{})
+	typecaster.AddType(transactions.MintCoinPayload{})
+	typecaster.AddType(transactions.Transaction{})
 	typecaster.AddType(cid.Cid{})
 }
 
@@ -66,9 +67,9 @@ type RootNode struct {
 }
 
 type Block struct {
-	PreviousTip  *cid.Cid       `refmt:"previousTip,omitempty" json:"previousTip,omitempty" cbor:"previousTip,omitempty"`
-	Height       uint64         `refmt:"height" json:"height" cbor:"height"`
-	Transactions []*Transaction `refmt:"transactions" json:"transactions" cbor:"transactions"`
+	PreviousTip  *cid.Cid                    `refmt:"previousTip,omitempty" json:"previousTip,omitempty" cbor:"previousTip,omitempty"`
+	Height       uint64                      `refmt:"height" json:"height" cbor:"height"`
+	Transactions []*transactions.Transaction `refmt:"transactions" json:"transactions" cbor:"transactions"`
 }
 
 type BlockWithHeaders struct {
@@ -92,7 +93,7 @@ func (e *ErrorCode) Error() string {
 // TransactorFunc mutates a  ChainTree and returns whether the transaction is valid
 // or if there was an error processing the transactor. Errors should be retried,
 // valid means it isn't a valid transaction
-type TransactorFunc func(tree *dag.Dag, transaction *Transaction) (newTree *dag.Dag, valid bool, err CodedError)
+type TransactorFunc func(tree *dag.Dag, transaction *transactions.Transaction) (newTree *dag.Dag, valid bool, err CodedError)
 
 // BlockValidatorFuncs are run on the block level rather than the per transaction level
 type BlockValidatorFunc func(tree *dag.Dag, blockWithHeaders *BlockWithHeaders) (valid bool, err CodedError)
