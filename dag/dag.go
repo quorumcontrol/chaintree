@@ -10,6 +10,10 @@ import (
 	"github.com/quorumcontrol/chaintree/nodestore"
 )
 
+func init() {
+	cbornode.RegisterCborType(Dag{})
+}
+
 // Dag is a convenience wrapper around a node store for setting and pruning
 type Dag struct {
 	Tip     cid.Cid
@@ -315,7 +319,7 @@ func (d *Dag) Dump() string {
 	}
 	return fmt.Sprintf(`
 Tip: %s,
-Tree:	
+Tree:
 %s
 
 Nodes:
