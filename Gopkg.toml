@@ -39,7 +39,7 @@
 
 [[constraint]]
   name = "github.com/ipsn/go-ipfs"
-  revision = "30b2b298240fb29ae96ebc1dce5c7ce6f541bf78"
+  revision = "cd900e33002256aca1ab07247fc9170dee6e7ce2"
 
 [[constraint]]
   name = "github.com/ipfs/go-ipld-format"

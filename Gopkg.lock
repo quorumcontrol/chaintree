@@ -323,7 +323,7 @@
   revision = "b2d848bada9dbd11ec27b9a38e8726555e249fd4"
 
 [[projects]]
-  digest = "1:86a1fdefa74b791b6bc35754bc66265662a85202dbc2889b9464da31163b42c1"
+  digest = "1:19f3ca90367633126bc347e268c64ce037c089cf77c0126f9afa9aa7969d66a2"
   name = "github.com/ipsn/go-ipfs"
   packages = [
     ".",
@@ -596,7 +596,7 @@
     "thirdparty/verifbs",
   ]
   pruneopts = "UT"
-  revision = "30b2b298240fb29ae96ebc1dce5c7ce6f541bf78"
+  revision = "cd900e33002256aca1ab07247fc9170dee6e7ce2"
 
 [[projects]]
   digest = "1:b352ae8b1a77cc6b48fc8e314e34a522cfc76d6ca3a06c93b29c9cde5de6771e"
