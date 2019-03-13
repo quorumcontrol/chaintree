@@ -433,6 +433,72 @@ func TestBlockProcessing(t *testing.T) {
 	}
 }
 
+// Verify that when setting a nested value, clobbering of an ancestor is not allowed.
+func TestNestedNoClobber(t *testing.T) {
+	sw := &safewrap.SafeWrap{}
+
+	treeNode := sw.WrapObject(map[string]string{})
+
+	chainNode := sw.WrapObject(make(map[string]string))
+
+	root := sw.WrapObject(map[string]interface{}{
+		"chain": chainNode.Cid(),
+		"tree":  treeNode.Cid(),
+	})
+
+	assert.Nil(t, sw.Err)
+
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	dag, err := dag.NewDagWithNodes(store, root, treeNode, chainNode)
+	require.Nil(t, err)
+
+	tree, err := NewChainTree(
+		dag,
+		nil,
+		map[string]TransactorFunc{
+			"SET_DATA": setData,
+		},
+	)
+	require.Nil(t, err)
+
+	block := &BlockWithHeaders{
+		Block: Block{
+			Transactions: []*Transaction{
+				{
+					Type: "SET_DATA",
+					Payload: map[string]string{
+						"path":  "outer",
+						"value": "flat",
+					},
+				},
+			},
+		},
+	}
+	valid, err := tree.ProcessBlock(block)
+	require.Nil(t, err)
+	require.True(t, valid)
+
+	block2 := &BlockWithHeaders{
+		Block: Block{
+			Height:      1,
+			PreviousTip: &tree.Dag.Tip,
+			Transactions: []*Transaction{
+				{
+					Type: "SET_DATA",
+					Payload: map[string]string{
+						"path":  "outer/inner",
+						"value": "nested",
+					},
+				},
+			},
+		},
+	}
+
+	valid, err = tree.ProcessBlock(block2)
+	require.NotNil(t, err)
+	assert.False(t, valid)
+}
+
 func BenchmarkEncodeDecode(b *testing.B) {
 	sw := &safewrap.SafeWrap{}
 
@@ -483,5 +549,4 @@ func BenchmarkEncodeDecode(b *testing.B) {
 		_, _, err = chainTree.Dag.Resolve([]string{"tree", "down", "in", "the", "thing"})
 	}
 	require.Nil(b, err)
-
 }
