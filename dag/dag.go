@@ -315,7 +315,7 @@ func (d *Dag) Dump() string {
 	}
 	return fmt.Sprintf(`
 Tip: %s,
-Tree:	
+Tree:
 %s
 
 Nodes:

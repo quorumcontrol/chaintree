@@ -18,7 +18,17 @@ func (sf *SafeWrap) WrapObject(obj interface{}) *cbornode.Node {
 		return nil
 	}
 
-	node, err := cbornode.WrapObject(obj, multihash.SHA2_256, -1)
+	var (
+		node *cbornode.Node
+		err  error
+	)
+
+	if cbor, ok := obj.(*cbornode.Node); ok {
+		node = cbor
+	} else {
+		node, err = cbornode.WrapObject(obj, multihash.SHA2_256, -1)
+	}
+
 	sf.Err = err
 	return node
 }
