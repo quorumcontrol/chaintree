@@ -23,13 +23,9 @@ func (sf *SafeWrap) WrapObject(obj interface{}) *cbornode.Node {
 		err  error
 	)
 
-	switch obj.(type) {
-	case cbornode.Node:
-		cbor := obj.(cbornode.Node)
-		node = &cbor
-	case *cbornode.Node:
-		node = obj.(*cbornode.Node)
-	default:
+	if cbor, ok := obj.(*cbornode.Node); ok {
+		node = cbor
+	} else {
 		node, err = cbornode.WrapObject(obj, multihash.SHA2_256, -1)
 	}
 
