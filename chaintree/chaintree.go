@@ -192,6 +192,9 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 	}
 
 	chainNode, err := ct.Dag.Get(*root.Chain)
+	if err != nil {
+		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting node: %v", err)}
+	}
 	chain := &Chain{}
 	err = cbornode.DecodeInto(chainNode.RawData(), chain)
 	if err != nil {
@@ -235,6 +238,9 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 	// otherwise we have an existing chain in this chaintree
 
 	endNode, err := ct.Dag.Get(*chain.End)
+	if err != nil {
+		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting end node: %v", err)}
+	}
 	if endNode == nil {
 		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("missing end node in chain tree")}
 	}

@@ -6,7 +6,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipld-cbor"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/nodestore"
 )
 
@@ -166,9 +166,9 @@ func (d *Dag) getExisting(path []string) (val map[string]interface{}, remainingP
 		existing, _, _ = d.Resolve([]string{})
 	}
 
-	switch existing.(type) {
+	switch existing := existing.(type) {
 	case map[string]interface{}:
-		return existing.(map[string]interface{}), remaining, nil
+		return existing, remaining, nil
 	case nil:
 		// nil can be returned when an object exists at a part of the path, but the next
 		// segment of the path (a key in the object) does not exist.
@@ -309,7 +309,7 @@ func (d *Dag) Dump() string {
 	for i, node := range nodes {
 		nodeJSON, err := node.MarshalJSON()
 		if err != nil {
-			fmt.Errorf("error marshalling JSON for node %v: %v", node, err)
+			panic(fmt.Sprintf("error marshalling JSON for node %v: %v", node, err))
 		}
 		nodeStrings[i] = fmt.Sprintf("%v : %v", node.Cid().String(), string(nodeJSON))
 	}
