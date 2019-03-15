@@ -34,14 +34,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d6afaeed1502aa28e80a4ed0981d570ad91b2579193404256ce672ed0a609e0d"
-  name = "github.com/beorn7/perks"
-  packages = ["quantile"]
-  pruneopts = "UT"
-  revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
-
-[[projects]]
-  branch = "master"
   digest = "1:1779bbb6256073e58fa31c8989a96775062336b7c37e55b27cc9c8f0890995bb"
   name = "github.com/bifurcation/mint"
   packages = [
@@ -82,14 +74,6 @@
   pruneopts = "UT"
   revision = "d2cf3cdd35ce0d789056c4bc02a4d6349c947caf"
   version = "v1.0.0"
-
-[[projects]]
-  digest = "1:94cad6e2359d57da6652e689189c5b6ef19f99db6304d2c41de54f6632e15143"
-  name = "github.com/cheggaaa/pb"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "1cc5bbe20449079337944d56292c7383510c534c"
-  version = "v1.0.27"
 
 [[projects]]
   digest = "1:0ef770954bca104ee99b3b6b7f9b240605ac03517d9f98cbc1893daa03f3c038"
@@ -144,14 +128,6 @@
   pruneopts = "UT"
   revision = "9f541cc9db5d55bce703bd99987c9d5cb8eea45e"
   version = "v1.0.0"
-
-[[projects]]
-  branch = "master"
-  digest = "1:fffcae02150ef80950d18c721eaa249e6e80df5e0b9b645731949e586573f685"
-  name = "github.com/elgris/jsondiff"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "765b5c24c302e7c7fd032fdb8c69f101918229cb"
 
 [[projects]]
   branch = "master"
@@ -290,14 +266,6 @@
   version = "v0.9.0"
 
 [[projects]]
-  digest = "1:1bf41eac472b0992dccaf533d339c7a139558e1bd4ec1a1c4b5d23c8a67c81fb"
-  name = "github.com/ipfs/go-ipfs-http-client"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "984004a746c6b66a07839f2925ed79345dd8e67f"
-  source = "github.com/quorumcontrol/ipsn-go-ipfs-http-client"
-
-[[projects]]
   digest = "1:aae82c244bd91107575a0244a29e82e34ba23e06b6892557e33728de48deba96"
   name = "github.com/ipfs/go-ipfs-util"
   packages = ["."]
@@ -323,24 +291,17 @@
   revision = "b2d848bada9dbd11ec27b9a38e8726555e249fd4"
 
 [[projects]]
-  digest = "1:86a1fdefa74b791b6bc35754bc66265662a85202dbc2889b9464da31163b42c1"
+  digest = "1:36f721d7ad30c52efade27d8307ea302434145b6e4f4116e2a8adc9270db1515"
   name = "github.com/ipsn/go-ipfs"
   packages = [
     ".",
-    "assets",
     "blocks/blockstoreutil",
     "commands",
     "core",
-    "core/commands",
-    "core/commands/cmdenv",
-    "core/commands/dag",
-    "core/commands/e",
-    "core/commands/name",
-    "core/commands/object",
-    "core/commands/unixfs",
     "core/coreapi",
+    "core/coreapi/interface",
+    "core/coreapi/interface/options",
     "core/coredag",
-    "core/corehttp",
     "core/corerepo",
     "core/coreunix",
     "core/mock",
@@ -348,18 +309,13 @@
     "exchange/reprovide",
     "filestore",
     "filestore/pb",
-    "fuse/ipns",
     "fuse/mount",
-    "fuse/node",
-    "fuse/readonly",
     "gxlibs/github.com/Kubuxu/go-os-helper",
     "gxlibs/github.com/Stebalien/go-bitfield",
-    "gxlibs/github.com/blang/semver",
+    "gxlibs/github.com/gxed/GoEndian",
+    "gxlibs/github.com/gxed/eventfd",
     "gxlibs/github.com/gxed/pubsub",
-    "gxlibs/github.com/hsanjuan/go-libp2p-gostream",
-    "gxlibs/github.com/hsanjuan/go-libp2p-http",
     "gxlibs/github.com/ipfs/bbloom",
-    "gxlibs/github.com/ipfs/dir-index-html",
     "gxlibs/github.com/ipfs/go-bitswap",
     "gxlibs/github.com/ipfs/go-bitswap/decision",
     "gxlibs/github.com/ipfs/go-bitswap/getter",
@@ -369,7 +325,6 @@
     "gxlibs/github.com/ipfs/go-bitswap/network",
     "gxlibs/github.com/ipfs/go-bitswap/notifications",
     "gxlibs/github.com/ipfs/go-bitswap/peermanager",
-    "gxlibs/github.com/ipfs/go-bitswap/providerquerymanager",
     "gxlibs/github.com/ipfs/go-bitswap/session",
     "gxlibs/github.com/ipfs/go-bitswap/sessionmanager",
     "gxlibs/github.com/ipfs/go-bitswap/sessionpeermanager",
@@ -381,7 +336,6 @@
     "gxlibs/github.com/ipfs/go-blockservice",
     "gxlibs/github.com/ipfs/go-cid",
     "gxlibs/github.com/ipfs/go-cidutil",
-    "gxlibs/github.com/ipfs/go-cidutil/cidenc",
     "gxlibs/github.com/ipfs/go-datastore",
     "gxlibs/github.com/ipfs/go-datastore/autobatch",
     "gxlibs/github.com/ipfs/go-datastore/delayed",
@@ -401,7 +355,7 @@
     "gxlibs/github.com/ipfs/go-ipfs-chunker",
     "gxlibs/github.com/ipfs/go-ipfs-cmdkit",
     "gxlibs/github.com/ipfs/go-ipfs-cmds",
-    "gxlibs/github.com/ipfs/go-ipfs-cmds/http",
+    "gxlibs/github.com/ipfs/go-ipfs-cmds/debug",
     "gxlibs/github.com/ipfs/go-ipfs-config",
     "gxlibs/github.com/ipfs/go-ipfs-config/serialize",
     "gxlibs/github.com/ipfs/go-ipfs-delay",
@@ -435,9 +389,7 @@
     "gxlibs/github.com/ipfs/go-path/resolver",
     "gxlibs/github.com/ipfs/go-todocounter",
     "gxlibs/github.com/ipfs/go-unixfs",
-    "gxlibs/github.com/ipfs/go-unixfs/file",
     "gxlibs/github.com/ipfs/go-unixfs/hamt",
-    "gxlibs/github.com/ipfs/go-unixfs/importer",
     "gxlibs/github.com/ipfs/go-unixfs/importer/balanced",
     "gxlibs/github.com/ipfs/go-unixfs/importer/helpers",
     "gxlibs/github.com/ipfs/go-unixfs/importer/trickle",
@@ -445,9 +397,6 @@
     "gxlibs/github.com/ipfs/go-unixfs/mod",
     "gxlibs/github.com/ipfs/go-unixfs/pb",
     "gxlibs/github.com/ipfs/go-verifcid",
-    "gxlibs/github.com/ipfs/interface-go-ipfs-core",
-    "gxlibs/github.com/ipfs/interface-go-ipfs-core/options",
-    "gxlibs/github.com/ipfs/interface-go-ipfs-core/options/namesys",
     "gxlibs/github.com/jbenet/goprocess",
     "gxlibs/github.com/jbenet/goprocess/context",
     "gxlibs/github.com/jbenet/goprocess/periodic",
@@ -519,6 +468,9 @@
     "gxlibs/github.com/libp2p/go-msgio",
     "gxlibs/github.com/libp2p/go-reuseport",
     "gxlibs/github.com/libp2p/go-reuseport-transport",
+    "gxlibs/github.com/libp2p/go-reuseport/poll",
+    "gxlibs/github.com/libp2p/go-reuseport/singlepoll",
+    "gxlibs/github.com/libp2p/go-sockaddr/net",
     "gxlibs/github.com/libp2p/go-stream-muxer",
     "gxlibs/github.com/libp2p/go-tcp-transport",
     "gxlibs/github.com/libp2p/go-testutil",
@@ -565,15 +517,14 @@
     "gxlibs/github.com/whyrusleeping/go-smux-multiplex",
     "gxlibs/github.com/whyrusleeping/go-smux-multistream",
     "gxlibs/github.com/whyrusleeping/go-smux-yamux",
-    "gxlibs/github.com/whyrusleeping/go-sysinfo",
     "gxlibs/github.com/whyrusleeping/mafmt",
     "gxlibs/github.com/whyrusleeping/mdns",
     "gxlibs/github.com/whyrusleeping/multiaddr-filter",
-    "gxlibs/github.com/whyrusleeping/tar-utils",
     "gxlibs/github.com/whyrusleeping/timecache",
     "gxlibs/github.com/whyrusleeping/yamux",
     "keystore",
     "namesys",
+    "namesys/opts",
     "namesys/republisher",
     "p2p",
     "pin",
@@ -589,14 +540,13 @@
     "repo/common",
     "repo/fsrepo",
     "repo/fsrepo/migrations",
-    "tar",
     "thirdparty/cidv0v1",
     "thirdparty/dir",
     "thirdparty/math2",
     "thirdparty/verifbs",
   ]
   pruneopts = "UT"
-  revision = "30b2b298240fb29ae96ebc1dce5c7ce6f541bf78"
+  revision = "4b3ab38e3ef37ded722bab7ee9f3c4cf69fbaeff"
 
 [[projects]]
   digest = "1:b352ae8b1a77cc6b48fc8e314e34a522cfc76d6ca3a06c93b29c9cde5de6771e"
@@ -671,30 +621,6 @@
   version = "v0.0.4"
 
 [[projects]]
-  digest = "1:0356f3312c9bd1cbeda81505b7fd437501d8e778ab66998ef69f00d7f9b3a0d7"
-  name = "github.com/mattn/go-runewidth"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "3ee7d812e62a0804a7d0a324e0249ca2db3476d3"
-  version = "v0.0.4"
-
-[[projects]]
-  digest = "1:ff5ebae34cfbf047d505ee150de27e60570e8c394b3b8fdbb720ff6ac71985fc"
-  name = "github.com/matttproud/golang_protobuf_extensions"
-  packages = ["pbutil"]
-  pruneopts = "UT"
-  revision = "c12348ce28de40eed0136aa2b644d0ee0650e56c"
-  version = "v1.0.1"
-
-[[projects]]
-  branch = "master"
-  digest = "1:2b32af4d2a529083275afc192d1067d8126b578c7a9613b26600e4df9c735155"
-  name = "github.com/mgutz/ansi"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "9520e82c474b0a04dd04f8a40959027271bab992"
-
-[[projects]]
   digest = "1:d64a0aa67f715fd28f5ddfe0d74c06b6d6fe0fed931d77e662f2c4694f6854dc"
   name = "github.com/miekg/dns"
   packages = ["."]
@@ -748,6 +674,7 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "8be2a682ab9f254311de1375145a2f78a809b07d"
+  version = "v1.0.8"
 
 [[projects]]
   digest = "1:450b7623b185031f3a456801155c8320209f75d0d4c4e633c6b1e59d44d6e392"
@@ -793,52 +720,6 @@
   revision = "8b1e46de349b0c099d425ed8fddee3ff6eff3eef"
 
 [[projects]]
-  digest = "1:93a746f1060a8acbcf69344862b2ceced80f854170e1caae089b2834c5fbf7f4"
-  name = "github.com/prometheus/client_golang"
-  packages = [
-    "prometheus",
-    "prometheus/internal",
-    "prometheus/promhttp",
-  ]
-  pruneopts = "UT"
-  revision = "505eaef017263e299324067d40ca2c48f6a2cf50"
-  version = "v0.9.2"
-
-[[projects]]
-  branch = "master"
-  digest = "1:2d5cd61daa5565187e1d96bae64dbbc6080dacf741448e9629c64fd93203b0d4"
-  name = "github.com/prometheus/client_model"
-  packages = ["go"]
-  pruneopts = "UT"
-  revision = "fd36f4220a901265f90734c3183c5f0c91daa0b8"
-
-[[projects]]
-  digest = "1:35cf6bdf68db765988baa9c4f10cc5d7dda1126a54bd62e252dbcd0b1fc8da90"
-  name = "github.com/prometheus/common"
-  packages = [
-    "expfmt",
-    "internal/bitbucket.org/ww/goautoneg",
-    "model",
-  ]
-  pruneopts = "UT"
-  revision = "cfeb6f9992ffa54aaa4f2170ade4067ee478b250"
-  version = "v0.2.0"
-
-[[projects]]
-  branch = "master"
-  digest = "1:ca30ee2c96d195cef49b546d10825d3e13b50c63da4df23c80e77c51e07bad0d"
-  name = "github.com/prometheus/procfs"
-  packages = [
-    ".",
-    "internal/util",
-    "iostats",
-    "nfs",
-    "xfs",
-  ]
-  pruneopts = "UT"
-  revision = "6ed1f7e1041181781dd2826d3001075d011a80cc"
-
-[[projects]]
   branch = "master"
   digest = "1:32e760f00b355161f1c67a6fc91ae3b3d5baacb94682a3d7b45aeeecd0d7a2f5"
   name = "github.com/quorumcontrol/namedlocker"
@@ -854,14 +735,6 @@
   revision = "c5e9df97b7f4aa63a9de7f3c30405f5acac9b4d9"
   source = "git@github.com:quorumcontrol/storage.git"
   version = "v1.1.1"
-
-[[projects]]
-  digest = "1:b0c25f00bad20d783d259af2af8666969e2fc343fa0dc9efe52936bbd67fb758"
-  name = "github.com/rs/cors"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "9a47f48565a795472d43519dd49aac781f3034fb"
-  version = "v1.6.0"
 
 [[projects]]
   digest = "1:919bb3aa6d9d0b67648c219fa4925312bc3c2872da19e818fa769e9c97a2b643"
@@ -1014,21 +887,16 @@
   input-imports = [
     "github.com/davecgh/go-spew/spew",
     "github.com/ipfs/go-cid",
-    "github.com/ipfs/go-ipfs-http-client",
     "github.com/ipfs/go-ipld-cbor",
     "github.com/ipfs/go-ipld-format",
-    "github.com/ipsn/go-ipfs/commands",
     "github.com/ipsn/go-ipfs/core",
     "github.com/ipsn/go-ipfs/core/coreapi",
-    "github.com/ipsn/go-ipfs/core/corehttp",
+    "github.com/ipsn/go-ipfs/core/coreapi/interface",
+    "github.com/ipsn/go-ipfs/core/coreapi/interface/options",
     "github.com/ipsn/go-ipfs/core/mock",
     "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-cid",
-    "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-ipfs-config",
     "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-ipld-cbor",
     "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-ipld-format",
-    "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/interface-go-ipfs-core",
-    "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/interface-go-ipfs-core/options",
-    "github.com/ipsn/go-ipfs/gxlibs/github.com/multiformats/go-multiaddr",
     "github.com/multiformats/go-multihash",
     "github.com/polydawn/refmt/obj",
     "github.com/polydawn/refmt/obj/atlas",
