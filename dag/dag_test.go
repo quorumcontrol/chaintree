@@ -80,7 +80,8 @@ func TestDagSet(t *testing.T) {
 	assert.Equal(t, "alice", val2)
 
 	// test works with a CID
-	dag.AddNodes(unlinked)
+	err = dag.AddNodes(unlinked)
+	require.Nil(t, err)
 
 	dag, err = dag.Set([]string{"test"}, unlinked.Cid())
 	assert.Nil(t, err)
@@ -108,6 +109,7 @@ func TestDagSet(t *testing.T) {
 
 	// original sibling is still available
 	val, _, err = dag.Resolve(path)
+	require.Nil(t, err)
 	assert.Equal(t, "bob", val)
 
 	siblingVal, _, err := dag.Resolve(siblingPath)
@@ -351,12 +353,11 @@ func TestDagInvalidSet(t *testing.T) {
 	dag, err := NewDagWithNodes(store, root, child)
 	require.Nil(t, err)
 
-	dag, err = dag.Set([]string{"test"}, map[string]interface{}{
+	_, err = dag.Set([]string{"test"}, map[string]interface{}{
 		"child1": "1",
 		"child2": "2",
 	})
-
-	assert.NotNil(t, err)
+	require.NotNil(t, err)
 }
 
 func TestDagGet(t *testing.T) {
@@ -429,6 +430,7 @@ func TestDagUpdate(t *testing.T) {
 	require.Nil(t, err)
 
 	dag, err = dag.Update([]string{"child1", "child2"}, map[string]interface{}{"name": "changed"})
+	require.Nil(t, err)
 
 	val, remain, err := dag.Resolve([]string{"child1", "child2", "name"})
 	require.Nil(t, err)

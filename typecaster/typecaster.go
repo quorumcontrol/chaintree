@@ -1,10 +1,11 @@
 package typecaster
 
 import (
-	"github.com/polydawn/refmt/obj/atlas"
-	"github.com/polydawn/refmt/obj"
-	"github.com/polydawn/refmt/shared"
 	"sync"
+
+	"github.com/polydawn/refmt/obj"
+	"github.com/polydawn/refmt/obj/atlas"
+	"github.com/polydawn/refmt/shared"
 )
 
 var currentAtlas atlas.Atlas
@@ -36,7 +37,7 @@ func NewTyper(atl atlas.Atlas) Typer {
 		marshaller:   obj.NewMarshaller(atl),
 		unmarshaller: obj.NewUnmarshaller(atl),
 	}
-	x.pump = shared.TokenPump{x.marshaller, x.unmarshaller}
+	x.pump = shared.TokenPump{TokenSource: x.marshaller, TokenSink: x.unmarshaller}
 	return x
 }
 
@@ -47,7 +48,11 @@ type typer struct {
 }
 
 func (c typer) ToType(src, dst interface{}) error {
-	c.marshaller.Bind(src)
-	c.unmarshaller.Bind(dst)
+	if err := c.marshaller.Bind(src); err != nil {
+		return err
+	}
+	if err := c.unmarshaller.Bind(dst); err != nil {
+		return err
+	}
 	return c.pump.Run()
 }

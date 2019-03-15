@@ -11,8 +11,6 @@ import (
 	"github.com/quorumcontrol/storage"
 )
 
-var trueByte = []byte{byte(1)}
-
 // StorageBasedStore is a NodeStore that can take an arbitrary storage back end
 type StorageBasedStore struct {
 	store  storage.Storage
@@ -107,7 +105,7 @@ func (sbs *StorageBasedStore) Resolve(tip cid.Cid, path []string) (val interface
 			// try resolving less of the path to find the existing boundary
 			var err error
 			for i := 1; i < len(path); i++ {
-				val, remaining, err = node.Resolve(path[:len(path)-i])
+				val, _, err = node.Resolve(path[:len(path)-i])
 				if err != nil {
 					continue
 				} else {
@@ -122,9 +120,9 @@ func (sbs *StorageBasedStore) Resolve(tip cid.Cid, path []string) (val interface
 		return nil, nil, err
 	}
 
-	switch val.(type) {
+	switch val := val.(type) {
 	case *format.Link:
-		linkNode, err := sbs.GetNode(val.(*format.Link).Cid)
+		linkNode, err := sbs.GetNode(val.Cid)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error getting linked node (%s): %v", linkNode.Cid().String(), err)
 		}

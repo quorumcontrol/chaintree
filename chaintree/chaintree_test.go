@@ -265,7 +265,7 @@ func TestBuildingUpAChain(t *testing.T) {
 	require.Nil(t, err)
 	require.True(t, valid)
 
-	entry, _, err := tree.Dag.Resolve([]string{"chain", "end"})
+	_, _, err = tree.Dag.Resolve([]string{"chain", "end"})
 	require.Nil(t, err)
 	//assert.Equal(t, blockCid, entry.([]interface{})[0].(cid.Cid))
 
@@ -457,6 +457,7 @@ func BenchmarkEncodeDecode(b *testing.B) {
 			"SET_DATA": setData,
 		},
 	)
+	require.Nil(b, err)
 
 	block := &BlockWithHeaders{
 		Block: Block{

@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipld-cbor"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,10 +33,10 @@ func SubtestInterfaceGetNode(t *testing.T, ns NodeStore) {
 	sw := &safewrap.SafeWrap{}
 	testNode := sw.WrapObject(obj)
 
-	ns.CreateNode(obj)
+	_, err := ns.CreateNode(obj)
+	require.Nil(t, err)
 
 	node, err := ns.GetNode(testNode.Cid())
-
 	require.Nil(t, err)
 	assert.Equal(t, testNode.Cid().String(), node.String())
 }
@@ -196,8 +196,10 @@ func SubtestInterfaceResolve(t *testing.T, ns NodeStore) {
 	})
 
 	assert.Nil(t, sw.Err)
-	ns.CreateNodeFromBytes(child.RawData())
-	ns.CreateNodeFromBytes(root.RawData())
+	_, err := ns.CreateNodeFromBytes(child.RawData())
+	require.Nil(t, err)
+	_, err = ns.CreateNodeFromBytes(root.RawData())
+	require.Nil(t, err)
 
 	// Resolves through the tree
 	val, remaining, err := ns.Resolve(root.Cid(), []string{"child", "name"})
