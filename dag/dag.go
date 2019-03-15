@@ -230,12 +230,27 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 		key = pathAndKey[len(pathAndKey)-1]
 	}
 
+	existingVal, remainingPath, err := d.getExisting(pathAndKey)
+	if err != nil {
+		return nil, fmt.Errorf("error resolving path %s: %s", pathAndKey, err)
+	}
+	if existingVal != nil && len(remainingPath) == 0 {
+		_, existingIsLink := existingVal.(map[string]interface{})
+		if existingIsLink && !asLink {
+			return nil, fmt.Errorf("attempt to overwrite complex value at %s", strings.Join(
+				pathAndKey, "/"))
+		} else if !existingIsLink && asLink {
+			return nil, fmt.Errorf("attempt to overwrite simple value at %s", strings.Join(
+				pathAndKey, "/"))
+		}
+	}
+
 	// lookup existing portion of path & leaf node's value
-	existingVal, remainingPath, err := d.getExisting(path)
+	parentVal, remainingPath, err := d.getExisting(path)
 	if err != nil {
 		return nil, fmt.Errorf("error resolving path %s: %v", path, err)
 	}
-	leafNodeObj, ok := existingVal.(map[string]interface{})
+	leafNodeObj, ok := parentVal.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("attempt to overwrite simple value at %q", strings.Join(
 			path[:len(path)-len(remainingPath)], "/"))

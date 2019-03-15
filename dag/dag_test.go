@@ -167,6 +167,25 @@ func TestDagSetNestedNoClobber(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
+// Verify that when setting a simple value, clobbering of a complex value is not allowed.
+func TestDagSetNoClobberComplex(t *testing.T) {
+	sw := &safewrap.SafeWrap{}
+	root := sw.WrapObject(map[string]interface{}{})
+	require.Nil(t, sw.Err)
+
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	dag, err := NewDagWithNodes(store, root)
+	require.Nil(t, err)
+
+	dag, err = dag.SetAsLink([]string{"complex"}, map[string]interface{}{
+		"complex": true,
+	})
+	require.Nil(t, err)
+
+	_, err = dag.Set([]string{"complex"}, "simple")
+	require.NotNil(t, err)
+}
+
 func TestDagSetAsLink(t *testing.T) {
 	sw := &safewrap.SafeWrap{}
 
@@ -215,14 +234,33 @@ func TestDagSetAsLinkNestedNoClobber(t *testing.T) {
 	require.Nil(t, err)
 
 	dag, err = dag.Set([]string{"outer"}, "flat")
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	unlinked := map[string]interface{}{
 		"unlinked": true,
 	}
 
 	dag, err = dag.SetAsLink([]string{"outer", "inner"}, unlinked)
-	assert.NotNil(t, err)
+	require.NotNil(t, err)
+}
+
+// Verify that when setting a complex value, clobbering of a simple value is not allowed.
+func TestDagSetAsLinkNoClobberSimple(t *testing.T) {
+	sw := &safewrap.SafeWrap{}
+	root := sw.WrapObject(map[string]interface{}{})
+	require.Nil(t, sw.Err)
+
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	dag, err := NewDagWithNodes(store, root)
+	require.Nil(t, err)
+
+	dag, err = dag.Set([]string{"simple"}, "simple")
+	require.Nil(t, err)
+
+	_, err = dag.SetAsLink([]string{"simple"}, map[string]interface{}{
+		"complex": true,
+	})
+	require.NotNil(t, err)
 }
 
 func TestDagSetAsLinkAfterSet(t *testing.T) {
