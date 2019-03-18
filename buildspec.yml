@@ -14,7 +14,7 @@ phases:
       - ssh-add ~/.ssh/id_rsa
       - bin/install-dep.sh
       - /go/bin/dep ensure
-      - curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.15.0
+      - ./scripts/download-golangci-lint.sh
   build:
     commands:
       - golangci-lint run
