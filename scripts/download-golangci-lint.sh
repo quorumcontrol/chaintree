@@ -31,7 +31,7 @@ ARCH=$(uname_arch)
 PLATFORM="${OS}/${ARCH}"
 
 tmpdir=$(mktemp -d)
-cd $tmpdir
+pushd $tmpdir
 
 curl -fL https://github.com/golangci/golangci-lint/releases/download/v${VERSION}/golangci-lint-${VERSION}-checksums.txt -o ${CHECKSUMS}
 curl -fL https://github.com/golangci/golangci-lint/releases/download/v${VERSION}/golangci-lint-${VERSION}-${OS}-${ARCH}.tar.gz -o $TARGET
@@ -42,5 +42,8 @@ if [ "$WANT" != "$GOT" ]; then
   exit 1
 fi
 
-tar x -C $(go env GOPATH)/bin --strip-components=1 -f ${TARGET} \
+tar x -C $(go env GOPATH|cut -f1 -d:)/bin --strip-components=1 -f ${TARGET} \
 golangci-lint-${VERSION}-${OS}-${ARCH}/golangci-lint
+
+popd
+rm -rf $tmpdir
