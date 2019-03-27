@@ -240,7 +240,7 @@ func TestDagSetAsLinkNestedNoClobber(t *testing.T) {
 		"unlinked": true,
 	}
 
-	dag, err = dag.SetAsLink([]string{"outer", "inner"}, unlinked)
+	_, err = dag.SetAsLink([]string{"outer", "inner"}, unlinked)
 	require.NotNil(t, err)
 }
 

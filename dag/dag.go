@@ -188,6 +188,8 @@ func (d *Dag) SetAsLink(pathAndKey []string, val interface{}) (*Dag, error) {
 	return d.set(pathAndKey, val, true)
 }
 
+// getExisting gets an eventual existing leaf node value on the path, and the remaining part of
+// the path after the leaf node.
 func (d *Dag) getExisting(path []string) (val interface{}, remainingPath []string, err error) {
 	existing, remaining, err := d.Resolve(path)
 	if err != nil {
@@ -235,6 +237,7 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 		return nil, fmt.Errorf("error resolving path %s: %s", pathAndKey, err)
 	}
 	if existingVal != nil && len(remainingPath) == 0 {
+		// There is a value on the end of the path
 		_, existingIsLink := existingVal.(map[string]interface{})
 		if existingIsLink && !asLink {
 			return nil, fmt.Errorf("attempt to overwrite complex value at %s with a simple one",
@@ -246,20 +249,18 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 	}
 
 	// lookup existing portion of path & leaf node's value
-	parentVal, remainingPath, err := d.getExisting(path)
+	ancestorVal, remainingPath, err := d.getExisting(path)
 	if err != nil {
 		return nil, fmt.Errorf("error resolving path %s: %v", path, err)
 	}
-	leafNodeObj, ok := parentVal.(map[string]interface{})
+	leafNodeObj, ok := ancestorVal.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("attempt to overwrite simple value at %q", strings.Join(
 			path[:len(path)-len(remainingPath)], "/"))
 	}
 
+	// Ancestor is nil or a complex value
 	existingPath := path[:len(path)-len(remainingPath)]
-	if len(existingPath) > 0 {
-		// TODO: Check if existing path is a simple value or not - if it is, we must raise an error
-	}
 	/*
 		Alright, there are basically three possible scenarios now:
 		1. The path we're setting doesn't exist at all.
