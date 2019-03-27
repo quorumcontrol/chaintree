@@ -7,40 +7,38 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
-	ipsnCid "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-cid"
-	ipsnCbornode "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-ipld-cbor"
-	ipldFormat "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-ipld-format"
-	ipsnCoreApiIface "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/interface-go-ipfs-core"
-	ipsnCoreApiOpt "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/interface-go-ipfs-core/options"
+	ipldFormat "github.com/ipfs/go-ipld-format"
+	coreApiIface "github.com/ipfs/interface-go-ipfs-core"
+	coreApiOpt "github.com/ipfs/interface-go-ipfs-core/options"
 	multihash "github.com/multiformats/go-multihash"
 	"github.com/quorumcontrol/chaintree/safewrap"
 )
 
 // IpldStore is a NodeStore that uses IPLD
 type IpldStore struct {
-	api ipsnCoreApiIface.CoreAPI
+	api coreApiIface.CoreAPI
 }
 
-var errNoSuchLink = ipsnCbornode.ErrNoSuchLink
+var errNoSuchLink = cbornode.ErrNoSuchLink
 
 var _ NodeStore = (*IpldStore)(nil)
 
 // NewIpldStore creates a new NodeStore using an IPLD api
-func NewIpldStore(api ipsnCoreApiIface.CoreAPI) *IpldStore {
+func NewIpldStore(api coreApiIface.CoreAPI) *IpldStore {
 	return &IpldStore{
 		api: api,
 	}
 }
 
-func (ipld *IpldStore) dag() ipsnCoreApiIface.APIDagService {
+func (ipld *IpldStore) dag() coreApiIface.APIDagService {
 	return ipld.api.Dag()
 }
 
-func (ipld *IpldStore) pin() ipsnCoreApiIface.PinAPI {
+func (ipld *IpldStore) pin() coreApiIface.PinAPI {
 	return ipld.api.Pin()
 }
 
-func (ipld *IpldStore) block() ipsnCoreApiIface.BlockAPI {
+func (ipld *IpldStore) block() coreApiIface.BlockAPI {
 	return ipld.api.Block()
 }
 
@@ -66,9 +64,9 @@ func (ipld *IpldStore) CreateNodeFromBytes(data []byte) (node *cbornode.Node, er
 // GetNode returns a cbornode for a CID
 func (ipld *IpldStore) GetNode(nodeCid cid.Cid) (node *cbornode.Node, err error) {
 	ctx := context.Background()
-	castCid, _ := ipsnCid.Parse(nodeCid.String())
+	castCid, _ := cid.Parse(nodeCid.String())
 
-	pins, err := ipld.pin().Ls(ctx, ipsnCoreApiOpt.Pin.Type.Direct())
+	pins, err := ipld.pin().Ls(ctx, coreApiOpt.Pin.Type.Direct())
 	if err != nil {
 		return nil, fmt.Errorf("error fetching pins: %v", err)
 	}
@@ -106,16 +104,16 @@ func (ipld *IpldStore) GetNode(nodeCid cid.Cid) (node *cbornode.Node, err error)
 // DeleteNode implements the NodeStore DeleteNode interface.
 func (ipld *IpldStore) DeleteNode(nodeCid cid.Cid) error {
 	ctx := context.Background()
-	castCid, _ := ipsnCid.Parse(nodeCid.String())
-	path := ipsnCoreApiIface.IpldPath(castCid)
+	castCid, _ := cid.Parse(nodeCid.String())
+	path := coreApiIface.IpldPath(castCid)
 
-	err := ipld.pin().Rm(ctx, path, ipsnCoreApiOpt.Pin.RmRecursive(false))
+	err := ipld.pin().Rm(ctx, path, coreApiOpt.Pin.RmRecursive(false))
 
 	if err != nil {
 		return fmt.Errorf("error unpinning cid %s: %v", nodeCid.String(), err)
 	}
 
-	err = ipld.block().Rm(ctx, ipsnCoreApiIface.IpldPath(castCid))
+	err = ipld.block().Rm(ctx, coreApiIface.IpldPath(castCid))
 	if err != nil {
 		return fmt.Errorf("error removing block cid %s: %v", nodeCid.String(), err)
 	}
@@ -143,8 +141,8 @@ func (ipld *IpldStore) DeleteTree(tip cid.Cid) error {
 
 func (ipld *IpldStore) resolveNode(tip cid.Cid, path []string) (ipldFormat.Node, []string, error) {
 	ctx := context.Background()
-	castCid, _ := ipsnCid.Parse(tip.String())
-	resolvedPath, err := ipld.api.ResolvePath(ctx, ipsnCoreApiIface.Join(ipsnCoreApiIface.IpldPath(castCid), path...))
+	castCid, _ := cid.Parse(tip.String())
+	resolvedPath, err := ipld.api.ResolvePath(ctx, coreApiIface.Join(coreApiIface.IpldPath(castCid), path...))
 
 	if err != nil && err.Error() == errNoSuchLink.Error() && len(path) > 0 {
 		parentPath := path[:len(path)-1]
@@ -193,11 +191,11 @@ func (ipld *IpldStore) Resolve(tip cid.Cid, path []string) (interface{}, []strin
 // StoreNode implements the NodeStore interface
 func (ipld *IpldStore) StoreNode(node *cbornode.Node) error {
 	nodeCid := node.Cid()
-	castCid, _ := ipsnCid.Parse(nodeCid.String())
-	path := ipsnCoreApiIface.IpldPath(castCid)
+	castCid, _ := cid.Parse(nodeCid.String())
+	path := coreApiIface.IpldPath(castCid)
 	ctx := context.Background()
 
-	ipsnNode, err := ipsnCbornode.Decode(node.RawData(), multihash.SHA2_256, -1)
+	ipsnNode, err := cbornode.Decode(node.RawData(), multihash.SHA2_256, -1)
 	if err != nil {
 		return fmt.Errorf("error decoding %v err: %v", nodeCid.String(), err)
 	}
@@ -207,7 +205,7 @@ func (ipld *IpldStore) StoreNode(node *cbornode.Node) error {
 		return fmt.Errorf("error putting key %v err: %v", nodeCid.String(), err)
 	}
 
-	err = ipld.pin().Add(ctx, path, ipsnCoreApiOpt.Pin.Recursive(false))
+	err = ipld.pin().Add(ctx, path, coreApiOpt.Pin.Recursive(false))
 	if err != nil {
 		return fmt.Errorf("error pinning key %v err: %v", nodeCid.String(), err)
 	}

@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
-	ipfsHttpClient "github.com/ipfs/go-ipfs-http-client"
-	"github.com/ipsn/go-ipfs/commands"
-	"github.com/ipsn/go-ipfs/core"
-	"github.com/ipsn/go-ipfs/core/coreapi"
-	corehttp "github.com/ipsn/go-ipfs/core/corehttp"
-	coremock "github.com/ipsn/go-ipfs/core/mock"
-	config "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-ipfs-config"
-	ma "github.com/ipsn/go-ipfs/gxlibs/github.com/multiformats/go-multiaddr"
+	config "github.com/ipfs/go-ipfs-config"
+	"github.com/ipfs/go-ipfs/commands"
+	"github.com/ipfs/go-ipfs/core"
+	"github.com/ipfs/go-ipfs/core/coreapi"
+	corehttp "github.com/ipfs/go-ipfs/core/corehttp"
+	coremock "github.com/ipfs/go-ipfs/core/mock"
+	ma "github.com/multiformats/go-multiaddr"
+	ipfsHttpClient "github.com/quorumcontrol/go-ipfs-http-client"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,7 +43,6 @@ func TestIpldHttpBased(t *testing.T) {
 	cfg.Addresses.API = []string{apiMaddr.String()}
 
 	cmdContext := commands.Context{
-		Online:     true,
 		ConfigRoot: "/tmp/.mockipfsconfig",
 		ReqLog:     &commands.ReqLog{},
 		LoadConfig: func(path string) (*config.Config, error) {
