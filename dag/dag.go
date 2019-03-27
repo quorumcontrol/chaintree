@@ -237,11 +237,11 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 	if existingVal != nil && len(remainingPath) == 0 {
 		_, existingIsLink := existingVal.(map[string]interface{})
 		if existingIsLink && !asLink {
-			return nil, fmt.Errorf("attempt to overwrite complex value at %s", strings.Join(
-				pathAndKey, "/"))
+			return nil, fmt.Errorf("attempt to overwrite complex value at %s with a simple one",
+				strings.Join(pathAndKey, "/"))
 		} else if !existingIsLink && asLink {
-			return nil, fmt.Errorf("attempt to overwrite simple value at %s", strings.Join(
-				pathAndKey, "/"))
+			return nil, fmt.Errorf("attempt to overwrite simple value at %s with a complex one",
+				strings.Join(pathAndKey, "/"))
 		}
 	}
 
