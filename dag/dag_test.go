@@ -3,11 +3,12 @@ package dag
 import (
 	"testing"
 
-	"github.com/quorumcontrol/chaintree/nodestore"
-	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/quorumcontrol/chaintree/nodestore"
+	"github.com/quorumcontrol/chaintree/safewrap"
 )
 
 func newDeepDag(t *testing.T) *Dag {
@@ -36,6 +37,17 @@ func TestDagResolve(t *testing.T) {
 	require.Nil(t, err)
 	assert.Len(t, remain, 0)
 	assert.Equal(t, true, val)
+}
+
+func TestDagNodesForPath(t *testing.T) {
+	dag := newDeepDag(t)
+	nodes, err := dag.NodesForPath([]string{"child", "deepChild"})
+	require.Nil(t, err)
+	assert.Len(t, nodes, 3)
+	allNodes, _ := dag.Nodes()
+	for i, node := range allNodes {
+		assert.Equal(t, node.RawData(), nodes[i].RawData())
+	}
 }
 
 func TestDagSet(t *testing.T) {
