@@ -7,6 +7,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
+
 	"github.com/quorumcontrol/chaintree/nodestore"
 )
 
@@ -73,6 +74,38 @@ func (d *Dag) CreateNode(obj interface{}) (*cbornode.Node, error) {
 // it delegates to the underlying store's resolve
 func (d *Dag) Resolve(path []string) (interface{}, []string, error) {
 	return d.store.Resolve(d.Tip, path)
+}
+
+func (d *Dag) NodesForPath(path []string) ([]*cbornode.Node, error) {
+	nodes := make([]*cbornode.Node, len(path) + 1) // + 1 for tip node
+
+	tipNode, err := d.Get(d.Tip)
+	if err != nil {
+		return nil, err
+	}
+
+	nodes[0] = tipNode
+	cur := tipNode
+
+	for i, val := range path {
+		nextNode, remaining, err := cur.ResolveLink([]string{val})
+		if err != nil {
+			return nil, err
+		}
+
+		if len(remaining) > 0 {
+			return nil, fmt.Errorf("error: unexpected remaining path elements: %v", remaining)
+		}
+
+		cur, err = d.Get(nextNode.Cid)
+		if err != nil {
+			return nil, err
+		}
+
+		nodes[i + 1] = cur
+	}
+
+	return nodes, nil
 }
 
 // Nodes returns all the nodes in an entire tree from the Tip out
