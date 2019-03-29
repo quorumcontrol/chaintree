@@ -483,4 +483,5 @@ func BenchmarkEncodeDecode(b *testing.B) {
 		_, _, err = chainTree.Dag.Resolve([]string{"tree", "down", "in", "the", "thing"})
 	}
 	require.Nil(b, err)
+
 }
