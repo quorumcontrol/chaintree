@@ -235,13 +235,15 @@ func (d *Dag) Set(pathAndKey []string, val interface{}) (*Dag, error) {
 	return d.set(pathAndKey, val, false)
 }
 
-// SetAsLink sets a value at a path and returns a new dag with a new tip that reflects
-// the new state (and adds the old tip to oldTips)
+// SetAsLink sets a value at a path as a link to a node and returns a new dag with a new
+// tip that reflects the new state (and adds the old tip to oldTips).
 func (d *Dag) SetAsLink(pathAndKey []string, val interface{}) (*Dag, error) {
 	return d.set(pathAndKey, val, true)
 }
 
-func (d *Dag) getExisting(path []string) (val map[string]interface{}, remainingPath []string, err error) {
+// getExisting gets an eventual existing leaf node value on the path, and the remaining part of
+// the path after the leaf node.
+func (d *Dag) getExisting(path []string) (val interface{}, remainingPath []string, err error) {
 	existing, remaining, err := d.Resolve(path)
 	if err != nil {
 		return nil, nil, err
@@ -264,8 +266,68 @@ func (d *Dag) getExisting(path []string) (val map[string]interface{}, remainingP
 		existingAncestor, _, err := d.getExisting(path[:len(path)-len(remaining)])
 		return existingAncestor, remaining, err
 	default:
-		return make(map[string]interface{}), remaining, nil
+		return existing, remaining, nil
 	}
+}
+
+// getValueForPath gets the value or CID for a path or nil if it doesn't exist.
+func (d *Dag) getValueForPath(path []string) (interface{}, error) {
+	tipNode, err := d.Get(d.Tip)
+	if err != nil {
+		return nil, err
+	}
+
+	cur := tipNode
+	for i, link := range path {
+		nextNode, remaining, err := cur.ResolveLink([]string{link})
+		if err != nil {
+			if err == cbornode.ErrNonLink && i == len(path)-1 {
+				// We're at the end of the path and got a non-link
+				val, _, err := cur.Resolve([]string{link})
+				if err != nil {
+					return nil, err
+				}
+
+				return val, nil
+			}
+
+			// We couldn't get this part of the path
+			return nil, nil
+		}
+		if len(remaining) > 0 {
+			panic(fmt.Sprintf("error: unexpected remaining path elements: %v", remaining))
+		}
+
+		cur, err = d.Get(nextNode.Cid)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	cid := cur.Cid()
+	return &cid, nil
+}
+
+// Validate that we can set a certain key, as a link or non-link.
+func (d *Dag) validateSettingKey(path []string, asLink bool) error {
+	existingVal, err := d.getValueForPath(path)
+	if err != nil {
+		return fmt.Errorf("error resolving path %s: %s", path, err)
+	}
+
+	if existingVal != nil {
+		// There is a value on the end of the path
+		_, existingIsLink := existingVal.(*cid.Cid)
+		if existingIsLink && !asLink {
+			return fmt.Errorf("attempt to overwrite link at %s with non-link",
+				strings.Join(path, "/"))
+		} else if !existingIsLink && asLink {
+			return fmt.Errorf("attempt to overwrite non-link at %s with a link",
+				strings.Join(path, "/"))
+		}
+	}
+
+	return nil
 }
 
 func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, error) {
@@ -283,12 +345,22 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 		key = pathAndKey[len(pathAndKey)-1]
 	}
 
+	if err := d.validateSettingKey(pathAndKey, asLink); err != nil {
+		return nil, err
+	}
+
 	// lookup existing portion of path & leaf node's value
-	leafNodeObj, remainingPath, err := d.getExisting(path)
+	ancestorVal, remainingPath, err := d.getExisting(path)
 	if err != nil {
 		return nil, fmt.Errorf("error resolving path %s: %v", path, err)
 	}
+	leafNodeObj, ok := ancestorVal.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("attempt to overwrite non-link at %s", strings.Join(
+			path[:len(path)-len(remainingPath)], "/"))
+	}
 
+	// Ancestor is nil or a link value
 	existingPath := path[:len(path)-len(remainingPath)]
 	/*
 		Alright, there are basically three possible scenarios now:

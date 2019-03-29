@@ -248,6 +248,44 @@ func TestDagSet(t *testing.T) {
 	assert.Equal(t, "carol", partiallyExistingVal)
 }
 
+// Verify that when setting a nested value, clobbering of an ancestor is not allowed.
+func TestDagSetNestedNoClobber(t *testing.T) {
+	sw := &safewrap.SafeWrap{}
+	root := sw.WrapObject(map[string]interface{}{})
+	require.Nil(t, sw.Err)
+
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	dag, err := NewDagWithNodes(store, root)
+	require.Nil(t, err)
+
+	dag, err = dag.Set([]string{"outer"}, "flat")
+	require.Nil(t, err)
+
+	_, err = dag.Set([]string{"outer", "inner"}, "nested")
+
+	require.Equal(t, "attempt to overwrite non-link at outer", err.Error())
+}
+
+// Verify that when setting a non-link, clobbering of a link is not allowed.
+func TestDagSetNoClobberLink(t *testing.T) {
+	sw := &safewrap.SafeWrap{}
+	root := sw.WrapObject(map[string]interface{}{})
+	require.Nil(t, sw.Err)
+
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	dag, err := NewDagWithNodes(store, root)
+	require.Nil(t, err)
+
+	dag, err = dag.SetAsLink([]string{"link"}, map[string]interface{}{
+		"link": true,
+	})
+	require.Nil(t, err)
+
+	_, err = dag.Set([]string{"link"}, "simple")
+
+	require.Equal(t, "attempt to overwrite link at link with non-link", err.Error())
+}
+
 func TestDagSetAsLink(t *testing.T) {
 	sw := &safewrap.SafeWrap{}
 
@@ -286,164 +324,73 @@ func TestDagSetAsLink(t *testing.T) {
 	assert.Equal(t, false, val)
 }
 
-func TestDagSetNestedAfterSet(t *testing.T) {
+// Verify that when setting a nested value as a link, clobbering of an ancestor is not allowed.
+func TestDagSetAsLinkNestedNoClobber(t *testing.T) {
 	sw := &safewrap.SafeWrap{}
+	root := sw.WrapObject(map[string]interface{}{})
 
 	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-	tip := sw.WrapObject(map[string]interface{}{})
-	dag, err := NewDagWithNodes(store, tip)
+	dag, err := NewDagWithNodes(store, root)
 	require.Nil(t, err)
 
-	// random other key to ensure other data remains intact
-	dag, err = dag.Set([]string{"other"}, "hello")
-	assert.Nil(t, err)
+	dag, err = dag.Set([]string{"outer"}, "flat")
+	require.Nil(t, err)
 
-	// with string value
-	dag, err = dag.Set([]string{"test"}, "test-str")
-	assert.Nil(t, err)
+	unlinked := map[string]interface{}{
+		"unlinked": true,
+	}
 
-	// make sure other key & value are still there
-	val, remaining, err := dag.Resolve([]string{"other"})
-	assert.Nil(t, err)
-	assert.Empty(t, remaining)
-	assert.Equal(t, "hello", val)
+	_, err = dag.SetAsLink([]string{"outer", "inner"}, unlinked)
 
-	dag, err = dag.Set([]string{"test", "test-key"}, "test-str-2")
-	assert.Nil(t, err)
-
-	// make sure other key & value are still there
-	val, remaining, err = dag.Resolve([]string{"other"})
-	assert.Nil(t, err)
-	assert.Empty(t, remaining)
-	assert.Equal(t, "hello", val)
-
-	val, _, err = dag.Resolve([]string{"test", "test-key"})
-	assert.Nil(t, err)
-	assert.Equal(t, "test-str-2", val)
-
-	// with int value
-	dag, err = dag.Set([]string{"test"}, 42)
-	assert.Nil(t, err)
-
-	// make sure other key & value are still there
-	val, remaining, err = dag.Resolve([]string{"other"})
-	assert.Nil(t, err)
-	assert.Empty(t, remaining)
-	assert.Equal(t, "hello", val)
-
-	dag, err = dag.Set([]string{"test", "test-key"}, 43)
-	assert.Nil(t, err)
-
-	// make sure other key & value are still there
-	val, remaining, err = dag.Resolve([]string{"other"})
-	assert.Nil(t, err)
-	assert.Empty(t, remaining)
-	assert.Equal(t, "hello", val)
-
-	val, _, err = dag.Resolve([]string{"test", "test-key"})
-	assert.Nil(t, err)
-	assert.Equal(t, uint64(43), val)
-
-	// with multiple levels of non-existent path
-	dag, err = dag.Set([]string{"test"}, "test-str")
-	assert.Nil(t, err)
-
-	// make sure other key & value are still there
-	val, remaining, err = dag.Resolve([]string{"other"})
-	assert.Nil(t, err)
-	assert.Empty(t, remaining)
-	assert.Equal(t, "hello", val)
-
-	dag, err = dag.Set([]string{"test", "down", "in", "the", "thing"}, "test-str-2")
-	assert.Nil(t, err)
-
-	// make sure other key & value are still there
-	val, remaining, err = dag.Resolve([]string{"other"})
-	assert.Nil(t, err)
-	assert.Empty(t, remaining)
-	assert.Equal(t, "hello", val)
-
-	val, _, err = dag.Resolve([]string{"test", "down", "in", "the", "thing"})
-	assert.Nil(t, err)
-	assert.Equal(t, "test-str-2", val)
+	require.Equal(t, "attempt to overwrite non-link at outer", err.Error())
 }
 
-func TestDagSetAsLinkAfterSet(t *testing.T) {
+// Verify that when setting a link, clobbering of a non-link is not allowed.
+func TestDagSetAsLinkNoClobberNonLink(t *testing.T) {
 	sw := &safewrap.SafeWrap{}
+	root := sw.WrapObject(map[string]interface{}{})
+	require.Nil(t, sw.Err)
 
 	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-	tip := sw.WrapObject(map[string]interface{}{})
-	dag, err := NewDagWithNodes(store, tip)
+	dag, err := NewDagWithNodes(store, root)
 	require.Nil(t, err)
 
-	// random other key to ensure other data remains intact
-	dag, err = dag.Set([]string{"other"}, "hello")
-	assert.Nil(t, err)
+	dag, err = dag.Set([]string{"non-link"}, "simple")
+	require.Nil(t, err)
 
-	// with string value
-	dag, err = dag.Set([]string{"test"}, "test-str")
-	assert.Nil(t, err)
-
-	// make sure other key & value are still there
-	val, remaining, err := dag.Resolve([]string{"other"})
-	assert.Nil(t, err)
-	assert.Empty(t, remaining)
-	assert.Equal(t, "hello", val)
-
-	dag, err = dag.SetAsLink([]string{"test"}, map[string]string{"test-key": "test-str-2"})
-	assert.Nil(t, err)
-
-	val, _, err = dag.Resolve([]string{"test", "test-key"})
-	assert.Nil(t, err)
-	assert.Equal(t, "test-str-2", val)
-
-	// make sure other key & value are still there
-	val, remaining, err = dag.Resolve([]string{"other"})
-	assert.Nil(t, err)
-	assert.Empty(t, remaining)
-	assert.Equal(t, "hello", val)
-
-	// with int value
-	dag, err = dag.Set([]string{"test"}, 42)
-	assert.Nil(t, err)
-
-	dag, err = dag.SetAsLink([]string{"test"}, map[string]int{"test-key": 43})
-	assert.Nil(t, err)
-
-	val, _, err = dag.Resolve([]string{"test", "test-key"})
-	assert.Nil(t, err)
-	assert.Equal(t, uint64(43), val)
-
-	// make sure other key & value are still there
-	val, remaining, err = dag.Resolve([]string{"other"})
-	assert.Nil(t, err)
-	assert.Empty(t, remaining)
-	assert.Equal(t, "hello", val)
-
-	// with multiple levels of non-existent path
-	dag, err = dag.SetAsLink([]string{"test"}, map[string]string{
-		"foo": "bar",
+	_, err = dag.SetAsLink([]string{"non-link"}, map[string]interface{}{
+		"link": true,
 	})
-	assert.Nil(t, err)
 
-	// make sure other key & value are still there
-	val, remaining, err = dag.Resolve([]string{"other"})
-	assert.Nil(t, err)
-	assert.Empty(t, remaining)
-	assert.Equal(t, "hello", val)
+	require.Equal(t, "attempt to overwrite non-link at non-link with a link", err.Error())
+}
 
-	dag, err = dag.Set([]string{"test", "down", "in", "the", "thing"}, "test-str-2")
-	assert.Nil(t, err)
+// Verify that SetAsLink allows overwriting
+func TestDagSetAsLinkOverwrite(t *testing.T) {
+	path := []string{"path"}
+	newVal := []string{"test"}
 
-	val, _, err = dag.Resolve([]string{"test", "down", "in", "the", "thing"})
-	assert.Nil(t, err)
-	assert.Equal(t, "test-str-2", val)
+	sw := &safewrap.SafeWrap{}
+	root := sw.WrapObject(map[string]interface{}{})
+	require.Nil(t, sw.Err)
 
-	// make sure other key & value are still there
-	val, remaining, err = dag.Resolve([]string{"other"})
-	assert.Nil(t, err)
-	assert.Empty(t, remaining)
-	assert.Equal(t, "hello", val)
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	dag, err := NewDagWithNodes(store, root)
+	require.Nil(t, err)
+
+	dag, err = dag.SetAsLink(path, "test")
+	require.Nil(t, err)
+
+	dag, err = dag.SetAsLink(path, newVal)
+	require.Nil(t, err)
+
+	got, remainingPath, err := dag.Resolve(path)
+	gotSlice, ok := got.([]interface{})
+	require.True(t, ok)
+	require.Nil(t, err)
+	require.Equal(t, 0, len(remainingPath))
+	require.Equal(t, 1, len(gotSlice))
+	require.Equal(t, "test", gotSlice[0])
 }
 
 func TestDagInvalidSet(t *testing.T) {
