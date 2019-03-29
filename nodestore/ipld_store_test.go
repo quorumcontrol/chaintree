@@ -7,13 +7,13 @@ import (
 	"time"
 
 	config "github.com/ipfs/go-ipfs-config"
+	ipfsHttpClient "github.com/ipfs/go-ipfs-http-client"
 	"github.com/ipfs/go-ipfs/commands"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/core/coreapi"
 	corehttp "github.com/ipfs/go-ipfs/core/corehttp"
 	coremock "github.com/ipfs/go-ipfs/core/mock"
 	ma "github.com/multiformats/go-multiaddr"
-	ipfsHttpClient "github.com/quorumcontrol/go-ipfs-http-client"
 	"github.com/stretchr/testify/require"
 )
 
