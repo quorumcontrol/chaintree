@@ -188,7 +188,9 @@ func (d *Dag) SetAsLink(pathAndKey []string, val interface{}) (*Dag, error) {
 	return d.set(pathAndKey, val, true)
 }
 
-func (d *Dag) getExisting(path []string) (val map[string]interface{}, remainingPath []string, err error) {
+// getExisting gets an eventual existing leaf node value on the path, and the remaining part of
+// the path after the leaf node.
+func (d *Dag) getExisting(path []string) (val interface{}, remainingPath []string, err error) {
 	existing, remaining, err := d.Resolve(path)
 	if err != nil {
 		return nil, nil, err
@@ -211,7 +213,7 @@ func (d *Dag) getExisting(path []string) (val map[string]interface{}, remainingP
 		existingAncestor, _, err := d.getExisting(path[:len(path)-len(remaining)])
 		return existingAncestor, remaining, err
 	default:
-		return make(map[string]interface{}), remaining, nil
+		return existing, remaining, nil
 	}
 }
 
@@ -230,12 +232,34 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 		key = pathAndKey[len(pathAndKey)-1]
 	}
 
+	existingVal, remainingPath, err := d.getExisting(pathAndKey)
+	if err != nil {
+		return nil, fmt.Errorf("error resolving path %s: %s", pathAndKey, err)
+	}
+	if existingVal != nil && len(remainingPath) == 0 {
+		// There is a value on the end of the path
+		_, existingIsLink := existingVal.(map[string]interface{})
+		if existingIsLink && !asLink {
+			return nil, fmt.Errorf("attempt to overwrite complex value at %s with a simple one",
+				strings.Join(pathAndKey, "/"))
+		} else if !existingIsLink && asLink {
+			return nil, fmt.Errorf("attempt to overwrite simple value at %s with a complex one",
+				strings.Join(pathAndKey, "/"))
+		}
+	}
+
 	// lookup existing portion of path & leaf node's value
-	leafNodeObj, remainingPath, err := d.getExisting(path)
+	ancestorVal, remainingPath, err := d.getExisting(path)
 	if err != nil {
 		return nil, fmt.Errorf("error resolving path %s: %v", path, err)
 	}
+	leafNodeObj, ok := ancestorVal.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("attempt to overwrite simple value at %q", strings.Join(
+			path[:len(path)-len(remainingPath)], "/"))
+	}
 
+	// Ancestor is nil or a complex value
 	existingPath := path[:len(path)-len(remainingPath)]
 	/*
 		Alright, there are basically three possible scenarios now:
