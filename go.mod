@@ -4,6 +4,7 @@ go 1.12
 
 require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
+	github.com/hashicorp/go-immutable-radix v1.0.0 // indirect
 	github.com/ipfs/go-cid v0.0.1
 	github.com/ipfs/go-ipfs v0.4.19-rc2.0.20190327141900-b9e45e8941ef
 	github.com/ipfs/go-ipfs-config v0.0.1
@@ -15,6 +16,6 @@ require (
 	github.com/polydawn/refmt v0.0.0-20190221155625-df39d6c2d992
 	github.com/quorumcontrol/go-ipfs-http-client v0.0.0-20190328094730-8b0b06c1f26a
 	github.com/quorumcontrol/namedlocker v0.0.0-20180808140020-3f797c8b12b1
-	github.com/quorumcontrol/storage v1.1.2-0.20190327124148-72743a2b202a
+	github.com/quorumcontrol/storage v1.1.1
 	github.com/stretchr/testify v1.3.0
 )

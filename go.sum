@@ -416,6 +416,8 @@ github.com/quorumcontrol/go-ipfs-http-client v0.0.0-20190328094730-8b0b06c1f26a 
 github.com/quorumcontrol/go-ipfs-http-client v0.0.0-20190328094730-8b0b06c1f26a/go.mod h1:C8+PMMCudhSalkvls4ssXlSFWMlb9sae3/GYSdtN+JM=
 github.com/quorumcontrol/namedlocker v0.0.0-20180808140020-3f797c8b12b1 h1:FglNF7FTLpcl171qo5MFvbKjrLEsLtcKF72uQpefiPM=
 github.com/quorumcontrol/namedlocker v0.0.0-20180808140020-3f797c8b12b1/go.mod h1:7JSFW45PpKoXFaUpaJ8YtCNIwQWut0+Huo9ugBnKVe4=
+github.com/quorumcontrol/storage v1.1.1 h1:9ijuxMAKS0MwLL/thV4kwJe/AshFVF5Du1dTOhYW+eM=
+github.com/quorumcontrol/storage v1.1.1/go.mod h1:ARuX26Pi5Hnequ0LDAHmrXyhdjuhUS7Y1rjGkec6WM8=
 github.com/quorumcontrol/storage v1.1.2-0.20190327124148-72743a2b202a h1:NOkWO1COUAAFYrJIRugd1CYLwoYGkXAnZcMEDvGkzd8=
 github.com/quorumcontrol/storage v1.1.2-0.20190327124148-72743a2b202a/go.mod h1:QGtqgqqMaULflN8Jcctj3zdzMFoyE/RxP0uTd15EKtY=
 github.com/rs/cors v1.6.0 h1:G9tHG9lebljV9mfp9SNPDL36nCDxmo3zTlAf1YgvzmI=
