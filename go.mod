@@ -15,6 +15,7 @@ require (
 	github.com/multiformats/go-multiaddr v0.0.1
 	github.com/multiformats/go-multihash v0.0.1
 	github.com/polydawn/refmt v0.0.0-20190221155625-df39d6c2d992
+	github.com/quorumcontrol/messages v0.0.0-20190329073357-72154292315e
 	github.com/quorumcontrol/namedlocker v0.0.0-20180808140020-3f797c8b12b1
 	github.com/quorumcontrol/storage v1.1.1
 	github.com/stretchr/testify v1.3.0

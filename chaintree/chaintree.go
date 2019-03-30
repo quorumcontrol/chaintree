@@ -114,13 +114,13 @@ tip of the tree.
 */
 type ChainTree struct {
 	Dag             *dag.Dag
-	Transactors     map[string]TransactorFunc
+	Transactors     map[transactions.TransactionType]TransactorFunc
 	BlockValidators []BlockValidatorFunc
 	Metadata        interface{}
 	root            *RootNode
 }
 
-func NewChainTree(dag *dag.Dag, blockValidators []BlockValidatorFunc, transactors map[string]TransactorFunc) (*ChainTree, error) {
+func NewChainTree(dag *dag.Dag, blockValidators []BlockValidatorFunc, transactors map[transactions.TransactionType]TransactorFunc) (*ChainTree, error) {
 	ct := &ChainTree{
 		Dag:             dag,
 		BlockValidators: blockValidators,
