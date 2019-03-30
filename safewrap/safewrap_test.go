@@ -5,6 +5,7 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipld-cbor"
+	multihash "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,6 +22,7 @@ type objWithNilPointers struct {
 
 func TestSafeWrap_WrapObject(t *testing.T) {
 	sw := &SafeWrap{}
+
 	for _, test := range []struct {
 		description string
 		obj         *objWithNilPointers
@@ -41,7 +43,13 @@ func TestSafeWrap_WrapObject(t *testing.T) {
 		_, err := node.MarshalJSON()
 		assert.Nil(t, err, test.description)
 
-		//t.Log(string(j))
 		assert.Nil(t, sw.Err, test.description)
 	}
+
+	cbor, err := cbornode.WrapObject("foo", multihash.SHA2_256, -1)
+	require.Nil(t, err)
+
+	wrappedCbor := sw.WrapObject(cbor)
+	require.Nil(t, sw.Err)
+	assert.Equal(t, cbor, wrappedCbor)
 }

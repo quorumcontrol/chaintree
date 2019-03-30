@@ -6,7 +6,8 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipld-cbor"
+	cbornode "github.com/ipfs/go-ipld-cbor"
+
 	"github.com/quorumcontrol/chaintree/nodestore"
 )
 
@@ -73,6 +74,38 @@ func (d *Dag) CreateNode(obj interface{}) (*cbornode.Node, error) {
 // it delegates to the underlying store's resolve
 func (d *Dag) Resolve(path []string) (interface{}, []string, error) {
 	return d.store.Resolve(d.Tip, path)
+}
+
+func (d *Dag) NodesForPath(path []string) ([]*cbornode.Node, error) {
+	nodes := make([]*cbornode.Node, len(path) + 1) // + 1 for tip node
+
+	tipNode, err := d.Get(d.Tip)
+	if err != nil {
+		return nil, err
+	}
+
+	nodes[0] = tipNode
+	cur := tipNode
+
+	for i, val := range path {
+		nextNode, remaining, err := cur.ResolveLink([]string{val})
+		if err != nil {
+			return nil, err
+		}
+
+		if len(remaining) > 0 {
+			return nil, fmt.Errorf("error: unexpected remaining path elements: %v", remaining)
+		}
+
+		cur, err = d.Get(nextNode.Cid)
+		if err != nil {
+			return nil, err
+		}
+
+		nodes[i + 1] = cur
+	}
+
+	return nodes, nil
 }
 
 // Nodes returns all the nodes in an entire tree from the Tip out
@@ -166,9 +199,9 @@ func (d *Dag) getExisting(path []string) (val map[string]interface{}, remainingP
 		existing, _, _ = d.Resolve([]string{})
 	}
 
-	switch existing.(type) {
+	switch existing := existing.(type) {
 	case map[string]interface{}:
-		return existing.(map[string]interface{}), remaining, nil
+		return existing, remaining, nil
 	case nil:
 		// nil can be returned when an object exists at a part of the path, but the next
 		// segment of the path (a key in the object) does not exist.
@@ -309,13 +342,13 @@ func (d *Dag) Dump() string {
 	for i, node := range nodes {
 		nodeJSON, err := node.MarshalJSON()
 		if err != nil {
-			fmt.Errorf("error marshalling JSON for node %v: %v", node, err)
+			panic(fmt.Sprintf("error marshalling JSON for node %v: %v", node, err))
 		}
 		nodeStrings[i] = fmt.Sprintf("%v : %v", node.Cid().String(), string(nodeJSON))
 	}
 	return fmt.Sprintf(`
 Tip: %s,
-Tree:	
+Tree:
 %s
 
 Nodes:
