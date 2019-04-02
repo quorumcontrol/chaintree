@@ -70,14 +70,21 @@ func (d *Dag) CreateNode(obj interface{}) (*cbornode.Node, error) {
 	return d.store.CreateNode(obj)
 }
 
-// Resolve takes a path (as a string slice) and returns the value, remaining path and any error
-// it delegates to the underlying store's resolve
+// Resolve takes a path (as a string slice) and returns the value, remaining path and any error.
+// It delegates to the underlying store's resolve.
 func (d *Dag) Resolve(path []string) (interface{}, []string, error) {
 	return d.store.Resolve(d.Tip, path)
 }
 
+// ResolveAt takes a tip and a path (as a string slice) and returns the value, remaining path
+// and any error.
+// It delegates to the underlying store's resolve.
+func (d *Dag) ResolveAt(tip cid.Cid, path []string) (interface{}, []string, error) {
+	return d.store.Resolve(tip, path)
+}
+
 func (d *Dag) NodesForPath(path []string) ([]*cbornode.Node, error) {
-	nodes := make([]*cbornode.Node, len(path) + 1) // + 1 for tip node
+	nodes := make([]*cbornode.Node, len(path)+1) // + 1 for tip node
 
 	tipNode, err := d.Get(d.Tip)
 	if err != nil {
@@ -102,7 +109,7 @@ func (d *Dag) NodesForPath(path []string) ([]*cbornode.Node, error) {
 			return nil, err
 		}
 
-		nodes[i + 1] = cur
+		nodes[i+1] = cur
 	}
 
 	return nodes, nil
