@@ -10,17 +10,13 @@ lint: $(FIRSTGOPATH)/bin/golangci-lint
 $(FIRSTGOPATH)/bin/golangci-lint:
 	./scripts/download-golangci-lint.sh
 
-vendor: Gopkg.toml Gopkg.lock
-	dep ensure
+test: $(gosources) go.mod go.sum
+	go test ./... -tags=integration
 
-test: vendor $(gosources)
-	go test ./...
-
-build: vendor $(gosources)
+build: $(gosources) go.mod go.sum
 	go build ./...
 
 clean:
-	go clean
-	rm -rf vendor
+	go clean ./...
 
-.PHONY: all build test clean
+.PHONY: all build test clean lint
