@@ -39,6 +39,25 @@ func TestDagResolve(t *testing.T) {
 	assert.Equal(t, true, val)
 }
 
+// Test that the ResolveAt method can operate with a tip that need not be current.
+func TestDagResolveAt(t *testing.T) {
+	dag := newDeepDag(t)
+	oldTip := dag.Tip
+	dag, err := dag.Set([]string{"child", "value"}, true)
+	require.Nil(t, err)
+
+	val, remain, err := dag.ResolveAt(oldTip, []string{"child", "deepChild", "deepChild"})
+	require.Nil(t, err)
+	require.Len(t, remain, 0)
+	require.Equal(t, true, val)
+
+	missingVal, remain, err := dag.ResolveAt(oldTip, []string{"child", "value"})
+	require.Nil(t, err)
+	require.Len(t, remain, 1)
+	require.Equal(t, remain, []string{"value"})
+	require.Nil(t, missingVal)
+}
+
 func TestDagNodesForPath(t *testing.T) {
 	dag := newDeepDag(t)
 	nodes, err := dag.NodesForPath([]string{"child", "deepChild"})
