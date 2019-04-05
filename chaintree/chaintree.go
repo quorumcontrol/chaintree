@@ -34,6 +34,10 @@ func init() {
 	cbornode.RegisterCborType(transactions.EstablishTokenPayload{})
 	cbornode.RegisterCborType(transactions.MintTokenPayload{})
 	cbornode.RegisterCborType(transactions.Transaction{})
+	cbornode.RegisterCborType(transactions.Transaction_SetOwnershipPayload{})
+	cbornode.RegisterCborType(transactions.Transaction_SetDataPayload{})
+	cbornode.RegisterCborType(transactions.Transaction_EstablishTokenPayload{})
+	cbornode.RegisterCborType(transactions.Transaction_MintTokenPayload{})
 
 	typecaster.AddType(RootNode{})
 	typecaster.AddType(Chain{})
@@ -45,6 +49,10 @@ func init() {
 	typecaster.AddType(transactions.EstablishTokenPayload{})
 	typecaster.AddType(transactions.MintTokenPayload{})
 	typecaster.AddType(transactions.Transaction{})
+	typecaster.AddType(transactions.Transaction_SetOwnershipPayload{})
+	typecaster.AddType(transactions.Transaction_SetDataPayload{})
+	typecaster.AddType(transactions.Transaction_EstablishTokenPayload{})
+	typecaster.AddType(transactions.Transaction_MintTokenPayload{})
 	typecaster.AddType(cid.Cid{})
 }
 
