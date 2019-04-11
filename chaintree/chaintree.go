@@ -137,6 +137,18 @@ func (ct *ChainTree) Id() (string, error) {
 	return root.Id, nil
 }
 
+// Tree returns just the tree portion of the ChainTree as a pointer to its DAG
+func (ct *ChainTree) Tree() (*dag.Dag, error) {
+	root, err := ct.getRoot()
+	if err != nil {
+		return nil, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting root node: %v", err.Error())}
+	}
+	if root.Tree == nil {
+		return nil, &ErrorCode{Code: ErrInvalidTree, Memo: "tree link is nil"}
+	}
+	return ct.Dag.WithNewTip(*root.Tree), nil
+}
+
 // ProcessBlock takes a signed block, runs all the validators and if those succeeds
 // it runs the transactors. If all transactors succeed, then the tree
 // of the Chain Tree is updated and the block is appended to the chain part
