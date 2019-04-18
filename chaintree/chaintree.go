@@ -87,7 +87,7 @@ func (e *ErrorCode) Error() string {
 // TransactorFunc mutates a ChainTree and returns whether the transaction is valid
 // or if there was an error processing the transactor. Errors should be retried,
 // valid == false means it isn't a valid transaction.
-type TransactorFunc func(chainTreeID string, tree *dag.Dag, transaction *Transaction) (newTree *dag.Dag, valid bool, err CodedError)
+type TransactorFunc func(chainTreeDID string, tree *dag.Dag, transaction *Transaction) (newTree *dag.Dag, valid bool, err CodedError)
 
 // BlockValidatorFuncs are run on the block level rather than the per transaction level
 type BlockValidatorFunc func(chainTree *dag.Dag, blockWithHeaders *BlockWithHeaders) (valid bool, err CodedError)
@@ -183,12 +183,12 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 			return false, &ErrorCode{Code: ErrUnknownTransactionType, Memo: fmt.Sprintf("unknown transaction type: %v", transaction.Type)}
 		}
 
-		chainTreeID, err := ct.Id()
+		chainTreeDID, err := ct.Id()
 		if err != nil {
 			return false, fmt.Errorf("error getting ID of chaintree: %v", err)
 		}
 
-		newTree, valid, err = transactor(chainTreeID, newTree, transaction)
+		newTree, valid, err = transactor(chainTreeDID, newTree, transaction)
 		if err != nil || !valid {
 			return valid, err
 		}
