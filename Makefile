@@ -13,10 +13,13 @@ $(FIRSTGOPATH)/bin/golangci-lint:
 test: $(gosources) go.mod go.sum
 	go test ./... -tags=integration
 
+ci-test: $(gosources) go.mod go.sum
+	go test -mod=readonly ./... -tags=integration
+
 build: $(gosources) go.mod go.sum
 	go build ./...
 
 clean:
 	go clean ./...
 
-.PHONY: all build test clean lint
+.PHONY: all build test ci-test clean lint
