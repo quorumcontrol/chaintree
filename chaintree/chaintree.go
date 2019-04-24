@@ -7,6 +7,7 @@ import (
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/typecaster"
+	"github.com/quorumcontrol/messages/blocks"
 	"github.com/quorumcontrol/messages/transactions"
 )
 
@@ -81,14 +82,8 @@ type RootNode struct {
 	cid    cid.Cid
 }
 
-type Block struct {
-	PreviousTip  *cid.Cid                    `refmt:"previousTip,omitempty" json:"previousTip,omitempty" cbor:"previousTip,omitempty"`
-	Height       uint64                      `refmt:"height" json:"height" cbor:"height"`
-	Transactions []*transactions.Transaction `refmt:"transactions" json:"transactions" cbor:"transactions"`
-}
-
 type BlockWithHeaders struct {
-	Block
+	blocks.Block
 	PreviousBlock *cid.Cid               `refmt:"previousBlock,omitempty" json:"previousBlock,omitempty" cbor:"previousBlock,omitempty"`
 	Headers       map[string]interface{} `refmt:"headers" json:"headers" cbor:"headers"`
 }
