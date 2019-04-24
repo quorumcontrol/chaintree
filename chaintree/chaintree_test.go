@@ -34,7 +34,7 @@ type setDataPayload struct {
 	Value interface{}
 }
 
-func setData(tree *dag.Dag, transaction *Transaction) (newTree *dag.Dag, valid bool, codedErr CodedError) {
+func setData(_ string, tree *dag.Dag, transaction *Transaction) (newTree *dag.Dag, valid bool, codedErr CodedError) {
 	payload := &setDataPayload{}
 	err := typecaster.ToType(transaction.Payload, payload)
 	if err != nil {

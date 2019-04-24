@@ -100,13 +100,13 @@ func (e *ErrorCode) Error() string {
 	return fmt.Sprintf("%d - %s", e.Code, e.Memo)
 }
 
-// TransactorFunc mutates a  ChainTree and returns whether the transaction is valid
+// TransactorFunc mutates a ChainTree and returns whether the transaction is valid
 // or if there was an error processing the transactor. Errors should be retried,
-// valid means it isn't a valid transaction
-type TransactorFunc func(tree *dag.Dag, transaction *transactions.Transaction) (newTree *dag.Dag, valid bool, err CodedError)
+// valid == false means it isn't a valid transaction.
+type TransactorFunc func(chainTreeDID string, tree *dag.Dag, transaction *transactions.Transaction) (newTree *dag.Dag, valid bool, err CodedError)
 
 // BlockValidatorFuncs are run on the block level rather than the per transaction level
-type BlockValidatorFunc func(tree *dag.Dag, blockWithHeaders *BlockWithHeaders) (valid bool, err CodedError)
+type BlockValidatorFunc func(chainTree *dag.Dag, blockWithHeaders *BlockWithHeaders) (valid bool, err CodedError)
 
 /*
 A Chain Tree is a DAG that starts with the following root node:
@@ -153,6 +153,18 @@ func (ct *ChainTree) Id() (string, error) {
 	return root.Id, nil
 }
 
+// Tree returns just the tree portion of the ChainTree as a pointer to its DAG
+func (ct *ChainTree) Tree() (*dag.Dag, error) {
+	root, err := ct.getRoot()
+	if err != nil {
+		return nil, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting root node: %v", err.Error())}
+	}
+	if root.Tree == nil {
+		return nil, &ErrorCode{Code: ErrInvalidTree, Memo: "tree link is nil"}
+	}
+	return ct.Dag.WithNewTip(*root.Tree), nil
+}
+
 // ProcessBlock takes a signed block, runs all the validators and if those succeeds
 // it runs the transactors. If all transactors succeed, then the tree
 // of the Chain Tree is updated and the block is appended to the chain part
@@ -186,7 +198,13 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		if !ok {
 			return false, &ErrorCode{Code: ErrUnknownTransactionType, Memo: fmt.Sprintf("unknown transaction type: %v", transaction.Type)}
 		}
-		newTree, valid, err = transactor(newTree, transaction)
+
+		chainTreeDID, err := ct.Id()
+		if err != nil {
+			return false, fmt.Errorf("error getting ID of chaintree: %v", err)
+		}
+
+		newTree, valid, err = transactor(chainTreeDID, newTree, transaction)
 		if err != nil || !valid {
 			return valid, err
 		}
