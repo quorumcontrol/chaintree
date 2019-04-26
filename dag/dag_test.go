@@ -78,6 +78,26 @@ func TestDagResolveAt(t *testing.T) {
 	require.Nil(t, missingVal)
 }
 
+func TestorderedNodesForPath(t *testing.T) {
+	sw := safewrap.SafeWrap{}
+	deepChild := sw.WrapObject(map[string]interface{}{"deepChild": true})
+	child := sw.WrapObject(map[string]interface{}{"deepChild": deepChild.Cid(), "child": true})
+	root := sw.WrapObject(map[string]interface{}{"child": child.Cid(), "root": true})
+	require.Nil(t, sw.Err)
+
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	dag, err := NewDagWithNodes(store, root, deepChild, child)
+	require.Nil(t, err)
+
+	nodes, err := dag.orderedNodesForPath([]string{"child", "deepChild"})
+	require.Nil(t, err)
+	require.Len(t, nodes, 3)
+
+	require.Equal(t, nodes[0].RawData(), root.RawData())
+	require.Equal(t, nodes[1].RawData(), child.RawData())
+	require.Equal(t, nodes[2].RawData(), deepChild.RawData())
+}
+
 func TestDagNodesForPath(t *testing.T) {
 	dag := newDeepDag(t)
 	nodes, err := dag.NodesForPath([]string{"child", "deepChild"})

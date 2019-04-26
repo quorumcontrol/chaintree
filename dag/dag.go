@@ -86,7 +86,7 @@ func (d *Dag) ResolveAt(tip cid.Cid, path []string) (interface{}, []string, erro
 }
 
 func (d *Dag) NodesForPathWithDecendants(path []string) ([]*cbornode.Node, error) {
-	nodes, err := d.NodesForPath(path)
+	nodes, err := d.orderedNodesForPath(path)
 	if err != nil {
 		return nil, err
 	}
@@ -112,6 +112,10 @@ func (d *Dag) NodesForPathWithDecendants(path []string) ([]*cbornode.Node, error
 }
 
 func (d *Dag) NodesForPath(path []string) ([]*cbornode.Node, error) {
+	return d.orderedNodesForPath(path)
+}
+
+func (d *Dag) orderedNodesForPath(path []string) ([]*cbornode.Node, error) {
 	nodes := make([]*cbornode.Node, len(path)+1) // + 1 for tip node
 
 	tipNode, err := d.Get(d.Tip)
