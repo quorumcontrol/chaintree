@@ -121,24 +121,38 @@ func (d *Dag) Nodes() ([]*cbornode.Node, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting root: %v", err)
 	}
-	return d.nodeAndDecendants(root)
-}
+	collector := map[cid.Cid]*cbornode.Node{}
+	collector[root.Cid()] = root
 
-func (d *Dag) nodeAndDecendants(node *cbornode.Node) ([]*cbornode.Node, error) {
-	links := node.Links()
-	nodes := []*cbornode.Node{node}
-	for _, link := range links {
-		linkNode, err := d.store.GetNode(link.Cid)
-		if err != nil {
-			return nil, fmt.Errorf("error getting link: %v", err)
-		}
-		childNodes, err := d.nodeAndDecendants(linkNode)
-		if err != nil {
-			return nil, fmt.Errorf("error getting child nodes: %v", err)
-		}
-		nodes = append(nodes, childNodes...)
+	err = d.nodeAndDescendants(root, collector)
+	if err != nil {
+		return nil, fmt.Errorf("error getting dec: %v", err)
+	}
+
+	nodes := make([]*cbornode.Node, len(collector))
+	i := 0
+	for _, v := range collector {
+		nodes[i] = v
+		i++
 	}
 	return nodes, nil
+}
+
+func (d *Dag) nodeAndDescendants(node *cbornode.Node, collector map[cid.Cid]*cbornode.Node) error {
+	links := node.Links()
+	for _, link := range links {
+		linkNode, err := d.store.GetNode(link.Cid)
+		collector[link.Cid] = linkNode
+		if err != nil {
+			return fmt.Errorf("error getting link: %v", err)
+		}
+		err = d.nodeAndDescendants(linkNode, collector)
+		if err != nil {
+			return fmt.Errorf("error getting child nodes: %v", err)
+		}
+	}
+
+	return nil
 }
 
 // Update returns a new Dag with the old node at path swapped out for the new object
