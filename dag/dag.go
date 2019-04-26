@@ -154,7 +154,6 @@ func (d *Dag) Nodes() ([]*cbornode.Node, error) {
 		return nil, fmt.Errorf("error getting root: %v", err)
 	}
 	collector := NodeMap{}
-	collector[root.Cid()] = root
 
 	err = d.nodeAndDescendants(root, collector)
 	if err != nil {
@@ -171,10 +170,11 @@ func (d *Dag) Nodes() ([]*cbornode.Node, error) {
 }
 
 func (d *Dag) nodeAndDescendants(node *cbornode.Node, collector NodeMap) error {
+	collector[node.Cid()] = node
+
 	links := node.Links()
 	for _, link := range links {
 		linkNode, err := d.store.GetNode(link.Cid)
-		collector[link.Cid] = linkNode
 		if err != nil {
 			return fmt.Errorf("error getting link: %v", err)
 		}
