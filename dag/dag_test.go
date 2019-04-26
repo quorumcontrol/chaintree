@@ -78,7 +78,7 @@ func TestDagResolveAt(t *testing.T) {
 	require.Nil(t, missingVal)
 }
 
-func TestorderedNodesForPath(t *testing.T) {
+func TestOrderedNodesForPath(t *testing.T) {
 	sw := safewrap.SafeWrap{}
 	deepChild := sw.WrapObject(map[string]interface{}{"deepChild": true})
 	child := sw.WrapObject(map[string]interface{}{"deepChild": deepChild.Cid(), "child": true})
