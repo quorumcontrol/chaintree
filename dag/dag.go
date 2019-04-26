@@ -18,6 +18,8 @@ type Dag struct {
 	store   nodestore.NodeStore
 }
 
+type NodeMap map[cid.Cid]*cbornode.Node
+
 // NewDag takes a tip and a store and returns an initialized Dag
 func NewDag(tip cid.Cid, store nodestore.NodeStore) *Dag {
 	return &Dag{
@@ -83,7 +85,37 @@ func (d *Dag) ResolveAt(tip cid.Cid, path []string) (interface{}, []string, erro
 	return d.store.Resolve(tip, path)
 }
 
+func (d *Dag) NodesForPathWithDecendants(path []string) ([]*cbornode.Node, error) {
+	nodes, err := d.orderedNodesForPath(path)
+	if err != nil {
+		return nil, err
+	}
+	lastNode := nodes[len(nodes)-1]
+
+	collector := NodeMap{}
+	for _, n := range nodes {
+		collector[n.Cid()] = n
+	}
+
+	err = d.nodeAndDescendants(lastNode, collector)
+	if err != nil {
+		return nil, err
+	}
+
+	nodes = make([]*cbornode.Node, len(collector))
+	i := 0
+	for _, v := range collector {
+		nodes[i] = v
+		i++
+	}
+	return nodes, nil
+}
+
 func (d *Dag) NodesForPath(path []string) ([]*cbornode.Node, error) {
+	return d.orderedNodesForPath(path)
+}
+
+func (d *Dag) orderedNodesForPath(path []string) ([]*cbornode.Node, error) {
 	nodes := make([]*cbornode.Node, len(path)+1) // + 1 for tip node
 
 	tipNode, err := d.Get(d.Tip)
@@ -121,24 +153,38 @@ func (d *Dag) Nodes() ([]*cbornode.Node, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting root: %v", err)
 	}
-	return d.nodeAndDecendants(root)
+	collector := NodeMap{}
+
+	err = d.nodeAndDescendants(root, collector)
+	if err != nil {
+		return nil, fmt.Errorf("error getting dec: %v", err)
+	}
+
+	nodes := make([]*cbornode.Node, len(collector))
+	i := 0
+	for _, v := range collector {
+		nodes[i] = v
+		i++
+	}
+	return nodes, nil
 }
 
-func (d *Dag) nodeAndDecendants(node *cbornode.Node) ([]*cbornode.Node, error) {
+func (d *Dag) nodeAndDescendants(node *cbornode.Node, collector NodeMap) error {
+	collector[node.Cid()] = node
+
 	links := node.Links()
-	nodes := []*cbornode.Node{node}
 	for _, link := range links {
 		linkNode, err := d.store.GetNode(link.Cid)
 		if err != nil {
-			return nil, fmt.Errorf("error getting link: %v", err)
+			return fmt.Errorf("error getting link: %v", err)
 		}
-		childNodes, err := d.nodeAndDecendants(linkNode)
+		err = d.nodeAndDescendants(linkNode, collector)
 		if err != nil {
-			return nil, fmt.Errorf("error getting child nodes: %v", err)
+			return fmt.Errorf("error getting child nodes: %v", err)
 		}
-		nodes = append(nodes, childNodes...)
 	}
-	return nodes, nil
+
+	return nil
 }
 
 // Update returns a new Dag with the old node at path swapped out for the new object
