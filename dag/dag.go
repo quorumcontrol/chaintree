@@ -83,6 +83,32 @@ func (d *Dag) ResolveAt(tip cid.Cid, path []string) (interface{}, []string, erro
 	return d.store.Resolve(tip, path)
 }
 
+func (d *Dag) NodesForPathWithDecendants(path []string) ([]*cbornode.Node, error) {
+	nodes, err := d.NodesForPath(path)
+	if err != nil {
+		return nil, err
+	}
+	lastNode := nodes[len(nodes)-1]
+
+	collector := map[cid.Cid]*cbornode.Node{}
+	for _, n := range nodes {
+		collector[n.Cid()] = n
+	}
+
+	err = d.nodeAndDescendants(lastNode, collector)
+	if err != nil {
+		return nil, err
+	}
+
+	nodes = make([]*cbornode.Node, len(collector))
+	i := 0
+	for _, v := range collector {
+		nodes[i] = v
+		i++
+	}
+	return nodes, nil
+}
+
 func (d *Dag) NodesForPath(path []string) ([]*cbornode.Node, error) {
 	nodes := make([]*cbornode.Node, len(path)+1) // + 1 for tip node
 

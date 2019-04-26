@@ -107,6 +107,27 @@ func TestDagNodesForPath(t *testing.T) {
 	require.Len(t, nodes, 2)
 }
 
+func TestDagNodesForPathWithDecendants(t *testing.T) {
+	dag := newDeepAndWideDag(t)
+	nodes, err := dag.NodesForPathWithDecendants([]string{"child2", "deepChild2"})
+	require.Nil(t, err)
+	require.Len(t, nodes, 3)
+
+	dag = newDeepAndWideDag(t)
+	nodes2, err := dag.NodesForPathWithDecendants([]string{"child2"})
+	require.Nil(t, err)
+	require.Len(t, nodes2, 3)
+
+	nodeBytes := make([][]byte, len(nodes))
+	for i, n := range nodes {
+		nodeBytes[i] = n.RawData()
+	}
+
+	for _, node := range nodes2 {
+		require.Contains(t, nodeBytes, node.RawData())
+	}
+}
+
 func TestDagSet(t *testing.T) {
 	sw := &safewrap.SafeWrap{}
 
