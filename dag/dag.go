@@ -18,6 +18,8 @@ type Dag struct {
 	store   nodestore.NodeStore
 }
 
+type NodeMap map[cid.Cid]*cbornode.Node
+
 // NewDag takes a tip and a store and returns an initialized Dag
 func NewDag(tip cid.Cid, store nodestore.NodeStore) *Dag {
 	return &Dag{
@@ -90,7 +92,7 @@ func (d *Dag) NodesForPathWithDecendants(path []string) ([]*cbornode.Node, error
 	}
 	lastNode := nodes[len(nodes)-1]
 
-	collector := map[cid.Cid]*cbornode.Node{}
+	collector := NodeMap{}
 	for _, n := range nodes {
 		collector[n.Cid()] = n
 	}
@@ -147,7 +149,7 @@ func (d *Dag) Nodes() ([]*cbornode.Node, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting root: %v", err)
 	}
-	collector := map[cid.Cid]*cbornode.Node{}
+	collector := NodeMap{}
 	collector[root.Cid()] = root
 
 	err = d.nodeAndDescendants(root, collector)
@@ -164,7 +166,7 @@ func (d *Dag) Nodes() ([]*cbornode.Node, error) {
 	return nodes, nil
 }
 
-func (d *Dag) nodeAndDescendants(node *cbornode.Node, collector map[cid.Cid]*cbornode.Node) error {
+func (d *Dag) nodeAndDescendants(node *cbornode.Node, collector NodeMap) error {
 	links := node.Links()
 	for _, link := range links {
 		linkNode, err := d.store.GetNode(link.Cid)
