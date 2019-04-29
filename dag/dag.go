@@ -174,6 +174,10 @@ func (d *Dag) nodeAndDescendants(node *cbornode.Node, collector NodeMap) error {
 
 	links := node.Links()
 	for _, link := range links {
+		_, ok := collector[link.Cid]
+		if ok {
+			continue
+		}
 		linkNode, err := d.store.GetNode(link.Cid)
 		if err != nil {
 			return fmt.Errorf("error getting link: %v", err)
