@@ -27,8 +27,8 @@ const (
 func init() {
 	cbornode.RegisterCborType(RootNode{})
 	cbornode.RegisterCborType(Chain{})
-	cbornode.RegisterCborType(BlockWithHeaders{})
-	cbornode.RegisterCborType(Block{})
+	cbornode.RegisterCborType(blocks.BlockWithHeaders{})
+	cbornode.RegisterCborType(blocks.Block{})
 	cbornode.RegisterCborType(transactions.SetDataPayload{})
 	cbornode.RegisterCborType(transactions.SetOwnershipPayload{})
 	cbornode.RegisterCborType(transactions.TokenMonetaryPolicy{})
@@ -45,8 +45,8 @@ func init() {
 
 	typecaster.AddType(RootNode{})
 	typecaster.AddType(Chain{})
-	typecaster.AddType(BlockWithHeaders{})
-	typecaster.AddType(Block{})
+	typecaster.AddType(blocks.BlockWithHeaders{})
+	typecaster.AddType(blocks.Block{})
 	typecaster.AddType(transactions.SetDataPayload{})
 	typecaster.AddType(transactions.SetOwnershipPayload{})
 	typecaster.AddType(transactions.TokenMonetaryPolicy{})
@@ -82,12 +82,6 @@ type RootNode struct {
 	cid    cid.Cid
 }
 
-type BlockWithHeaders struct {
-	blocks.Block
-	PreviousBlock *cid.Cid               `refmt:"previousBlock,omitempty" json:"previousBlock,omitempty" cbor:"previousBlock,omitempty"`
-	Headers       map[string]interface{} `refmt:"headers" json:"headers" cbor:"headers"`
-}
-
 type Chain struct {
 	End *cid.Cid `refmt:"end" json:"end" cbor:"end"`
 }
@@ -106,7 +100,7 @@ func (e *ErrorCode) Error() string {
 type TransactorFunc func(chainTreeDID string, tree *dag.Dag, transaction *transactions.Transaction) (newTree *dag.Dag, valid bool, err CodedError)
 
 // BlockValidatorFuncs are run on the block level rather than the per transaction level
-type BlockValidatorFunc func(chainTree *dag.Dag, blockWithHeaders *BlockWithHeaders) (valid bool, err CodedError)
+type BlockValidatorFunc func(chainTree *dag.Dag, blockWithHeaders *blocks.BlockWithHeaders) (valid bool, err CodedError)
 
 /*
 A Chain Tree is a DAG that starts with the following root node:
@@ -124,13 +118,13 @@ tip of the tree.
 */
 type ChainTree struct {
 	Dag             *dag.Dag
-	Transactors     map[transactions.TransactionType]TransactorFunc
+	Transactors     map[transactions.Transaction_Type]TransactorFunc
 	BlockValidators []BlockValidatorFunc
 	Metadata        interface{}
 	root            *RootNode
 }
 
-func NewChainTree(dag *dag.Dag, blockValidators []BlockValidatorFunc, transactors map[transactions.TransactionType]TransactorFunc) (*ChainTree, error) {
+func NewChainTree(dag *dag.Dag, blockValidators []BlockValidatorFunc, transactors map[transactions.Transaction_Type]TransactorFunc) (*ChainTree, error) {
 	ct := &ChainTree{
 		Dag:             dag,
 		BlockValidators: blockValidators,
@@ -169,7 +163,7 @@ func (ct *ChainTree) Tree() (*dag.Dag, error) {
 // it runs the transactors. If all transactors succeed, then the tree
 // of the Chain Tree is updated and the block is appended to the chain part
 // of the Chain Tree
-func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid bool, err error) {
+func (ct *ChainTree) ProcessBlock(blockWithHeaders *blocks.BlockWithHeaders) (valid bool, err error) {
 	if blockWithHeaders == nil {
 		return false, &ErrorCode{Code: ErrUnknown, Memo: "must have a block to process"}
 	}
@@ -193,7 +187,7 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 
 	newTree := ct.Dag.WithNewTip(*root.Tree)
 
-	for _, transaction := range blockWithHeaders.Transactions {
+	for _, transaction := range blockWithHeaders.Block.Transactions {
 		transactor, ok := ct.Transactors[transaction.Type]
 		if !ok {
 			return false, &ErrorCode{Code: ErrUnknownTransactionType, Memo: fmt.Sprintf("unknown transaction type: %v", transaction.Type)}
@@ -245,7 +239,8 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		if height := blockWithHeaders.Block.Height; height != 0 {
 			return false, &ErrorCode{Code: ErrBadHeight, Memo: fmt.Sprintf("first block must have a height of 0, had: %d", height)}
 		}
-		if tip := blockWithHeaders.Block.PreviousTip; tip != nil {
+
+		if tip := blockWithHeaders.Block.PreviousTip; tip != "" {
 			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("invalid previous tip: %v, expecting nil", tip)}
 		}
 
@@ -279,22 +274,25 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("missing end node in chain tree")}
 	}
 
-	lastEntry := &BlockWithHeaders{}
+	lastEntry := &blocks.BlockWithHeaders{}
 
 	err = cbornode.DecodeInto(endNode.RawData(), lastEntry)
 	if err != nil {
 		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error casting lastEntry: %v", err)}
 	}
 
-	if tip := blockWithHeaders.PreviousTip; tip == nil || !tip.Equals(root.cid) {
-		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error, tip must be current tip, tip: %v endMap: %v, rootNode: %v", tip, lastEntry.PreviousTip, root.cid)}
+	tip := blockWithHeaders.Block.PreviousTip
+	tipCid, err := cid.Decode(tip)
+
+	if tip == "" || !tipCid.Equals(root.cid) || err != nil {
+		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error, tip must be current tip, tip: %v endMap: %v, rootNode: %v", tip, lastEntry.Block.PreviousTip, root.cid)}
 	}
 
-	if height := blockWithHeaders.Block.Height; height != (lastEntry.Height + uint64(1)) {
-		return false, &ErrorCode{Code: ErrBadHeight, Memo: fmt.Sprintf("block must have a height of %d, had: %d", (lastEntry.Height + uint64(1)), height)}
+	if height := blockWithHeaders.Block.Height; height != (lastEntry.Block.Height + uint64(1)) {
+		return false, &ErrorCode{Code: ErrBadHeight, Memo: fmt.Sprintf("block must have a height of %d, had: %d", (lastEntry.Block.Height + uint64(1)), height)}
 	}
 
-	blockWithHeaders.PreviousBlock = chain.End
+	blockWithHeaders.PreviousBlock = chain.End.String()
 
 	wrappedBlock, err := ct.Dag.CreateNode(blockWithHeaders)
 	if err != nil {
