@@ -3,6 +3,7 @@ package chaintree
 import (
 	"fmt"
 
+	"github.com/golang/protobuf/ptypes/any"
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/dag"
@@ -28,16 +29,8 @@ func init() {
 	cbornode.RegisterCborType(Chain{})
 	cbornode.RegisterCborType(BlockWithHeaders{})
 	cbornode.RegisterCborType(Block{})
-	cbornode.RegisterCborType(transactions.SetDataPayload{})
-	cbornode.RegisterCborType(transactions.SetOwnershipPayload{})
-	cbornode.RegisterCborType(transactions.TokenMonetaryPolicy{})
-	cbornode.RegisterCborType(transactions.EstablishTokenPayload{})
-	cbornode.RegisterCborType(transactions.MintTokenPayload{})
 	cbornode.RegisterCborType(transactions.Transaction{})
-	cbornode.RegisterCborType(transactions.Transaction_SetOwnershipPayload{})
-	cbornode.RegisterCborType(transactions.Transaction_SetDataPayload{})
-	cbornode.RegisterCborType(transactions.Transaction_EstablishTokenPayload{})
-	cbornode.RegisterCborType(transactions.Transaction_MintTokenPayload{})
+	cbornode.RegisterCborType(any.Any{})
 	// protobuf generated types have internal fields that `struct{}` and
 	// cannot be marshalled without registering that type first
 	cbornode.RegisterCborType(struct{}{})
@@ -46,16 +39,8 @@ func init() {
 	typecaster.AddType(Chain{})
 	typecaster.AddType(BlockWithHeaders{})
 	typecaster.AddType(Block{})
-	typecaster.AddType(transactions.SetDataPayload{})
-	typecaster.AddType(transactions.SetOwnershipPayload{})
-	typecaster.AddType(transactions.TokenMonetaryPolicy{})
-	typecaster.AddType(transactions.EstablishTokenPayload{})
-	typecaster.AddType(transactions.MintTokenPayload{})
 	typecaster.AddType(transactions.Transaction{})
-	typecaster.AddType(transactions.Transaction_SetOwnershipPayload{})
-	typecaster.AddType(transactions.Transaction_SetDataPayload{})
-	typecaster.AddType(transactions.Transaction_EstablishTokenPayload{})
-	typecaster.AddType(transactions.Transaction_MintTokenPayload{})
+	typecaster.AddType(any.Any{})
 	// protobuf generated types have internal fields that `struct{}` and
 	// cannot be cast without registering that type first
 	typecaster.AddType(struct{}{})
