@@ -31,6 +31,11 @@ func init() {
 	cbornode.RegisterCborType(Block{})
 	cbornode.RegisterCborType(transactions.Transaction{})
 	cbornode.RegisterCborType(any.Any{})
+	cbornode.RegisterCborType(transactions.SetDataPayload{})
+	cbornode.RegisterCborType(transactions.SetOwnershipPayload{})
+	cbornode.RegisterCborType(transactions.EstablishTokenPayload{})
+	cbornode.RegisterCborType(transactions.TokenMonetaryPolicy{})
+	cbornode.RegisterCborType(transactions.MintTokenPayload{})
 	// protobuf generated types have internal fields that `struct{}` and
 	// cannot be marshalled without registering that type first
 	cbornode.RegisterCborType(struct{}{})
@@ -41,6 +46,11 @@ func init() {
 	typecaster.AddType(Block{})
 	typecaster.AddType(transactions.Transaction{})
 	typecaster.AddType(any.Any{})
+	typecaster.AddType(transactions.SetDataPayload{})
+	typecaster.AddType(transactions.SetOwnershipPayload{})
+	typecaster.AddType(transactions.EstablishTokenPayload{})
+	typecaster.AddType(transactions.TokenMonetaryPolicy{})
+	typecaster.AddType(transactions.MintTokenPayload{})
 	// protobuf generated types have internal fields that `struct{}` and
 	// cannot be cast without registering that type first
 	typecaster.AddType(struct{}{})
