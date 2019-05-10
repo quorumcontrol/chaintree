@@ -327,29 +327,6 @@ func TestBlockProcessing(t *testing.T) {
 				assert.Nil(t, err)
 			},
 		},
-		// {
-		//	description: "a block that has a bad transaction",
-		//	shouldValid: false,
-		//	shouldErr:   true,
-		//	block: &BlockWithHeaders{
-		//		Block: Block{
-		//			Transactions: []*transactions.Transaction{
-		//				{
-		//					Type:    transactions.Transaction_SETDATA,
-		//					Payload: "broken payload",
-		//				},
-		//			},
-		//		},
-		//		Headers: map[string]interface{}{
-		//			"cool": "cool",
-		//		},
-		//	},
-		//	validator: func(tree *ChainTree) {
-		//		val, _, err := tree.Dag.Resolve(strings.Split("tree/down/in/the/thing", "/"))
-		//		assert.Nil(t, val)
-		//		assert.Nil(t, err)
-		//	},
-		// },
 	} {
 		store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
 		dag, err := dag.NewDagWithNodes(store, root, tree, chain)
