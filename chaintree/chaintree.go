@@ -149,74 +149,75 @@ func (ct *ChainTree) Tree() (*dag.Dag, error) {
 	return ct.Dag.WithNewTip(*root.Tree), nil
 }
 
-// ProcessBlock takes a signed block, runs all the validators and if those succeeds
-// it runs the transactors. If all transactors succeed, then the tree
-// of the Chain Tree is updated and the block is appended to the chain part
-// of the Chain Tree
-func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid bool, err error) {
+func (ct *ChainTree) ProcessBlockImmutable(blockWithHeaders *BlockWithHeaders) (newChainTree *ChainTree, valid bool, err error) {
 	if blockWithHeaders == nil {
-		return false, &ErrorCode{Code: ErrUnknown, Memo: "must have a block to process"}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: "must have a block to process"}
+	}
+
+	newChainTree, err = NewChainTree(ct.Dag, ct.BlockValidators, ct.Transactors)
+	if err != nil {
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error creating new ChainTree: %v", err)}
 	}
 
 	// first validate the block
-	for _, validator := range ct.BlockValidators {
-		valid, err := validator(ct.Dag, blockWithHeaders)
+	for _, validator := range newChainTree.BlockValidators {
+		valid, err := validator(newChainTree.Dag, blockWithHeaders)
 		if err != nil || !valid {
-			return valid, err
+			return nil, valid, err
 		}
 	}
 
-	root, err := ct.getRoot()
+	root, err := newChainTree.getRoot()
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
 
 	if root.Tree == nil {
-		return false, &ErrorCode{Code: ErrInvalidTree, Memo: "error getting treeLink"}
+		return nil, false, &ErrorCode{Code: ErrInvalidTree, Memo: "error getting treeLink"}
 	}
 
-	newTree := ct.Dag.WithNewTip(*root.Tree)
+	newTree := newChainTree.Dag.WithNewTip(*root.Tree)
 
 	for _, transaction := range blockWithHeaders.Transactions {
-		transactor, ok := ct.Transactors[transaction.Type]
+		transactor, ok := newChainTree.Transactors[transaction.Type]
 		if !ok {
-			return false, &ErrorCode{Code: ErrUnknownTransactionType, Memo: fmt.Sprintf("unknown transaction type: %v", transaction.Type)}
+			return nil, false, &ErrorCode{Code: ErrUnknownTransactionType, Memo: fmt.Sprintf("unknown transaction type: %v", transaction.Type)}
 		}
 
 		chainTreeDID, err := ct.Id()
 		if err != nil {
-			return false, fmt.Errorf("error getting ID of chaintree: %v", err)
+			return nil, false, fmt.Errorf("error getting ID of chaintree: %v", err)
 		}
 
 		newTree, valid, err = transactor(chainTreeDID, newTree, transaction)
 		if err != nil || !valid {
-			return valid, err
+			return nil, valid, err
 		}
 	}
 
 	unmarshaledTreeTip, err := newTree.Get(newTree.Tip)
 	if err != nil {
-		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting new tree tip: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting new tree tip: %v", err)}
 	}
 	newTreeMap := make(map[string]interface{})
 	err = cbornode.DecodeInto(unmarshaledTreeTip.RawData(), &newTreeMap)
 	if err != nil {
-		return false, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error decoding new tree root into map: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error decoding new tree root into map: %v", err)}
 	}
 
-	ct.Dag, err = ct.Dag.SetAsLink([]string{TreeLabel}, newTreeMap)
+	newChainTree.Dag, err = newChainTree.Dag.SetAsLink([]string{TreeLabel}, newTreeMap)
 	if err != nil {
-		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error setting as link: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error setting as link: %v", err)}
 	}
 
-	chainNode, err := ct.Dag.Get(*root.Chain)
+	chainNode, err := newChainTree.Dag.Get(*root.Chain)
 	if err != nil {
-		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting node: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting node: %v", err)}
 	}
 	chain := &Chain{}
 	err = cbornode.DecodeInto(chainNode.RawData(), chain)
 	if err != nil {
-		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting map: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting map: %v", err)}
 	}
 
 	/*
@@ -227,75 +228,90 @@ func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid boo
 	// if this is the first block
 	if chain.End == nil {
 		if height := blockWithHeaders.Block.Height; height != 0 {
-			return false, &ErrorCode{Code: ErrBadHeight, Memo: fmt.Sprintf("first block must have a height of 0, had: %d", height)}
+			return nil, false, &ErrorCode{Code: ErrBadHeight, Memo: fmt.Sprintf("first block must have a height of 0, had: %d", height)}
 		}
 		if tip := blockWithHeaders.Block.PreviousTip; tip != nil {
-			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("invalid previous tip: %v, expecting nil", tip)}
+			return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("invalid previous tip: %v, expecting nil", tip)}
 		}
 
-		wrappedBlock, err := ct.Dag.CreateNode(blockWithHeaders)
+		wrappedBlock, err := newChainTree.Dag.CreateNode(blockWithHeaders)
 		if err != nil {
-			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error wrapping block: %v", err)}
+			return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error wrapping block: %v", err)}
 		}
 
 		endCid := wrappedBlock.Cid()
 		chain.End = &endCid
 
-		ct.Dag, err = ct.Dag.SetAsLink([]string{ChainLabel}, chain)
+		newChainTree.Dag, err = newChainTree.Dag.SetAsLink([]string{ChainLabel}, chain)
 		if err != nil {
-			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error updating: %v", err)}
+			return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error updating: %v", err)}
 		}
 
-		ct.Dag, err = ct.Dag.Set([]string{"height"}, uint64(0))
+		newChainTree.Dag, err = newChainTree.Dag.Set([]string{"height"}, uint64(0))
 		if err != nil {
-			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error setting height: %v", err)}
+			return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error setting height: %v", err)}
 		}
-		return true, nil
+		return newChainTree, true, nil
 	}
 
 	// otherwise we have an existing chain in this chaintree
 
-	endNode, err := ct.Dag.Get(*chain.End)
+	endNode, err := newChainTree.Dag.Get(*chain.End)
 	if err != nil {
-		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting end node: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting end node: %v", err)}
 	}
 	if endNode == nil {
-		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("missing end node in chain tree")}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("missing end node in chain tree")}
 	}
 
 	lastEntry := &BlockWithHeaders{}
 
 	err = cbornode.DecodeInto(endNode.RawData(), lastEntry)
 	if err != nil {
-		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error casting lastEntry: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error casting lastEntry: %v", err)}
 	}
 
 	if tip := blockWithHeaders.PreviousTip; tip == nil || !tip.Equals(root.cid) {
-		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error, tip must be current tip, tip: %v endMap: %v, rootNode: %v", tip, lastEntry.PreviousTip, root.cid)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error, tip must be current tip, tip: %v endMap: %v, rootNode: %v", tip, lastEntry.PreviousTip, root.cid)}
 	}
 
 	if height := blockWithHeaders.Block.Height; height != (lastEntry.Height + uint64(1)) {
-		return false, &ErrorCode{Code: ErrBadHeight, Memo: fmt.Sprintf("block must have a height of %d, had: %d", (lastEntry.Height + uint64(1)), height)}
+		return nil, false, &ErrorCode{Code: ErrBadHeight, Memo: fmt.Sprintf("block must have a height of %d, had: %d", (lastEntry.Height + uint64(1)), height)}
 	}
 
 	blockWithHeaders.PreviousBlock = chain.End
 
-	wrappedBlock, err := ct.Dag.CreateNode(blockWithHeaders)
+	wrappedBlock, err := newChainTree.Dag.CreateNode(blockWithHeaders)
 	if err != nil {
-		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error wrapping block: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error wrapping block: %v", err)}
 	}
 
 	newEnd := wrappedBlock.Cid()
 	chain.End = &newEnd
 
-	ct.Dag, err = ct.Dag.SetAsLink([]string{ChainLabel}, chain)
+	newChainTree.Dag, err = newChainTree.Dag.SetAsLink([]string{ChainLabel}, chain)
 	if err != nil {
-		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error swapping object: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error swapping object: %v", err)}
 	}
-	ct.Dag, err = ct.Dag.Set([]string{"height"}, blockWithHeaders.Block.Height)
+	newChainTree.Dag, err = newChainTree.Dag.Set([]string{"height"}, blockWithHeaders.Block.Height)
 	if err != nil {
-		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error setting root height: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error setting root height: %v", err)}
 	}
+	return newChainTree, true, nil
+}
+
+// ProcessBlock takes a signed block, runs all the validators and if those succeeds
+// it runs the transactors. If all transactors succeed, then the tree
+// of the Chain Tree is updated and the block is appended to the chain part
+// of the Chain Tree
+func (ct *ChainTree) ProcessBlock(blockWithHeaders *BlockWithHeaders) (valid bool, err error) {
+	newChainTree, valid, err := ct.ProcessBlockImmutable(blockWithHeaders)
+	if err != nil || !valid {
+		return valid, err
+	}
+
+	ct.Dag = newChainTree.Dag
+
 	return true, nil
 }
 
