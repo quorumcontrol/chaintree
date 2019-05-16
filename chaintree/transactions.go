@@ -33,9 +33,14 @@ func NewSetDataTransaction(path string, value interface{}) (*transactions.Transa
 	}
 
 	valBytes := wrappedVal.RawData()
+
+	return NewSetDataBytesTransaction(path, valBytes)
+}
+
+func NewSetDataBytesTransaction(path string, data []byte) (*transactions.Transaction, error) {
 	payload := &transactions.SetDataPayload{
 		Path:  path,
-		Value: valBytes,
+		Value: data,
 	}
 
 	payloadWrapper, err := ptypes.MarshalAny(payload)
