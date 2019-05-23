@@ -191,6 +191,37 @@ func (d *Dag) nodeAndDescendants(node *cbornode.Node, collector NodeMap) error {
 	return nil
 }
 
+// Delete removes a key from the dag
+func (d *Dag) Delete(path []string) (*Dag, error) {
+	if len(path) == 0 {
+		return nil, fmt.Errorf("Can not execute Delete on root of dag, please supply non-empty path")
+	}
+
+	parentPath := path[:len(path)-1]
+	parentObj, remaining, err := d.Resolve(parentPath)
+
+	if err != nil {
+		return nil, fmt.Errorf("error resolving parent node: %v", err)
+	}
+	if len(remaining) > 0 {
+		return nil, fmt.Errorf("path elements remaining after resolving parent node: %v", remaining)
+	}
+	parentMap, ok := parentObj.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("error asserting type map[string]interface{} of parent node: %v", parentObj)
+	}
+
+	keyToDelete := path[len(path)-1]
+
+	if _, ok := parentMap[keyToDelete]; !ok {
+		return nil, fmt.Errorf("key %v does not exist at path %v", keyToDelete, parentPath)
+	}
+
+	delete(parentMap, keyToDelete)
+
+	return d.Update(parentPath, parentObj)
+}
+
 // Update returns a new Dag with the old node at path swapped out for the new object
 func (d *Dag) Update(path []string, newObj interface{}) (*Dag, error) {
 	updatedNode, err := d.CreateNode(newObj)

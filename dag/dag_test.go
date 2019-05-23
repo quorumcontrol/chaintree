@@ -547,3 +547,39 @@ func TestDagUpdate(t *testing.T) {
 	assert.Len(t, remain, 0)
 	assert.Equal(t, "changed", val)
 }
+
+func TestDagDelete(t *testing.T) {
+	sw := &safewrap.SafeWrap{}
+
+	child := sw.WrapObject(map[string]interface{}{
+		"name": "child",
+	})
+
+	intermediary := sw.WrapObject(map[string]interface{}{
+		"name":   "intermediary",
+		"child2": child.Cid(),
+	})
+
+	root := sw.WrapObject(map[string]interface{}{
+		"name":   "root",
+		"child1": intermediary.Cid(),
+	})
+
+	require.Nil(t, sw.Err)
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	dag, err := NewDagWithNodes(store, root, intermediary, child)
+	require.Nil(t, err)
+
+	dag, err = dag.Delete([]string{"child1", "child2"})
+	require.Nil(t, err)
+
+	val, remain, err := dag.Resolve([]string{"child1"})
+	require.Nil(t, err)
+	assert.Len(t, remain, 0)
+
+	valCast := make(map[string]string, len(val.(map[string]interface{})))
+	for k, v := range val.(map[string]interface{}) {
+		valCast[k] = v.(string)
+	}
+	assert.Equal(t, valCast, map[string]string{"name": "intermediary"})
+}
