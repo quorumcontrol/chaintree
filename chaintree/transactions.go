@@ -5,8 +5,8 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/quorumcontrol/chaintree/safewrap"
-	"github.com/quorumcontrol/messages/signatures"
-	"github.com/quorumcontrol/messages/transactions"
+	"github.com/quorumcontrol/messages/build/go/signatures"
+	"github.com/quorumcontrol/messages/build/go/transactions"
 )
 
 func NewSetOwnershipTransaction(keyAddrs []string) (*transactions.Transaction, error) {
