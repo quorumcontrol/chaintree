@@ -3,7 +3,6 @@ package chaintree
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/messages/build/go/signatures"
 	"github.com/quorumcontrol/messages/build/go/transactions"
@@ -14,14 +13,9 @@ func NewSetOwnershipTransaction(keyAddrs []string) (*transactions.Transaction, e
 		Authentication: keyAddrs,
 	}
 
-	payloadWrapper, err := ptypes.MarshalAny(payload)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling SetOwnership payload: %v", err)
-	}
-
 	return &transactions.Transaction{
-		Type:    transactions.Transaction_SETOWNERSHIP,
-		Payload: payloadWrapper,
+		Type:                transactions.Transaction_SETOWNERSHIP,
+		SetOwnershipPayload: payload,
 	}, nil
 }
 
@@ -43,14 +37,9 @@ func NewSetDataBytesTransaction(path string, data []byte) (*transactions.Transac
 		Value: data,
 	}
 
-	payloadWrapper, err := ptypes.MarshalAny(payload)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling SetData payload: %v", err)
-	}
-
 	return &transactions.Transaction{
-		Type:    transactions.Transaction_SETDATA,
-		Payload: payloadWrapper,
+		Type:           transactions.Transaction_SETDATA,
+		SetDataPayload: payload,
 	}, nil
 }
 
@@ -62,14 +51,9 @@ func NewEstablishTokenTransaction(name string, max uint64) (*transactions.Transa
 		MonetaryPolicy: policy,
 	}
 
-	payloadWrapper, err := ptypes.MarshalAny(payload)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling EstablishToken payload: %v", err)
-	}
-
 	return &transactions.Transaction{
-		Type:    transactions.Transaction_ESTABLISHTOKEN,
-		Payload: payloadWrapper,
+		Type: transactions.Transaction_ESTABLISHTOKEN,
+		EstablishTokenPayload: payload,
 	}, nil
 }
 
@@ -79,14 +63,9 @@ func NewMintTokenTransaction(name string, amount uint64) (*transactions.Transact
 		Amount: amount,
 	}
 
-	payloadWrapper, err := ptypes.MarshalAny(payload)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling MintToken payload: %v", err)
-	}
-
 	return &transactions.Transaction{
-		Type:    transactions.Transaction_MINTTOKEN,
-		Payload: payloadWrapper,
+		Type:             transactions.Transaction_MINTTOKEN,
+		MintTokenPayload: payload,
 	}, nil
 }
 
@@ -98,14 +77,9 @@ func NewSendTokenTransaction(id, name string, amount uint64, destination string)
 		Destination: destination,
 	}
 
-	payloadWrapper, err := ptypes.MarshalAny(payload)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling SendToken payload: %v", err)
-	}
-
 	return &transactions.Transaction{
-		Type:    transactions.Transaction_SENDTOKEN,
-		Payload: payloadWrapper,
+		Type:             transactions.Transaction_SENDTOKEN,
+		SendTokenPayload: payload,
 	}, nil
 }
 
@@ -117,13 +91,8 @@ func NewReceiveTokenTransaction(sendTid string, tip []byte, sig *signatures.Sign
 		Leaves:    leaves,
 	}
 
-	payloadWrapper, err := ptypes.MarshalAny(payload)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling ReceiveToken payload: %v", err)
-	}
-
 	return &transactions.Transaction{
-		Type:    transactions.Transaction_RECEIVETOKEN,
-		Payload: payloadWrapper,
+		Type:                transactions.Transaction_RECEIVETOKEN,
+		ReceiveTokenPayload: payload,
 	}, nil
 }

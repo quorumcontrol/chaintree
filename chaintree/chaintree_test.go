@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes"
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/dag"
@@ -28,10 +27,9 @@ func hasCoolHeader(_ *dag.Dag, blockWithHeaders *BlockWithHeaders) (valid bool, 
 }
 
 func setData(_ string, tree *dag.Dag, transaction *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr CodedError) {
-	payload := &transactions.SetDataPayload{}
-	err := ptypes.UnmarshalAny(transaction.Payload, payload)
+	payload, err := transaction.EnsureSetDataPayload()
 	if err != nil {
-		return nil, false, &ErrorCode{Code: errInvalidPayload, Memo: fmt.Sprintf("error casting payload: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("not a SetData transaction")}
 	}
 
 	var val interface{}
