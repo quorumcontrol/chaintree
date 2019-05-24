@@ -613,6 +613,8 @@ github.com/quorumcontrol/messages/build/go v0.0.0-20190523083604-235912fee68d h1
 github.com/quorumcontrol/messages/build/go v0.0.0-20190523083604-235912fee68d/go.mod h1:AalYdj/vWDqRzlpOZ0z1UDo6nqVTiCZHoZ79/3lW/Xw=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190523195112-2b8ad93f050f h1:W0FdbIR3j4JrmqMnw1nhU734roDeN3/VdDrzg1cC6Pk=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190523195112-2b8ad93f050f/go.mod h1:b8jDN8PulcGcRJ2pQc0lbC3tPaOspGHoBIbPxfB7Jqg=
+github.com/quorumcontrol/messages/build/go v0.0.0-20190524015137-11f40f8691ea h1:9n2rmYY43AYqVcE67e9UcicH1M4S/Yh/o7+IRZmaFHM=
+github.com/quorumcontrol/messages/build/go v0.0.0-20190524015137-11f40f8691ea/go.mod h1:b8jDN8PulcGcRJ2pQc0lbC3tPaOspGHoBIbPxfB7Jqg=
 github.com/quorumcontrol/namedlocker v0.0.0-20180808140020-3f797c8b12b1 h1:FglNF7FTLpcl171qo5MFvbKjrLEsLtcKF72uQpefiPM=
 github.com/quorumcontrol/namedlocker v0.0.0-20180808140020-3f797c8b12b1/go.mod h1:7JSFW45PpKoXFaUpaJ8YtCNIwQWut0+Huo9ugBnKVe4=
 github.com/quorumcontrol/storage v1.1.1 h1:9ijuxMAKS0MwLL/thV4kwJe/AshFVF5Du1dTOhYW+eM=
