@@ -3,11 +3,11 @@ package chaintree
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/ptypes/any"
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/typecaster"
+	"github.com/quorumcontrol/messages/build/go/signatures"
 	"github.com/quorumcontrol/messages/build/go/transactions"
 )
 
@@ -29,8 +29,9 @@ func init() {
 	cbornode.RegisterCborType(Chain{})
 	cbornode.RegisterCborType(BlockWithHeaders{})
 	cbornode.RegisterCborType(Block{})
+	cbornode.RegisterCborType(signatures.PublicKey{})
+	cbornode.RegisterCborType(signatures.Signature{})
 	cbornode.RegisterCborType(transactions.Transaction{})
-	cbornode.RegisterCborType(any.Any{})
 	cbornode.RegisterCborType(transactions.SetDataPayload{})
 	cbornode.RegisterCborType(transactions.SetOwnershipPayload{})
 	cbornode.RegisterCborType(transactions.EstablishTokenPayload{})
@@ -39,6 +40,7 @@ func init() {
 	cbornode.RegisterCborType(transactions.SendTokenPayload{})
 	cbornode.RegisterCborType(transactions.ReceiveTokenPayload{})
 	cbornode.RegisterCborType(transactions.TokenPayload{})
+	cbornode.RegisterCborType(transactions.StakePayload{})
 	// protobuf generated types have internal fields that `struct{}` and
 	// cannot be marshalled without registering that type first
 	cbornode.RegisterCborType(struct{}{})
@@ -47,8 +49,9 @@ func init() {
 	typecaster.AddType(Chain{})
 	typecaster.AddType(BlockWithHeaders{})
 	typecaster.AddType(Block{})
+	typecaster.AddType(signatures.PublicKey{})
+	typecaster.AddType(signatures.Signature{})
 	typecaster.AddType(transactions.Transaction{})
-	typecaster.AddType(any.Any{})
 	typecaster.AddType(transactions.SetDataPayload{})
 	typecaster.AddType(transactions.SetOwnershipPayload{})
 	typecaster.AddType(transactions.EstablishTokenPayload{})
