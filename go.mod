@@ -56,7 +56,7 @@ require (
 	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90 // indirect
 	github.com/prometheus/common v0.3.0 // indirect
 	github.com/prometheus/procfs v0.0.0-20190416084830-8368d24ba045 // indirect
-	github.com/quorumcontrol/messages/build/go v0.0.0-20190524015137-11f40f8691ea
+	github.com/quorumcontrol/messages/build/go v0.3.0
 	github.com/quorumcontrol/namedlocker v0.0.0-20180808140020-3f797c8b12b1
 	github.com/quorumcontrol/storage v1.1.2
 	github.com/sirupsen/logrus v1.4.1 // indirect
