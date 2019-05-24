@@ -16,8 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const errInvalidPayload = 999
-
 func hasCoolHeader(_ *dag.Dag, blockWithHeaders *BlockWithHeaders) (valid bool, err CodedError) {
 	headerVal, ok := blockWithHeaders.Headers["cool"].(string)
 	if ok {
