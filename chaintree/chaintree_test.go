@@ -6,20 +6,15 @@ import (
 	"testing"
 
 	cid "github.com/ipfs/go-cid"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
-	"github.com/quorumcontrol/chaintree/typecaster"
+	"github.com/quorumcontrol/messages/build/go/transactions"
 	"github.com/quorumcontrol/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-const errInvalidPayload = 999
-
-func init() {
-	typecaster.AddType(setDataPayload{})
-}
 
 func hasCoolHeader(_ *dag.Dag, blockWithHeaders *BlockWithHeaders) (valid bool, err CodedError) {
 	headerVal, ok := blockWithHeaders.Headers["cool"].(string)
@@ -29,19 +24,19 @@ func hasCoolHeader(_ *dag.Dag, blockWithHeaders *BlockWithHeaders) (valid bool, 
 	return false, nil
 }
 
-type setDataPayload struct {
-	Path  string
-	Value interface{}
-}
-
-func setData(_ string, tree *dag.Dag, transaction *Transaction) (newTree *dag.Dag, valid bool, codedErr CodedError) {
-	payload := &setDataPayload{}
-	err := typecaster.ToType(transaction.Payload, payload)
+func setData(_ string, tree *dag.Dag, transaction *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr CodedError) {
+	payload, err := transaction.EnsureSetDataPayload()
 	if err != nil {
-		return nil, false, &ErrorCode{Code: errInvalidPayload, Memo: fmt.Sprintf("error casting payload: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("not a SetData transaction")}
 	}
 
-	newTree, err = tree.Set(strings.Split(payload.Path, "/"), payload.Value)
+	var val interface{}
+	err = cbornode.DecodeInto(payload.Value, &val)
+	if err != nil {
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error decoding data value: %v", err)}
+	}
+
+	newTree, err = tree.Set(strings.Split(payload.Path, "/"), val)
 	if err != nil {
 		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error setting: %v", err)}
 	}
@@ -70,8 +65,8 @@ func TestChainTree_Id(t *testing.T) {
 	chainTree, err := NewChainTree(
 		dag,
 		[]BlockValidatorFunc{hasCoolHeader},
-		map[string]TransactorFunc{
-			"SET_DATA": setData,
+		map[transactions.Transaction_Type]TransactorFunc{
+			transactions.Transaction_SETDATA: setData,
 		},
 	)
 	assert.Nil(t, err)
@@ -105,25 +100,19 @@ func TestHeightValidation(t *testing.T) {
 	tree, err := NewChainTree(
 		dag,
 		[]BlockValidatorFunc{hasCoolHeader},
-		map[string]TransactorFunc{
-			"SET_DATA": setData,
+		map[transactions.Transaction_Type]TransactorFunc{
+			transactions.Transaction_SETDATA: setData,
 		},
 	)
 	require.Nil(t, err)
 
 	t.Run("first block fails with a non-zero height", func(t *testing.T) {
+		txn, err := NewSetDataTransaction("down/in/the/thing", "hi")
+		require.Nil(t, err)
 		block := &BlockWithHeaders{
 			Block: Block{
-				Height: 1,
-				Transactions: []*Transaction{
-					{
-						Type: "SET_DATA",
-						Payload: map[string]string{
-							"path":  "down/in/the/thing",
-							"value": "hi",
-						},
-					},
-				},
+				Height:       1,
+				Transactions: []*transactions.Transaction{txn},
 			},
 			Headers: map[string]interface{}{
 				"cool": "cool",
@@ -136,18 +125,12 @@ func TestHeightValidation(t *testing.T) {
 	})
 
 	t.Run("first block succeeds with a zero height, next requires a 1", func(t *testing.T) {
+		txn, err := NewSetDataTransaction("down/in/the/thing", "hi")
+		require.Nil(t, err)
 		block := &BlockWithHeaders{
 			Block: Block{
-				Height: 0,
-				Transactions: []*Transaction{
-					{
-						Type: "SET_DATA",
-						Payload: map[string]string{
-							"path":  "down/in/the/thing",
-							"value": "hi",
-						},
-					},
-				},
+				Height:       0,
+				Transactions: []*transactions.Transaction{txn},
 			},
 			Headers: map[string]interface{}{
 				"cool": "cool",
@@ -162,18 +145,12 @@ func TestHeightValidation(t *testing.T) {
 		assert.Equal(t, uint64(0), height)
 
 		// next fail with a zero
+		txn2, err := NewSetDataTransaction("down/in/the/thing", "different")
+		require.Nil(t, err)
 		block2 := &BlockWithHeaders{
 			Block: Block{
-				Height: 0,
-				Transactions: []*Transaction{
-					{
-						Type: "SET_DATA",
-						Payload: map[string]string{
-							"path":  "down/in/the/thing",
-							"value": "different",
-						},
-					},
-				},
+				Height:       0,
+				Transactions: []*transactions.Transaction{txn2},
 			},
 			Headers: map[string]interface{}{
 				"cool": "cool",
@@ -185,19 +162,13 @@ func TestHeightValidation(t *testing.T) {
 		require.False(t, valid)
 
 		// then succeed with a 1
+		txn2, err = NewSetDataTransaction("down/in/the/thing", "different")
+		require.Nil(t, err)
 		block2 = &BlockWithHeaders{
 			Block: Block{
-				PreviousTip: &tree.Dag.Tip,
-				Height:      1,
-				Transactions: []*Transaction{
-					{
-						Type: "SET_DATA",
-						Payload: map[string]string{
-							"path":  "down/in/the/thing",
-							"value": "different",
-						},
-					},
-				},
+				PreviousTip:  &tree.Dag.Tip,
+				Height:       1,
+				Transactions: []*transactions.Transaction{txn2},
 			},
 			Headers: map[string]interface{}{
 				"cool": "cool",
@@ -238,23 +209,17 @@ func TestBuildingUpAChain(t *testing.T) {
 	tree, err := NewChainTree(
 		dag,
 		[]BlockValidatorFunc{hasCoolHeader},
-		map[string]TransactorFunc{
-			"SET_DATA": setData,
+		map[transactions.Transaction_Type]TransactorFunc{
+			transactions.Transaction_SETDATA: setData,
 		},
 	)
 	require.Nil(t, err)
 
+	txn, err := NewSetDataTransaction("down/in/the/thing", "hi")
+	require.Nil(t, err)
 	block := &BlockWithHeaders{
 		Block: Block{
-			Transactions: []*Transaction{
-				{
-					Type: "SET_DATA",
-					Payload: map[string]string{
-						"path":  "down/in/the/thing",
-						"value": "hi",
-					},
-				},
-			},
+			Transactions: []*transactions.Transaction{txn},
 		},
 		Headers: map[string]interface{}{
 			"cool": "cool",
@@ -269,19 +234,13 @@ func TestBuildingUpAChain(t *testing.T) {
 	require.Nil(t, err)
 	//assert.Equal(t, blockCid, entry.([]interface{})[0].(cid.Cid))
 
+	txn2, err := NewSetDataTransaction("down/in/the/thing", "hi")
+	require.Nil(t, err)
 	block2 := &BlockWithHeaders{
 		Block: Block{
-			Height:      1,
-			PreviousTip: &tree.Dag.Tip,
-			Transactions: []*Transaction{
-				{
-					Type: "SET_DATA",
-					Payload: map[string]string{
-						"path":  "down/in/the/thing",
-						"value": "hi",
-					},
-				},
-			},
+			Height:       1,
+			PreviousTip:  &tree.Dag.Tip,
+			Transactions: []*transactions.Transaction{txn2},
 		},
 		Headers: map[string]interface{}{
 			"cool": "cool",
@@ -318,6 +277,9 @@ func TestBlockProcessing(t *testing.T) {
 
 	assert.Nil(t, sw.Err)
 
+	validTxn, err := NewSetDataTransaction("down/in/the/thing", "hi")
+	assert.Nil(t, err)
+
 	for _, test := range []struct {
 		description string
 		shouldValid bool
@@ -331,15 +293,7 @@ func TestBlockProcessing(t *testing.T) {
 			shouldErr:   false,
 			block: &BlockWithHeaders{
 				Block: Block{
-					Transactions: []*Transaction{
-						{
-							Type: "SET_DATA",
-							Payload: map[string]string{
-								"path":  "down/in/the/thing",
-								"value": "hi",
-							},
-						},
-					},
+					Transactions: []*transactions.Transaction{validTxn},
 				},
 				Headers: map[string]interface{}{
 					"cool": "cool",
@@ -357,41 +311,10 @@ func TestBlockProcessing(t *testing.T) {
 			shouldErr:   false,
 			block: &BlockWithHeaders{
 				Block: Block{
-					Transactions: []*Transaction{
-						{
-							Type: "SET_DATA",
-							Payload: map[string]string{
-								"path":  "down/in/the/thing",
-								"value": "hi",
-							},
-						},
-					},
+					Transactions: []*transactions.Transaction{validTxn},
 				},
 				Headers: map[string]interface{}{
 					"cool": "NOT COOl!",
-				},
-			},
-			validator: func(tree *ChainTree) {
-				val, _, err := tree.Dag.Resolve(strings.Split("tree/down/in/the/thing", "/"))
-				assert.Nil(t, val)
-				assert.Nil(t, err)
-			},
-		},
-		{
-			description: "a block that has a bad transaction",
-			shouldValid: false,
-			shouldErr:   true,
-			block: &BlockWithHeaders{
-				Block: Block{
-					Transactions: []*Transaction{
-						{
-							Type:    "SET_DATA",
-							Payload: "broken payload",
-						},
-					},
-				},
-				Headers: map[string]interface{}{
-					"cool": "cool",
 				},
 			},
 			validator: func(tree *ChainTree) {
@@ -408,8 +331,8 @@ func TestBlockProcessing(t *testing.T) {
 		tree, err := NewChainTree(
 			dag,
 			[]BlockValidatorFunc{hasCoolHeader},
-			map[string]TransactorFunc{
-				"SET_DATA": setData,
+			map[transactions.Transaction_Type]TransactorFunc{
+				transactions.Transaction_SETDATA: setData,
 			},
 		)
 		assert.Nil(t, err)
@@ -453,23 +376,18 @@ func BenchmarkEncodeDecode(b *testing.B) {
 	chainTree, err := NewChainTree(
 		dag,
 		[]BlockValidatorFunc{hasCoolHeader},
-		map[string]TransactorFunc{
-			"SET_DATA": setData,
+		map[transactions.Transaction_Type]TransactorFunc{
+			transactions.Transaction_SETDATA: setData,
 		},
 	)
 	require.Nil(b, err)
 
+	txn, err := NewSetDataTransaction("down/in/the/thing", "hi")
+	require.Nil(b, err)
+
 	block := &BlockWithHeaders{
 		Block: Block{
-			Transactions: []*Transaction{
-				{
-					Type: "SET_DATA",
-					Payload: map[string]string{
-						"path":  "down/in/the/thing",
-						"value": "hi",
-					},
-				},
-			},
+			Transactions: []*transactions.Transaction{txn},
 		},
 		Headers: map[string]interface{}{
 			"cool": "cool",

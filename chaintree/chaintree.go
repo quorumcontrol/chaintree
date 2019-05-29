@@ -7,6 +7,8 @@ import (
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/typecaster"
+	"github.com/quorumcontrol/messages/build/go/signatures"
+	"github.com/quorumcontrol/messages/build/go/transactions"
 )
 
 const (
@@ -27,13 +29,41 @@ func init() {
 	cbornode.RegisterCborType(Chain{})
 	cbornode.RegisterCborType(BlockWithHeaders{})
 	cbornode.RegisterCborType(Block{})
-	cbornode.RegisterCborType(Transaction{})
+	cbornode.RegisterCborType(signatures.PublicKey{})
+	cbornode.RegisterCborType(signatures.Signature{})
+	cbornode.RegisterCborType(transactions.Transaction{})
+	cbornode.RegisterCborType(transactions.SetDataPayload{})
+	cbornode.RegisterCborType(transactions.SetOwnershipPayload{})
+	cbornode.RegisterCborType(transactions.EstablishTokenPayload{})
+	cbornode.RegisterCborType(transactions.TokenMonetaryPolicy{})
+	cbornode.RegisterCborType(transactions.MintTokenPayload{})
+	cbornode.RegisterCborType(transactions.SendTokenPayload{})
+	cbornode.RegisterCborType(transactions.ReceiveTokenPayload{})
+	cbornode.RegisterCborType(transactions.TokenPayload{})
+	cbornode.RegisterCborType(transactions.StakePayload{})
+	// protobuf generated types have internal fields that `struct{}` and
+	// cannot be marshalled without registering that type first
+	cbornode.RegisterCborType(struct{}{})
 
 	typecaster.AddType(RootNode{})
 	typecaster.AddType(Chain{})
 	typecaster.AddType(BlockWithHeaders{})
 	typecaster.AddType(Block{})
-	typecaster.AddType(Transaction{})
+	typecaster.AddType(signatures.PublicKey{})
+	typecaster.AddType(signatures.Signature{})
+	typecaster.AddType(transactions.Transaction{})
+	typecaster.AddType(transactions.SetDataPayload{})
+	typecaster.AddType(transactions.SetOwnershipPayload{})
+	typecaster.AddType(transactions.EstablishTokenPayload{})
+	typecaster.AddType(transactions.TokenMonetaryPolicy{})
+	typecaster.AddType(transactions.MintTokenPayload{})
+	typecaster.AddType(transactions.SendTokenPayload{})
+	typecaster.AddType(transactions.ReceiveTokenPayload{})
+	typecaster.AddType(transactions.TokenPayload{})
+	// protobuf generated types have internal fields that `struct{}` and
+	// cannot be cast without registering that type first
+	typecaster.AddType(struct{}{})
+
 	typecaster.AddType(cid.Cid{})
 }
 
@@ -55,15 +85,10 @@ type RootNode struct {
 	cid    cid.Cid
 }
 
-type Transaction struct {
-	Type    string      `refmt:"type" json:"type" cbor:"type"`
-	Payload interface{} `refmt:"payload" json:"payload" cbor:"payload"`
-}
-
 type Block struct {
-	PreviousTip  *cid.Cid       `refmt:"previousTip,omitempty" json:"previousTip,omitempty" cbor:"previousTip,omitempty"`
-	Height       uint64         `refmt:"height" json:"height" cbor:"height"`
-	Transactions []*Transaction `refmt:"transactions" json:"transactions" cbor:"transactions"`
+	PreviousTip  *cid.Cid                    `refmt:"previousTip,omitempty" json:"previousTip,omitempty" cbor:"previousTip,omitempty"`
+	Height       uint64                      `refmt:"height" json:"height" cbor:"height"`
+	Transactions []*transactions.Transaction `refmt:"transactions" json:"transactions" cbor:"transactions"`
 }
 
 type BlockWithHeaders struct {
@@ -87,7 +112,7 @@ func (e *ErrorCode) Error() string {
 // TransactorFunc mutates a ChainTree and returns whether the transaction is valid
 // or if there was an error processing the transactor. Errors should be retried,
 // valid == false means it isn't a valid transaction.
-type TransactorFunc func(chainTreeDID string, tree *dag.Dag, transaction *Transaction) (newTree *dag.Dag, valid bool, err CodedError)
+type TransactorFunc func(chainTreeDID string, tree *dag.Dag, transaction *transactions.Transaction) (newTree *dag.Dag, valid bool, err CodedError)
 
 // BlockValidatorFuncs are run on the block level rather than the per transaction level
 type BlockValidatorFunc func(chainTree *dag.Dag, blockWithHeaders *BlockWithHeaders) (valid bool, err CodedError)
@@ -108,13 +133,13 @@ tip of the tree.
 */
 type ChainTree struct {
 	Dag             *dag.Dag
-	Transactors     map[string]TransactorFunc
+	Transactors     map[transactions.Transaction_Type]TransactorFunc
 	BlockValidators []BlockValidatorFunc
 	Metadata        interface{}
 	root            *RootNode
 }
 
-func NewChainTree(dag *dag.Dag, blockValidators []BlockValidatorFunc, transactors map[string]TransactorFunc) (*ChainTree, error) {
+func NewChainTree(dag *dag.Dag, blockValidators []BlockValidatorFunc, transactors map[transactions.Transaction_Type]TransactorFunc) (*ChainTree, error) {
 	ct := &ChainTree{
 		Dag:             dag,
 		BlockValidators: blockValidators,
