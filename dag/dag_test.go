@@ -586,7 +586,10 @@ func TestDagUpdate(t *testing.T) {
 	})
 
 	require.Nil(t, sw.Err)
+
 	store,err := nodestore.MemoryStore(ctx)
+	require.Nil(t,err)
+	
 	dag, err := NewDagWithNodes(ctx, store, root, intermediary, child)
 	require.Nil(t, err)
 

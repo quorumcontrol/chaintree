@@ -15,16 +15,12 @@ import(
 
 // Return a new DagStore which is only in memory
 func MemoryStore(ctx context.Context) (DagStore,error) {
-	ctx,cancel := context.WithCancel(context.Background())
-	defer cancel()
 	store := dsync.MutexWrap(datastore.NewMapDatastore())
 	return FromDatastoreOffline(ctx, store)
 }
 
 // Return a new DagStore which is only in memory
 func MustMemoryStore(ctx context.Context) (DagStore) {
-	ctx,cancel := context.WithCancel(context.Background())
-	defer cancel()
 	store := dsync.MutexWrap(datastore.NewMapDatastore())
 	ds,err := FromDatastoreOffline(ctx, store)
 	if err != nil {
