@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"context"
 
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
@@ -11,7 +12,6 @@ import (
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/messages/build/go/transactions"
-	"github.com/quorumcontrol/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -36,7 +36,7 @@ func setData(_ string, tree *dag.Dag, transaction *transactions.Transaction) (ne
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error decoding data value: %v", err)}
 	}
 
-	newTree, err = tree.Set(strings.Split(payload.Path, "/"), val)
+	newTree, err = tree.Set(context.Background(), strings.Split(payload.Path, "/"), val)
 	if err != nil {
 		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error setting: %v", err)}
 	}
@@ -45,6 +45,8 @@ func setData(_ string, tree *dag.Dag, transaction *transactions.Transaction) (ne
 }
 
 func TestChainTree_Id(t *testing.T) {
+	ctx,cancel := context.WithCancel(context.Background())
+	defer cancel()
 	sw := &safewrap.SafeWrap{}
 
 	tree := sw.WrapObject(map[string]string{
@@ -59,10 +61,11 @@ func TestChainTree_Id(t *testing.T) {
 		"id":    "test",
 	})
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-	dag, err := dag.NewDagWithNodes(store, root, tree, chain)
+	store := nodestore.MustMemoryStore(ctx)
+	dag, err := dag.NewDagWithNodes(ctx, store, root, tree, chain)
 	require.Nil(t, err)
 	chainTree, err := NewChainTree(
+		ctx,
 		dag,
 		[]BlockValidatorFunc{hasCoolHeader},
 		map[transactions.Transaction_Type]TransactorFunc{
@@ -71,13 +74,16 @@ func TestChainTree_Id(t *testing.T) {
 	)
 	assert.Nil(t, err)
 
-	id, err := chainTree.Id()
+	id, err := chainTree.Id(ctx)
 	assert.Nil(t, err)
 	assert.Equal(t, "test", id)
 
 }
 
 func TestHeightValidation(t *testing.T) {
+	ctx,cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	sw := &safewrap.SafeWrap{}
 
 	treeNode := sw.WrapObject(map[string]string{
@@ -93,11 +99,12 @@ func TestHeightValidation(t *testing.T) {
 
 	assert.Nil(t, sw.Err)
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-	dag, err := dag.NewDagWithNodes(store, root, treeNode, chainNode)
+	store := nodestore.MustMemoryStore(ctx)
+	dag, err := dag.NewDagWithNodes(ctx, store, root, treeNode, chainNode)
 	require.Nil(t, err)
 
 	tree, err := NewChainTree(
+		ctx,
 		dag,
 		[]BlockValidatorFunc{hasCoolHeader},
 		map[transactions.Transaction_Type]TransactorFunc{
@@ -119,7 +126,7 @@ func TestHeightValidation(t *testing.T) {
 			},
 		}
 
-		valid, err := tree.ProcessBlock(block)
+		valid, err := tree.ProcessBlock(ctx, block)
 		require.NotNil(t, err)
 		require.False(t, valid)
 	})
@@ -137,10 +144,10 @@ func TestHeightValidation(t *testing.T) {
 			},
 		}
 
-		valid, err := tree.ProcessBlock(block)
+		valid, err := tree.ProcessBlock(ctx, block)
 		require.Nil(t, err)
 		require.True(t, valid)
-		height, _, err := tree.Dag.Resolve([]string{"height"})
+		height, _, err := tree.Dag.Resolve(ctx, []string{"height"})
 		require.Nil(t, err)
 		assert.Equal(t, uint64(0), height)
 
@@ -157,7 +164,7 @@ func TestHeightValidation(t *testing.T) {
 			},
 		}
 
-		valid, err = tree.ProcessBlock(block2)
+		valid, err = tree.ProcessBlock(ctx, block2)
 		require.NotNil(t, err)
 		require.False(t, valid)
 
@@ -175,11 +182,11 @@ func TestHeightValidation(t *testing.T) {
 			},
 		}
 
-		valid, err = tree.ProcessBlock(block2)
+		valid, err = tree.ProcessBlock(ctx, block2)
 		require.Nil(t, err)
 		require.True(t, valid)
 
-		height, _, err = tree.Dag.Resolve([]string{"height"})
+		height, _, err = tree.Dag.Resolve(ctx, []string{"height"})
 		require.Nil(t, err)
 		assert.Equal(t, uint64(1), height)
 	})
@@ -187,6 +194,9 @@ func TestHeightValidation(t *testing.T) {
 }
 
 func TestBuildingUpAChain(t *testing.T) {
+	ctx,cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	sw := &safewrap.SafeWrap{}
 
 	treeNode := sw.WrapObject(map[string]string{
@@ -202,11 +212,12 @@ func TestBuildingUpAChain(t *testing.T) {
 
 	assert.Nil(t, sw.Err)
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-	dag, err := dag.NewDagWithNodes(store, root, treeNode, chainNode)
+	store := nodestore.MustMemoryStore(ctx)
+	dag, err := dag.NewDagWithNodes(ctx, store, root, treeNode, chainNode)
 	require.Nil(t, err)
 
 	tree, err := NewChainTree(
+		ctx,
 		dag,
 		[]BlockValidatorFunc{hasCoolHeader},
 		map[transactions.Transaction_Type]TransactorFunc{
@@ -226,11 +237,11 @@ func TestBuildingUpAChain(t *testing.T) {
 		},
 	}
 
-	valid, err := tree.ProcessBlock(block)
+	valid, err := tree.ProcessBlock(ctx, block)
 	require.Nil(t, err)
 	require.True(t, valid)
 
-	_, _, err = tree.Dag.Resolve([]string{"chain", "end"})
+	_, _, err = tree.Dag.Resolve(ctx, []string{"chain", "end"})
 	require.Nil(t, err)
 	//assert.Equal(t, blockCid, entry.([]interface{})[0].(cid.Cid))
 
@@ -247,14 +258,14 @@ func TestBuildingUpAChain(t *testing.T) {
 		},
 	}
 
-	valid, err = tree.ProcessBlock(block2)
+	valid, err = tree.ProcessBlock(ctx, block2)
 	require.Nil(t, err)
 	assert.True(t, valid)
 
 	block1Cid := sw.WrapObject(block).Cid()
 	assert.Nil(t, sw.Err)
 
-	entry, remain, err := tree.Dag.Resolve([]string{"chain", "end"})
+	entry, remain, err := tree.Dag.Resolve(ctx, []string{"chain", "end"})
 	assert.Nil(t, err)
 	assert.Len(t, remain, 0)
 	t.Log("previousTip", entry.(map[string]interface{}), "block1Cid", block1Cid.String())
@@ -262,6 +273,9 @@ func TestBuildingUpAChain(t *testing.T) {
 }
 
 func TestBlockProcessing(t *testing.T) {
+	ctx,cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	sw := &safewrap.SafeWrap{}
 
 	tree := sw.WrapObject(map[string]string{
@@ -300,7 +314,7 @@ func TestBlockProcessing(t *testing.T) {
 				},
 			},
 			validator: func(tree *ChainTree) {
-				val, _, err := tree.Dag.Resolve(strings.Split("tree/down/in/the/thing", "/"))
+				val, _, err := tree.Dag.Resolve(ctx, strings.Split("tree/down/in/the/thing", "/"))
 				assert.Nil(t, err, "valid data set resolution")
 				assert.Equal(t, "hi", val)
 			},
@@ -318,17 +332,18 @@ func TestBlockProcessing(t *testing.T) {
 				},
 			},
 			validator: func(tree *ChainTree) {
-				val, _, err := tree.Dag.Resolve(strings.Split("tree/down/in/the/thing", "/"))
+				val, _, err := tree.Dag.Resolve(ctx, strings.Split("tree/down/in/the/thing", "/"))
 				assert.Nil(t, val)
 				assert.Nil(t, err)
 			},
 		},
 	} {
-		store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-		dag, err := dag.NewDagWithNodes(store, root, tree, chain)
+		store := nodestore.MustMemoryStore(ctx)
+		dag, err := dag.NewDagWithNodes(ctx, store, root, tree, chain)
 		require.Nil(t, err)
 
 		tree, err := NewChainTree(
+			ctx,
 			dag,
 			[]BlockValidatorFunc{hasCoolHeader},
 			map[transactions.Transaction_Type]TransactorFunc{
@@ -336,7 +351,7 @@ func TestBlockProcessing(t *testing.T) {
 			},
 		)
 		assert.Nil(t, err)
-		valid, err := tree.ProcessBlock(test.block)
+		valid, err := tree.ProcessBlock(ctx, test.block)
 		if !test.shouldErr {
 			assert.Nil(t, err, test.description)
 		}
@@ -345,7 +360,7 @@ func TestBlockProcessing(t *testing.T) {
 			assert.True(t, valid, test.description)
 			wrappedBlock := sw.WrapObject(test.block)
 			assert.Nil(t, sw.Err, test.description)
-			node, err := tree.Dag.Get(wrappedBlock.Cid())
+			node, err := tree.Dag.Get(ctx, wrappedBlock.Cid())
 			assert.Nil(t, err)
 			assert.NotNil(t, node, test.description)
 		}
@@ -358,6 +373,8 @@ func TestBlockProcessing(t *testing.T) {
 
 func BenchmarkEncodeDecode(b *testing.B) {
 	sw := &safewrap.SafeWrap{}
+	ctx,cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	tree := sw.WrapObject(map[string]string{
 		"hithere": "hothere",
@@ -369,11 +386,12 @@ func BenchmarkEncodeDecode(b *testing.B) {
 		"chain": chain.Cid(),
 		"tree":  tree.Cid(),
 	})
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-	dag, err := dag.NewDagWithNodes(store, root, tree, chain)
+	store := nodestore.MustMemoryStore(ctx)
+	dag, err := dag.NewDagWithNodes(ctx, store, root, tree, chain)
 	require.Nil(b, err)
 
 	chainTree, err := NewChainTree(
+		ctx,
 		dag,
 		[]BlockValidatorFunc{hasCoolHeader},
 		map[transactions.Transaction_Type]TransactorFunc{
@@ -393,13 +411,12 @@ func BenchmarkEncodeDecode(b *testing.B) {
 			"cool": "cool",
 		},
 	}
-	valid, err := chainTree.ProcessBlock(block)
+	valid, err := chainTree.ProcessBlock(ctx, block)
 	require.Nil(b, err)
 	require.True(b, valid)
 
 	for n := 0; n < b.N; n++ {
-		_, _, err = chainTree.Dag.Resolve([]string{"tree", "down", "in", "the", "thing"})
+		_, _, err = chainTree.Dag.Resolve(ctx, []string{"tree", "down", "in", "the", "thing"})
 	}
 	require.Nil(b, err)
-
 }

@@ -1,6 +1,7 @@
 package nodestore
 
 import(
+	"fmt"
 	"context"
 	"github.com/ipfs/go-merkledag"
 	blocks "github.com/ipfs/go-block-format"
@@ -18,6 +19,18 @@ func MemoryStore(ctx context.Context) (DagStore,error) {
 	defer cancel()
 	store := dsync.MutexWrap(datastore.NewMapDatastore())
 	return FromDatastoreOffline(ctx, store)
+}
+
+// Return a new DagStore which is only in memory
+func MustMemoryStore(ctx context.Context) (DagStore) {
+	ctx,cancel := context.WithCancel(context.Background())
+	defer cancel()
+	store := dsync.MutexWrap(datastore.NewMapDatastore())
+	ds,err := FromDatastoreOffline(ctx, store)
+	if err != nil {
+		panic(fmt.Errorf("error creating datstore: %v", err))
+	}
+	return ds
 }
 
 func FromDatastoreOffline(ctx context.Context, ds datastore.Batching) (DagStore,error) {
