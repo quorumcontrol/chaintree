@@ -603,6 +603,8 @@ github.com/prometheus/procfs v0.0.0-20190416084830-8368d24ba045 h1:Raos9GP+3BlCB
 github.com/prometheus/procfs v0.0.0-20190416084830-8368d24ba045/go.mod h1:TjEm7ze935MbeOT/UhFTIMYKhuLP4wbCsTZCD3I8kEA=
 github.com/quorumcontrol/messages v0.3.0 h1:54RwdZhqOLdNZi2PeZN/PPhPf+zps80fVySOAP4Px34=
 github.com/quorumcontrol/messages v0.3.0/go.mod h1:pzXj6nCg48pukCXaEgzsdSKuWsq5mAYv1erpV/ds4oU=
+github.com/quorumcontrol/messages v0.3.1 h1:ybLTvLpfTLxAWaNItfSpH2hw0os8gNFZ4g9xyGnbRmM=
+github.com/quorumcontrol/messages v0.3.1/go.mod h1:pzXj6nCg48pukCXaEgzsdSKuWsq5mAYv1erpV/ds4oU=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190524131644-280f165f71a5 h1:1+RJo42u5pbkKpAHhCheFVvHcxlvDRmchyrXf7q5F90=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190524131644-280f165f71a5/go.mod h1:b8jDN8PulcGcRJ2pQc0lbC3tPaOspGHoBIbPxfB7Jqg=
 github.com/quorumcontrol/namedlocker v0.0.0-20180808140020-3f797c8b12b1 h1:FglNF7FTLpcl171qo5MFvbKjrLEsLtcKF72uQpefiPM=
