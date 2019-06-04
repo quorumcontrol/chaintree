@@ -2,6 +2,7 @@ package chaintree
 
 import (
 	"fmt"
+	"reflect"
 
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
@@ -43,7 +44,12 @@ func init() {
 	cbornode.RegisterCborType(transactions.StakePayload{})
 	// protobuf generated types have internal fields that `struct{}` and
 	// cannot be marshalled without registering that type first
-	cbornode.RegisterCborType(struct{}{})
+	// structs are commonly registered across other repos, so ensure it
+	// hasn't already been registered
+	structRtid := reflect.ValueOf(reflect.TypeOf(struct{}{})).Pointer()
+	if _, ok := cbornode.CborAtlas.Get(structRtid); !ok {
+		cbornode.RegisterCborType(struct{}{})
+	}
 
 	typecaster.AddType(RootNode{})
 	typecaster.AddType(Chain{})
