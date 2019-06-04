@@ -42,8 +42,8 @@ func init() {
 	cbornode.RegisterCborType(transactions.ReceiveTokenPayload{})
 	cbornode.RegisterCborType(transactions.TokenPayload{})
 	cbornode.RegisterCborType(transactions.StakePayload{})
-	// protobuf generated types have internal fields that `struct{}` and
-	// cannot be marshalled without registering that type first
+	// protobuf generated types have internal fields with `struct{}` values
+	// and cannot be marshalled without registering that type first
 	// structs are commonly registered across other repos, so ensure it
 	// hasn't already been registered
 	structRtid := reflect.ValueOf(reflect.TypeOf(struct{}{})).Pointer()
