@@ -75,7 +75,7 @@ func (d *Dag) CreateNode(obj interface{}) (*cbornode.Node, error) {
 // Resolve takes a path (as a string slice) and returns the value, remaining path and any error.
 // It delegates to the underlying store's resolve.
 func (d *Dag) Resolve(path []string) (interface{}, []string, error) {
-	return d.store.Resolve(d.Tip, path)
+	return d.ResolveAt(d.Tip, path)
 }
 
 // ResolveAt takes a tip and a path (as a string slice) and returns the value, remaining path
