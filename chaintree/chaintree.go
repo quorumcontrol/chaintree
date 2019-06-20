@@ -168,15 +168,21 @@ func (ct *ChainTree) Id() (string, error) {
 	return root.Id, nil
 }
 
-func (ct *ChainTree) TreeAt(tip cid.Cid) (*dag.Dag, error) {
-	root, err := ct.getRootAt(tip)
+// At returns a new ChainTree with the given tip as the tip. It should be a former tip of
+// the method receiver.
+func (ct *ChainTree) At(tip *cid.Cid) (*ChainTree, error) {
+	root, err := ct.getRootAt(*tip)
 	if err != nil {
 		return nil, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting root node for tip %v: %v", tip, err.Error())}
 	}
-	if root.Tree == nil {
-		return nil, &ErrorCode{Code: ErrInvalidTree, Memo: "tree link is nil"}
-	}
-	return ct.Dag.WithNewTip(*root.Tree), nil
+
+	return &ChainTree{
+		Dag:             ct.Dag,
+		Transactors:     ct.Transactors,
+		BlockValidators: ct.BlockValidators,
+		Metadata:        ct.Metadata,
+		root:            root,
+	}, nil
 }
 
 // Tree returns just the tree portion of the ChainTree as a pointer to its DAG
