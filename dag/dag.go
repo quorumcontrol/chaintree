@@ -182,6 +182,10 @@ func (d *Dag) nodeAndDescendants(node *cbornode.Node, collector NodeMap) error {
 		if err != nil {
 			return fmt.Errorf("error getting link: %v", err)
 		}
+		if linkNode == nil {
+			// it's OK to omit certain parts of the tree in e.g. send_token payloads
+			continue
+		}
 		err = d.nodeAndDescendants(linkNode, collector)
 		if err != nil {
 			return fmt.Errorf("error getting child nodes: %v", err)
