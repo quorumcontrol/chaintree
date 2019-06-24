@@ -168,6 +168,23 @@ func (ct *ChainTree) Id() (string, error) {
 	return root.Id, nil
 }
 
+// At returns a new ChainTree with the given tip as the tip. It should be a former tip of
+// the method receiver.
+func (ct *ChainTree) At(tip *cid.Cid) (*ChainTree, error) {
+	root, err := ct.getRootAt(*tip)
+	if err != nil {
+		return nil, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting root node for tip %v: %v", tip, err.Error())}
+	}
+
+	return &ChainTree{
+		Dag:             ct.Dag,
+		Transactors:     ct.Transactors,
+		BlockValidators: ct.BlockValidators,
+		Metadata:        ct.Metadata,
+		root:            root,
+	}, nil
+}
+
 // Tree returns just the tree portion of the ChainTree as a pointer to its DAG
 func (ct *ChainTree) Tree() (*dag.Dag, error) {
 	root, err := ct.getRoot()
@@ -359,9 +376,26 @@ func (ct *ChainTree) getRoot() (*RootNode, error) {
 
 	err = cbornode.DecodeInto(unmarshaledRoot.RawData(), root)
 	if err != nil {
-		return nil, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error converting root: %v", err)}
+		return nil, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error decoding root: %v", err)}
 	}
+
 	root.cid = ct.Dag.Tip
 	ct.root = root
+	return root, nil
+}
+
+func (ct *ChainTree) getRootAt(tip cid.Cid) (*RootNode, error) {
+	unmarshaledRoot, err := ct.Dag.Get(tip)
+	if unmarshaledRoot == nil || err != nil {
+		return nil, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error: invalid tip or missing root: %v", err)}
+	}
+
+	root := &RootNode{}
+
+	err = cbornode.DecodeInto(unmarshaledRoot.RawData(), root)
+	if err != nil {
+		return nil, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error decoding root: %v", err)}
+	}
+
 	return root, nil
 }
