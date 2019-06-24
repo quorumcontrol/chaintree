@@ -9,6 +9,7 @@ import (
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	ipldFormat "github.com/ipfs/go-ipld-format"
 	coreApiIface "github.com/ipfs/interface-go-ipfs-core"
+	ipldpath "github.com/ipfs/interface-go-ipfs-core/path"
 	coreApiOpt "github.com/ipfs/interface-go-ipfs-core/options"
 	multihash "github.com/multiformats/go-multihash"
 	"github.com/quorumcontrol/chaintree/safewrap"
@@ -105,7 +106,7 @@ func (ipld *IpldStore) GetNode(nodeCid cid.Cid) (node *cbornode.Node, err error)
 func (ipld *IpldStore) DeleteNode(nodeCid cid.Cid) error {
 	ctx := context.Background()
 	castCid, _ := cid.Parse(nodeCid.String())
-	path := coreApiIface.IpldPath(castCid)
+	path := ipldpath.IpldPath(castCid)
 
 	err := ipld.pin().Rm(ctx, path, coreApiOpt.Pin.RmRecursive(false))
 
@@ -113,7 +114,7 @@ func (ipld *IpldStore) DeleteNode(nodeCid cid.Cid) error {
 		return fmt.Errorf("error unpinning cid %s: %v", nodeCid.String(), err)
 	}
 
-	err = ipld.block().Rm(ctx, coreApiIface.IpldPath(castCid))
+	err = ipld.block().Rm(ctx, ipldpath.IpldPath(castCid))
 	if err != nil {
 		return fmt.Errorf("error removing block cid %s: %v", nodeCid.String(), err)
 	}
@@ -142,7 +143,7 @@ func (ipld *IpldStore) DeleteTree(tip cid.Cid) error {
 func (ipld *IpldStore) resolveNode(tip cid.Cid, path []string) (ipldFormat.Node, []string, error) {
 	ctx := context.Background()
 	castCid, _ := cid.Parse(tip.String())
-	resolvedPath, err := ipld.api.ResolvePath(ctx, coreApiIface.Join(coreApiIface.IpldPath(castCid), path...))
+	resolvedPath, err := ipld.api.ResolvePath(ctx, ipldpath.Join(ipldpath.IpldPath(castCid), path...))
 
 	if err != nil && err.Error() == errNoSuchLink.Error() && len(path) > 0 {
 		parentPath := path[:len(path)-1]
@@ -192,7 +193,7 @@ func (ipld *IpldStore) Resolve(tip cid.Cid, path []string) (interface{}, []strin
 func (ipld *IpldStore) StoreNode(node *cbornode.Node) error {
 	nodeCid := node.Cid()
 	castCid, _ := cid.Parse(nodeCid.String())
-	path := coreApiIface.IpldPath(castCid)
+	path := ipldpath.IpldPath(castCid)
 	ctx := context.Background()
 
 	ipsnNode, err := cbornode.Decode(node.RawData(), multihash.SHA2_256, -1)
