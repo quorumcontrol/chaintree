@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"context"
+
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/dag"
@@ -171,8 +172,8 @@ func (ct *ChainTree) Id(ctx context.Context) (string, error) {
 
 // At returns a new ChainTree with the given tip as the tip. It should be a former tip of
 // the method receiver.
-func (ct *ChainTree) At(tip *cid.Cid) (*ChainTree, error) {
-	root, err := ct.getRootAt(*tip)
+func (ct *ChainTree) At(ctx context.Context, tip *cid.Cid) (*ChainTree, error) {
+	root, err := ct.getRootAt(ctx, *tip)
 	if err != nil {
 		return nil, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting root node for tip %v: %v", tip, err.Error())}
 	}
@@ -385,8 +386,8 @@ func (ct *ChainTree) getRoot(ctx context.Context) (*RootNode, error) {
 	return root, nil
 }
 
-func (ct *ChainTree) getRootAt(tip cid.Cid) (*RootNode, error) {
-	unmarshaledRoot, err := ct.Dag.Get(tip)
+func (ct *ChainTree) getRootAt(ctx context.Context, tip cid.Cid) (*RootNode, error) {
+	unmarshaledRoot, err := ct.Dag.Get(ctx, tip)
 	if unmarshaledRoot == nil || err != nil {
 		return nil, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error: invalid tip or missing root: %v", err)}
 	}
