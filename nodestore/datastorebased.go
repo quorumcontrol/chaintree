@@ -4,6 +4,7 @@ import (
 	"context"
 
 	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-merkledag"
 
 	"github.com/ipfs/go-blockservice"
@@ -48,4 +49,12 @@ type nullExchange struct {
 
 func (ne *nullExchange) HasBlock(_ blocks.Block) error {
 	return nil
+}
+
+func (ne *nullExchange) IsOnline() bool {
+	return false
+}
+
+func (ne *nullExchange) GetBlock(context.Context, cid.Cid) (blocks.Block, error) {
+	return nil, blockstore.ErrNotFound
 }

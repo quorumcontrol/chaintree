@@ -70,7 +70,11 @@ func (d *Dag) WithNewTip(tip cid.Cid) *Dag {
 
 // Get takes a CID and returns the cbornode
 func (d *Dag) Get(ctx context.Context, id cid.Cid) (format.Node, error) {
-	return d.store.Get(ctx, id)
+	n, err := d.store.Get(ctx, id)
+	if err == format.ErrNotFound {
+		return nil, nil
+	}
+	return n, err
 }
 
 // CreateNode adds an object to the Dags underlying storage (doesn't change the tip)

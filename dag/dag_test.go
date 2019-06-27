@@ -1,8 +1,9 @@
 package dag
 
 import (
-	"testing"
 	"context"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,8 +18,8 @@ func newDeepDag(t *testing.T, ctx context.Context) *Dag {
 	root := sw.WrapObject(map[string]interface{}{"child": child.Cid(), "root": true})
 	require.Nil(t, sw.Err)
 
-	store,err := nodestore.MemoryStore(ctx)
-	require.Nil(t,err)
+	store, err := nodestore.MemoryStore(ctx)
+	require.Nil(t, err)
 	dag, err := NewDagWithNodes(ctx, store, root, deepChild, child)
 	require.Nil(t, err)
 	return dag
@@ -32,15 +33,15 @@ func newDeepAndWideDag(t *testing.T, ctx context.Context) *Dag {
 	root := sw.WrapObject(map[string]interface{}{"child1": child1.Cid(), "child2": child2.Cid(), "root": true})
 	require.Nil(t, sw.Err)
 
-	store,err := nodestore.MemoryStore(ctx)
-	require.Nil(t,err)
+	store, err := nodestore.MemoryStore(ctx)
+	require.Nil(t, err)
 	dag, err := NewDagWithNodes(ctx, store, root, deepChild, child1, child2)
 	require.Nil(t, err)
 	return dag
 }
 
 func TestDagNodes(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	dag := newDeepDag(t, ctx)
 	nodes, err := dag.Nodes(ctx)
@@ -55,7 +56,7 @@ func TestDagNodes(t *testing.T) {
 }
 
 func TestDagResolve(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	dag := newDeepDag(t, ctx)
@@ -67,10 +68,10 @@ func TestDagResolve(t *testing.T) {
 
 // Test that the ResolveAt method can operate with a tip that need not be current.
 func TestDagResolveAt(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	dag := newDeepDag(t,ctx)
+	dag := newDeepDag(t, ctx)
 	oldTip := dag.Tip
 	dag, err := dag.Set(ctx, []string{"child", "value"}, true)
 	require.Nil(t, err)
@@ -88,7 +89,7 @@ func TestDagResolveAt(t *testing.T) {
 }
 
 func TestOrderedNodesForPath(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	sw := safewrap.SafeWrap{}
@@ -97,8 +98,8 @@ func TestOrderedNodesForPath(t *testing.T) {
 	root := sw.WrapObject(map[string]interface{}{"child": child.Cid(), "root": true})
 	require.Nil(t, sw.Err)
 
-	store,err := nodestore.MemoryStore(ctx)
-	require.Nil(t,err)
+	store, err := nodestore.MemoryStore(ctx)
+	require.Nil(t, err)
 
 	dag, err := NewDagWithNodes(ctx, store, root, deepChild, child)
 	require.Nil(t, err)
@@ -113,7 +114,7 @@ func TestOrderedNodesForPath(t *testing.T) {
 }
 
 func TestDagNodesForPath(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	dag := newDeepDag(t, ctx)
@@ -145,14 +146,14 @@ func TestDagNodesForPath(t *testing.T) {
 }
 
 func TestDagNodesForPathWithDecendants(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	dag := newDeepAndWideDag(t,ctx)
+	dag := newDeepAndWideDag(t, ctx)
 	nodes, err := dag.NodesForPathWithDecendants(ctx, []string{"child2", "deepChild2"})
 	require.Nil(t, err)
 	require.Len(t, nodes, 3)
 
-	dag = newDeepAndWideDag(t,ctx)
+	dag = newDeepAndWideDag(t, ctx)
 	nodes2, err := dag.NodesForPathWithDecendants(ctx, []string{"child2"})
 	require.Nil(t, err)
 	require.Len(t, nodes2, 3)
@@ -168,7 +169,7 @@ func TestDagNodesForPathWithDecendants(t *testing.T) {
 }
 
 func TestDagSet(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	sw := &safewrap.SafeWrap{}
 
@@ -186,8 +187,8 @@ func TestDagSet(t *testing.T) {
 
 	assert.Nil(t, sw.Err)
 
-	store,err := nodestore.MemoryStore(ctx)
-	require.Nil(t,err)
+	store, err := nodestore.MemoryStore(ctx)
+	require.Nil(t, err)
 
 	dag, err := NewDagWithNodes(ctx, store, root, child)
 	require.Nil(t, err)
@@ -272,7 +273,7 @@ func TestDagSet(t *testing.T) {
 }
 
 func TestDagSetAsLink(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	sw := &safewrap.SafeWrap{}
 
@@ -288,8 +289,8 @@ func TestDagSetAsLink(t *testing.T) {
 		"child": child.Cid(),
 	})
 
-	store,err := nodestore.MemoryStore(ctx)
-	require.Nil(t,err)
+	store, err := nodestore.MemoryStore(ctx)
+	require.Nil(t, err)
 
 	dag, err := NewDagWithNodes(ctx, store, root, child)
 	require.Nil(t, err)
@@ -314,13 +315,13 @@ func TestDagSetAsLink(t *testing.T) {
 }
 
 func TestDagSetNestedAfterSet(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	sw := &safewrap.SafeWrap{}
 
-	store,err := nodestore.MemoryStore(ctx)
-	require.Nil(t,err)
+	store, err := nodestore.MemoryStore(ctx)
+	require.Nil(t, err)
 
 	tip := sw.WrapObject(map[string]interface{}{})
 	dag, err := NewDagWithNodes(ctx, store, tip)
@@ -401,12 +402,12 @@ func TestDagSetNestedAfterSet(t *testing.T) {
 }
 
 func TestDagSetAsLinkAfterSet(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	sw := &safewrap.SafeWrap{}
 
-	store,err := nodestore.MemoryStore(ctx)
-	require.Nil(t,err)
+	store, err := nodestore.MemoryStore(ctx)
+	require.Nil(t, err)
 	tip := sw.WrapObject(map[string]interface{}{})
 	dag, err := NewDagWithNodes(ctx, store, tip)
 	require.Nil(t, err)
@@ -482,7 +483,7 @@ func TestDagSetAsLinkAfterSet(t *testing.T) {
 }
 
 func TestDagInvalidSet(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	sw := &safewrap.SafeWrap{}
@@ -497,8 +498,8 @@ func TestDagInvalidSet(t *testing.T) {
 
 	assert.Nil(t, sw.Err)
 
-	store,err := nodestore.MemoryStore(ctx)
-	require.Nil(t,err)
+	store, err := nodestore.MemoryStore(ctx)
+	require.Nil(t, err)
 	dag, err := NewDagWithNodes(ctx, store, root, child)
 	require.Nil(t, err)
 
@@ -510,7 +511,7 @@ func TestDagInvalidSet(t *testing.T) {
 }
 
 func TestDagGet(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	sw := &safewrap.SafeWrap{}
@@ -523,14 +524,21 @@ func TestDagGet(t *testing.T) {
 		"child": child.Cid(),
 	})
 
-	store,err := nodestore.MemoryStore(ctx)
-	require.Nil(t,err)
+	notStored := sw.WrapObject(map[string]string{"test": "notinthedb"})
+
+	store, err := nodestore.MemoryStore(ctx)
+	require.Nil(t, err)
 
 	dag, err := NewDagWithNodes(ctx, store, root, child)
 	require.Nil(t, err)
 	n, err := dag.Get(ctx, child.Cid())
 	require.Nil(t, err)
 	assert.Equal(t, child.Cid().String(), n.Cid().String())
+
+	// Getting an not-found node doesn't error
+	n, err = dag.Get(ctx, notStored.Cid())
+	require.Nil(t, err)
+	assert.Nil(t, n)
 }
 
 // func TestDagDump(t *testing.T) {
@@ -540,7 +548,7 @@ func TestDagGet(t *testing.T) {
 // }
 
 func TestDagWithNewTip(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	sw := &safewrap.SafeWrap{}
@@ -553,8 +561,8 @@ func TestDagWithNewTip(t *testing.T) {
 		"child": child.Cid(),
 	})
 
-	store,err := nodestore.MemoryStore(ctx)
-	require.Nil(t,err)
+	store, err := nodestore.MemoryStore(ctx)
+	require.Nil(t, err)
 
 	dag, err := NewDagWithNodes(ctx, store, root, child)
 	require.Nil(t, err)
@@ -567,7 +575,7 @@ func TestDagWithNewTip(t *testing.T) {
 }
 
 func TestDagUpdate(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	sw := &safewrap.SafeWrap{}
 
@@ -587,9 +595,9 @@ func TestDagUpdate(t *testing.T) {
 
 	require.Nil(t, sw.Err)
 
-	store,err := nodestore.MemoryStore(ctx)
-	require.Nil(t,err)
-	
+	store, err := nodestore.MemoryStore(ctx)
+	require.Nil(t, err)
+
 	dag, err := NewDagWithNodes(ctx, store, root, intermediary, child)
 	require.Nil(t, err)
 
@@ -603,7 +611,7 @@ func TestDagUpdate(t *testing.T) {
 }
 
 func TestDagDelete(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	sw := &safewrap.SafeWrap{}
@@ -623,8 +631,8 @@ func TestDagDelete(t *testing.T) {
 	})
 
 	require.Nil(t, sw.Err)
-	store,err := nodestore.MemoryStore(ctx)
-	require.Nil(t,err)
+	store, err := nodestore.MemoryStore(ctx)
+	require.Nil(t, err)
 	dag, err := NewDagWithNodes(ctx, store, root, intermediary, child)
 	require.Nil(t, err)
 
