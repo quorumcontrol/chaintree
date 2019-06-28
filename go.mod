@@ -18,7 +18,7 @@ require (
 	github.com/polydawn/refmt v0.0.0-20190408063855-01bf1e26dd14
 	github.com/quorumcontrol/messages/build/go v0.0.0-20190530182608-30c127bffefb
 	github.com/quorumcontrol/namedlocker v0.0.0-20180808140020-3f797c8b12b1
-	github.com/quorumcontrol/storage v0.0.0-20190628000000-71102a21e424195893b1090e7cf4867ad64bdeca
+	github.com/quorumcontrol/storage v1.1.4
 	github.com/stretchr/testify v1.3.0
 	google.golang.org/appengine v1.4.0 // indirect
 )
