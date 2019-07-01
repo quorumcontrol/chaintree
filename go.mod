@@ -3,7 +3,7 @@ module github.com/quorumcontrol/chaintree
 go 1.12
 
 require (
-	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/gopherjs/gopherjs v0.0.0-20190430165422-3e4dfb77656c // indirect
 	github.com/ipfs/go-bitswap v0.1.5 // indirect
 	github.com/ipfs/go-block-format v0.0.2

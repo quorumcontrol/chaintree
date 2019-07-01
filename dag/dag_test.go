@@ -541,11 +541,13 @@ func TestDagGet(t *testing.T) {
 	assert.Nil(t, n)
 }
 
-// func TestDagDump(t *testing.T) {
-// 	// Not really a test here, but do call it just to make sure no panics
-// 	dag := newDeepDag(t)
-// 	dag.Dump()
-// }
+func TestDagDump(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	// Not really a test here, but do call it just to make sure no panics
+	dag := newDeepDag(t,ctx)
+	t.Log(dag.Dump(ctx))
+}
 
 func TestDagWithNewTip(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())

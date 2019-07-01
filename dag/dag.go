@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	// "strings"
+	"strings"
 
-	// "github.com/davecgh/go-spew/spew"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 
@@ -450,63 +450,64 @@ func (d *Dag) set(ctx context.Context, pathAndKey []string, val interface{}, asL
 	return newDag, nil
 }
 
-// func (d *Dag) dumpNode(ctx context.Context, node format.Node, isLink bool) interface{} {
-// 	nodeData, _ := nodestore.CborNodeToObj(node)
+func (d *Dag) dumpNode(ctx context.Context, node format.Node, isLink bool) interface{} {
+	var nodeData interface{}
+	cbornode.DecodeInto(node.RawData(), &nodeData)
 
-// 	switch nodeData.(type) {
-// 	case map[interface{}]interface{}:
-// 		nodeMap := nodeData.(map[interface{}]interface{})
-// 		for k, v := range nodeMap {
-// 			switch v := v.(type) {
-// 			case cid.Cid:
-// 				node, _ := d.store.Get(ctx, v)
-// 				if node == nil {
-// 					nodeMap[k] = fmt.Sprintf("non existant link: %s", v.String())
-// 				} else {
-// 					nodeMap[k] = d.dumpNode(node, true)
-// 				}
-// 			case *cid.Cid:
-// 				node, _ := d.store.Get(ctx, *v)
-// 				if node == nil {
-// 					nodeMap[k] = fmt.Sprintf("non existant link: %s", v.String())
-// 				} else {
-// 					nodeMap[k] = d.dumpNode(ctx, node, true)
-// 				}
-// 			default:
-// 				continue
-// 			}
-// 		}
-// 		if isLink {
-// 			nodeMap["_isLink"] = true
-// 		}
-// 		return nodeMap
-// 	default:
-// 		return nodeData
-// 	}
-// }
+	switch nodeData.(type) {
+	case map[interface{}]interface{}:
+		nodeMap := nodeData.(map[interface{}]interface{})
+		for k, v := range nodeMap {
+			switch v := v.(type) {
+			case cid.Cid:
+				node, _ := d.store.Get(ctx, v)
+				if node == nil {
+					nodeMap[k] = fmt.Sprintf("non existant link: %s", v.String())
+				} else {
+					nodeMap[k] = d.dumpNode(ctx, node, true)
+				}
+			case *cid.Cid:
+				node, _ := d.store.Get(ctx, *v)
+				if node == nil {
+					nodeMap[k] = fmt.Sprintf("non existant link: %s", v.String())
+				} else {
+					nodeMap[k] = d.dumpNode(ctx, node, true)
+				}
+			default:
+				continue
+			}
+		}
+		if isLink {
+			nodeMap["_isLink"] = true
+		}
+		return nodeMap
+	default:
+		return nodeData
+	}
+}
 
-// // Dump dumps the current DAG out as a string for debugging
-// func (d *Dag) Dump(ctx context.Context) string {
-// 	rootNode, _ := d.store.Get(ctx, d.Tip)
-// 	nodes, _ := d.Nodes()
-// 	nodeStrings := make([]string, len(nodes))
-// 	for i, node := range nodes {
-// 		nodeJSON, err := node.MarshalJSON()
-// 		if err != nil {
-// 			panic(fmt.Sprintf("error marshalling JSON for node %v: %v", node, err))
-// 		}
-// 		nodeStrings[i] = fmt.Sprintf("%v : %v", node.Cid().String(), string(nodeJSON))
-// 	}
-// 	return fmt.Sprintf(`
-// Tip: %s,
-// Tree:
-// %s
+// Dump dumps the current DAG out as a string for debugging
+func (d *Dag) Dump(ctx context.Context) string {
+	rootNode, _ := d.store.Get(ctx, d.Tip)
+	nodes, _ := d.Nodes(ctx)
+	nodeStrings := make([]string, len(nodes))
+	for i, node := range nodes {
+		nodeJSON, err := node.(*cbornode.Node).MarshalJSON()
+		if err != nil {
+			panic(fmt.Sprintf("error marshalling JSON for node %v: %v", node, err))
+		}
+		nodeStrings[i] = fmt.Sprintf("%v : %v", node.Cid().String(), string(nodeJSON))
+	}
+	return fmt.Sprintf(`
+Tip: %s,
+Tree:
+%s
 
-// Nodes:
-// %v
+Nodes:
+%v
 
-// 	`,
-// 		d.Tip.String(),
-// 		spew.Sdump(d.dumpNode(rootNode, false)),
-// 		strings.Join(nodeStrings, "\n\n"))
-// }
+	`,
+		d.Tip.String(),
+		spew.Sdump(d.dumpNode(ctx, rootNode, false)),
+		strings.Join(nodeStrings, "\n\n"))
+}
