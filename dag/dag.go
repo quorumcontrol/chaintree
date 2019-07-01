@@ -452,8 +452,10 @@ func (d *Dag) set(ctx context.Context, pathAndKey []string, val interface{}, asL
 
 func (d *Dag) dumpNode(ctx context.Context, node format.Node, isLink bool) interface{} {
 	var nodeData interface{}
-	cbornode.DecodeInto(node.RawData(), &nodeData)
-
+	if err := cbornode.DecodeInto(node.RawData(), &nodeData); err != nil {
+		panic(err)
+	}
+	
 	switch nodeData.(type) {
 	case map[interface{}]interface{}:
 		nodeMap := nodeData.(map[interface{}]interface{})
