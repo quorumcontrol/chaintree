@@ -1,27 +1,31 @@
 package dag
 
 import (
+	"context"
 	"fmt"
+
 	"strings"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 
+	format "github.com/ipfs/go-ipld-format"
 	"github.com/quorumcontrol/chaintree/nodestore"
+	"github.com/quorumcontrol/chaintree/safewrap"
 )
 
 // Dag is a convenience wrapper around a node store for setting and pruning
 type Dag struct {
 	Tip     cid.Cid
 	oldTips []cid.Cid
-	store   nodestore.NodeStore
+	store   nodestore.DagStore
 }
 
-type NodeMap map[cid.Cid]*cbornode.Node
+type NodeMap map[cid.Cid]format.Node
 
 // NewDag takes a tip and a store and returns an initialized Dag
-func NewDag(tip cid.Cid, store nodestore.NodeStore) *Dag {
+func NewDag(_ context.Context, tip cid.Cid, store nodestore.DagStore) *Dag {
 	return &Dag{
 		Tip:   tip,
 		store: store,
@@ -29,12 +33,12 @@ func NewDag(tip cid.Cid, store nodestore.NodeStore) *Dag {
 }
 
 // NewDagWithNodes creates a new Dag, and imports the passed in nodes, the first node is set as the tip
-func NewDagWithNodes(store nodestore.NodeStore, nodes ...*cbornode.Node) (*Dag, error) {
+func NewDagWithNodes(ctx context.Context, store nodestore.DagStore, nodes ...format.Node) (*Dag, error) {
 	dag := &Dag{
 		Tip:   nodes[0].Cid(),
 		store: store,
 	}
-	err := dag.AddNodes(nodes...)
+	err := dag.AddNodes(ctx, nodes...)
 	if err != nil {
 		return nil, fmt.Errorf("error adding nodes: %v", err)
 	}
@@ -42,9 +46,9 @@ func NewDagWithNodes(store nodestore.NodeStore, nodes ...*cbornode.Node) (*Dag, 
 }
 
 // AddNodes takes cbornodes and adds them to the underlying storage
-func (d *Dag) AddNodes(nodes ...*cbornode.Node) error {
+func (d *Dag) AddNodes(ctx context.Context, nodes ...format.Node) error {
 	for _, node := range nodes {
-		err := d.store.StoreNode(node)
+		err := d.store.Add(ctx, node)
 		if err != nil {
 			return fmt.Errorf("error storing node (%s): %v", node.Cid().String(), err)
 		}
@@ -62,31 +66,81 @@ func (d *Dag) WithNewTip(tip cid.Cid) *Dag {
 }
 
 // Get takes a CID and returns the cbornode
-func (d *Dag) Get(id cid.Cid) (*cbornode.Node, error) {
-	return d.store.GetNode(id)
+func (d *Dag) Get(ctx context.Context, id cid.Cid) (format.Node, error) {
+	n, err := d.store.Get(ctx, id)
+	if err == format.ErrNotFound {
+		return nil, nil
+	}
+	return n, err
 }
 
 // CreateNode adds an object to the Dags underlying storage (doesn't change the tip)
 // and returns the cbornode
-func (d *Dag) CreateNode(obj interface{}) (*cbornode.Node, error) {
-	return d.store.CreateNode(obj)
+func (d *Dag) CreateNode(ctx context.Context, obj interface{}) (format.Node, error) {
+	sw := &safewrap.SafeWrap{}
+	n := sw.WrapObject(obj)
+	if sw.Err != nil {
+		return nil, fmt.Errorf("error wrapping object: %v", sw.Err)
+	}
+	return n, d.store.Add(ctx, n)
 }
 
 // Resolve takes a path (as a string slice) and returns the value, remaining path and any error.
-// It delegates to the underlying store's resolve.
-func (d *Dag) Resolve(path []string) (interface{}, []string, error) {
-	return d.store.Resolve(d.Tip, path)
+func (d *Dag) Resolve(ctx context.Context, path []string) (interface{}, []string, error) {
+	return d.ResolveAt(ctx, d.Tip, path)
 }
 
 // ResolveAt takes a tip and a path (as a string slice) and returns the value, remaining path
 // and any error.
-// It delegates to the underlying store's resolve.
-func (d *Dag) ResolveAt(tip cid.Cid, path []string) (interface{}, []string, error) {
-	return d.store.Resolve(tip, path)
+func (d *Dag) ResolveAt(ctx context.Context, tip cid.Cid, path []string) (val interface{}, remaining []string, err error) {
+	node, err := d.store.Get(ctx, tip)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error getting node (%s): %v", tip.String(), err)
+	}
+	val, remaining, err = node.Resolve(path)
+	if err != nil {
+		switch err {
+		case cbornode.ErrNoSuchLink:
+			// If the link is just missing, then just return the whole path as remaining, with a nil value
+			// instead of an error
+			return nil, path, nil
+		case cbornode.ErrNoLinks:
+			// this means there was a simple value somewhere along the path
+			// try resolving less of the path to find the existing boundary
+			var err error
+			for i := 1; i < len(path); i++ {
+				val, _, err = node.Resolve(path[:len(path)-i])
+				if err != nil {
+					continue
+				} else {
+					// return the simple value and the rest of the path as remaining
+					return val, path[len(path)-i:], nil
+				}
+			}
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+		return nil, nil, err
+	}
+
+	switch val := val.(type) {
+	case *format.Link:
+		linkNode, err := d.store.Get(ctx, val.Cid)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error getting linked node (%s): %v", linkNode.Cid().String(), err)
+		}
+		if linkNode != nil {
+			return d.ResolveAt(ctx, linkNode.Cid(), remaining)
+		}
+		return nil, remaining, nil
+	default:
+		return val, remaining, err
+	}
 }
 
-func (d *Dag) NodesForPathWithDecendants(path []string) ([]*cbornode.Node, error) {
-	nodes, err := d.orderedNodesForPath(path)
+func (d *Dag) NodesForPathWithDecendants(ctx context.Context, path []string) ([]format.Node, error) {
+	nodes, err := d.orderedNodesForPath(ctx, path)
 	if err != nil {
 		return nil, err
 	}
@@ -97,12 +151,12 @@ func (d *Dag) NodesForPathWithDecendants(path []string) ([]*cbornode.Node, error
 		collector[n.Cid()] = n
 	}
 
-	err = d.nodeAndDescendants(lastNode, collector)
+	err = d.nodeAndDescendants(ctx, lastNode, collector)
 	if err != nil {
 		return nil, err
 	}
 
-	nodes = make([]*cbornode.Node, len(collector))
+	nodes = make([]format.Node, len(collector))
 	i := 0
 	for _, v := range collector {
 		nodes[i] = v
@@ -111,14 +165,14 @@ func (d *Dag) NodesForPathWithDecendants(path []string) ([]*cbornode.Node, error
 	return nodes, nil
 }
 
-func (d *Dag) NodesForPath(path []string) ([]*cbornode.Node, error) {
-	return d.orderedNodesForPath(path)
+func (d *Dag) NodesForPath(ctx context.Context, path []string) ([]format.Node, error) {
+	return d.orderedNodesForPath(ctx, path)
 }
 
-func (d *Dag) orderedNodesForPath(path []string) ([]*cbornode.Node, error) {
-	nodes := make([]*cbornode.Node, len(path)+1) // + 1 for tip node
+func (d *Dag) orderedNodesForPath(ctx context.Context, path []string) ([]format.Node, error) {
+	nodes := make([]format.Node, len(path)+1) // + 1 for tip node
 
-	tipNode, err := d.Get(d.Tip)
+	tipNode, err := d.Get(ctx, d.Tip)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +190,7 @@ func (d *Dag) orderedNodesForPath(path []string) ([]*cbornode.Node, error) {
 			return nil, fmt.Errorf("error: unexpected remaining path elements: %v", remaining)
 		}
 
-		cur, err = d.Get(nextNode.Cid)
+		cur, err = d.Get(ctx, nextNode.Cid)
 		if err != nil {
 			return nil, err
 		}
@@ -148,19 +202,19 @@ func (d *Dag) orderedNodesForPath(path []string) ([]*cbornode.Node, error) {
 }
 
 // Nodes returns all the nodes in an entire tree from the Tip out
-func (d *Dag) Nodes() ([]*cbornode.Node, error) {
-	root, err := d.store.GetNode(d.Tip)
+func (d *Dag) Nodes(ctx context.Context) ([]format.Node, error) {
+	root, err := d.store.Get(ctx, d.Tip)
 	if err != nil {
 		return nil, fmt.Errorf("error getting root: %v", err)
 	}
 	collector := NodeMap{}
 
-	err = d.nodeAndDescendants(root, collector)
+	err = d.nodeAndDescendants(ctx, root, collector)
 	if err != nil {
 		return nil, fmt.Errorf("error getting dec: %v", err)
 	}
 
-	nodes := make([]*cbornode.Node, len(collector))
+	nodes := make([]format.Node, len(collector))
 	i := 0
 	for _, v := range collector {
 		nodes[i] = v
@@ -169,7 +223,7 @@ func (d *Dag) Nodes() ([]*cbornode.Node, error) {
 	return nodes, nil
 }
 
-func (d *Dag) nodeAndDescendants(node *cbornode.Node, collector NodeMap) error {
+func (d *Dag) nodeAndDescendants(ctx context.Context, node format.Node, collector NodeMap) error {
 	collector[node.Cid()] = node
 
 	links := node.Links()
@@ -178,7 +232,7 @@ func (d *Dag) nodeAndDescendants(node *cbornode.Node, collector NodeMap) error {
 		if ok {
 			continue
 		}
-		linkNode, err := d.store.GetNode(link.Cid)
+		linkNode, err := d.store.Get(ctx, link.Cid)
 		if err != nil {
 			return fmt.Errorf("error getting link: %v", err)
 		}
@@ -186,7 +240,7 @@ func (d *Dag) nodeAndDescendants(node *cbornode.Node, collector NodeMap) error {
 			// it's OK to omit certain parts of the tree in e.g. send_token payloads
 			continue
 		}
-		err = d.nodeAndDescendants(linkNode, collector)
+		err = d.nodeAndDescendants(ctx, linkNode, collector)
 		if err != nil {
 			return fmt.Errorf("error getting child nodes: %v", err)
 		}
@@ -196,13 +250,13 @@ func (d *Dag) nodeAndDescendants(node *cbornode.Node, collector NodeMap) error {
 }
 
 // Delete removes a key from the dag
-func (d *Dag) Delete(path []string) (*Dag, error) {
+func (d *Dag) Delete(ctx context.Context, path []string) (*Dag, error) {
 	if len(path) == 0 {
 		return nil, fmt.Errorf("Can not execute Delete on root of dag, please supply non-empty path")
 	}
 
 	parentPath := path[:len(path)-1]
-	parentObj, remaining, err := d.Resolve(parentPath)
+	parentObj, remaining, err := d.Resolve(ctx, parentPath)
 
 	if err != nil {
 		return nil, fmt.Errorf("error resolving parent node: %v", err)
@@ -223,12 +277,12 @@ func (d *Dag) Delete(path []string) (*Dag, error) {
 
 	delete(parentMap, keyToDelete)
 
-	return d.Update(parentPath, parentObj)
+	return d.Update(ctx, parentPath, parentObj)
 }
 
 // Update returns a new Dag with the old node at path swapped out for the new object
-func (d *Dag) Update(path []string, newObj interface{}) (*Dag, error) {
-	updatedNode, err := d.CreateNode(newObj)
+func (d *Dag) Update(ctx context.Context, path []string, newObj interface{}) (*Dag, error) {
+	updatedNode, err := d.CreateNode(ctx, newObj)
 	if err != nil {
 		return nil, fmt.Errorf("error creating node: %v", err)
 	}
@@ -238,7 +292,7 @@ func (d *Dag) Update(path []string, newObj interface{}) (*Dag, error) {
 	} else {
 		// We've got more path to recursively update; store this node & update its ref in its parent
 		parentPath := path[:len(path)-1]
-		parentObj, remaining, err := d.Resolve(parentPath)
+		parentObj, remaining, err := d.Resolve(ctx, parentPath)
 		if err != nil {
 			return nil, fmt.Errorf("error resolving parent node: %v", err)
 		}
@@ -250,7 +304,7 @@ func (d *Dag) Update(path []string, newObj interface{}) (*Dag, error) {
 			return nil, fmt.Errorf("error asserting type map[string]interface{} of parent node: %v", parentObj)
 		}
 		parentMap[path[len(path)-1]] = updatedNode.Cid()
-		return d.Update(parentPath, parentMap)
+		return d.Update(ctx, parentPath, parentMap)
 	}
 }
 
@@ -267,28 +321,28 @@ func isComplexObj(val interface{}) bool {
 
 // Set sets a value at a path and returns a new dag with a new tip that reflects
 // the new state (and adds the old tip to oldTips)
-func (d *Dag) Set(pathAndKey []string, val interface{}) (*Dag, error) {
+func (d *Dag) Set(ctx context.Context, pathAndKey []string, val interface{}) (*Dag, error) {
 	if isComplexObj(val) {
 		return nil, fmt.Errorf("can not set complex objects, use asLink=true: %v", val)
 	}
-	return d.set(pathAndKey, val, false)
+	return d.set(ctx, pathAndKey, val, false)
 }
 
 // SetAsLink sets a value at a path and returns a new dag with a new tip that reflects
 // the new state (and adds the old tip to oldTips)
-func (d *Dag) SetAsLink(pathAndKey []string, val interface{}) (*Dag, error) {
-	return d.set(pathAndKey, val, true)
+func (d *Dag) SetAsLink(ctx context.Context, pathAndKey []string, val interface{}) (*Dag, error) {
+	return d.set(ctx, pathAndKey, val, true)
 }
 
-func (d *Dag) getExisting(path []string) (val map[string]interface{}, remainingPath []string, err error) {
-	existing, remaining, err := d.Resolve(path)
+func (d *Dag) getExisting(ctx context.Context, path []string) (val map[string]interface{}, remainingPath []string, err error) {
+	existing, remaining, err := d.Resolve(ctx, path)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	if len(remaining) == len(path) {
 		// special case so we don't clobber other keys set at the root level
-		existing, _, _ = d.Resolve([]string{})
+		existing, _, _ = d.Resolve(ctx, []string{})
 	}
 
 	switch existing := existing.(type) {
@@ -300,14 +354,14 @@ func (d *Dag) getExisting(path []string) (val map[string]interface{}, remainingP
 		// In those cases, fetch the next object up (parent of remaining) and use that
 		// as the existing object. Still needs to return remaining from the original call though
 		// since thats where the caller needs to manipulate up to
-		existingAncestor, _, err := d.getExisting(path[:len(path)-len(remaining)])
+		existingAncestor, _, err := d.getExisting(ctx, path[:len(path)-len(remaining)])
 		return existingAncestor, remaining, err
 	default:
 		return make(map[string]interface{}), remaining, nil
 	}
 }
 
-func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, error) {
+func (d *Dag) set(ctx context.Context, pathAndKey []string, val interface{}, asLink bool) (*Dag, error) {
 	var path []string
 	var key string
 
@@ -323,7 +377,7 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 	}
 
 	// lookup existing portion of path & leaf node's value
-	leafNodeObj, remainingPath, err := d.getExisting(path)
+	leafNodeObj, remainingPath, err := d.getExisting(ctx, path)
 	if err != nil {
 		return nil, fmt.Errorf("error resolving path %s: %v", path, err)
 	}
@@ -352,7 +406,7 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 	// set key to (link to) val in new leaf node
 	if asLink {
 		// create val as new node and set its CID under key in new leaf node
-		newLinkNode, err := d.store.CreateNode(val)
+		newLinkNode, err := d.CreateNode(ctx, val)
 		if err != nil {
 			return nil, fmt.Errorf("error creating node: %v", err)
 		}
@@ -366,7 +420,7 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 	// go up (i.e. right to left) the path segments, linking them as we go
 	nextNodeObj := newLeafNodeObj
 	for i := len(remainingPath) - 1; i >= 0; i-- {
-		nextNode, err := d.store.CreateNode(nextNodeObj)
+		nextNode, err := d.CreateNode(ctx, nextNodeObj)
 		if err != nil {
 			return nil, fmt.Errorf("error creating node for path element %s: %v", remainingPath[i], err)
 		}
@@ -381,7 +435,7 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 	}
 
 	// update former leaf node to (link to) new val
-	newDag, err := d.Update(existingPath, nextNodeObj)
+	newDag, err := d.Update(ctx, existingPath, nextNodeObj)
 	if err != nil {
 		return nil, fmt.Errorf("error updating DAG: %v", err)
 	}
@@ -391,27 +445,30 @@ func (d *Dag) set(pathAndKey []string, val interface{}, asLink bool) (*Dag, erro
 	return newDag, nil
 }
 
-func (d *Dag) dumpNode(node *cbornode.Node, isLink bool) interface{} {
-	nodeData, _ := nodestore.CborNodeToObj(node)
-
+func (d *Dag) dumpNode(ctx context.Context, node format.Node, isLink bool) interface{} {
+	var nodeData interface{}
+	if err := cbornode.DecodeInto(node.RawData(), &nodeData); err != nil {
+		panic(err)
+	}
+	
 	switch nodeData.(type) {
 	case map[interface{}]interface{}:
 		nodeMap := nodeData.(map[interface{}]interface{})
 		for k, v := range nodeMap {
 			switch v := v.(type) {
 			case cid.Cid:
-				node, _ := d.store.GetNode(v)
+				node, _ := d.store.Get(ctx, v)
 				if node == nil {
 					nodeMap[k] = fmt.Sprintf("non existant link: %s", v.String())
 				} else {
-					nodeMap[k] = d.dumpNode(node, true)
+					nodeMap[k] = d.dumpNode(ctx, node, true)
 				}
 			case *cid.Cid:
-				node, _ := d.store.GetNode(*v)
+				node, _ := d.store.Get(ctx, *v)
 				if node == nil {
 					nodeMap[k] = fmt.Sprintf("non existant link: %s", v.String())
 				} else {
-					nodeMap[k] = d.dumpNode(node, true)
+					nodeMap[k] = d.dumpNode(ctx, node, true)
 				}
 			default:
 				continue
@@ -427,12 +484,12 @@ func (d *Dag) dumpNode(node *cbornode.Node, isLink bool) interface{} {
 }
 
 // Dump dumps the current DAG out as a string for debugging
-func (d *Dag) Dump() string {
-	rootNode, _ := d.store.GetNode(d.Tip)
-	nodes, _ := d.Nodes()
+func (d *Dag) Dump(ctx context.Context) string {
+	rootNode, _ := d.store.Get(ctx, d.Tip)
+	nodes, _ := d.Nodes(ctx)
 	nodeStrings := make([]string, len(nodes))
 	for i, node := range nodes {
-		nodeJSON, err := node.MarshalJSON()
+		nodeJSON, err := node.(*cbornode.Node).MarshalJSON()
 		if err != nil {
 			panic(fmt.Sprintf("error marshalling JSON for node %v: %v", node, err))
 		}
@@ -448,6 +505,6 @@ Nodes:
 
 	`,
 		d.Tip.String(),
-		spew.Sdump(d.dumpNode(rootNode, false)),
+		spew.Sdump(d.dumpNode(ctx, rootNode, false)),
 		strings.Join(nodeStrings, "\n\n"))
 }

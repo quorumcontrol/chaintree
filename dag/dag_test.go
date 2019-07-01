@@ -1,9 +1,9 @@
 package dag
 
 import (
+	"context"
 	"testing"
 
-	"github.com/quorumcontrol/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -11,20 +11,21 @@ import (
 	"github.com/quorumcontrol/chaintree/safewrap"
 )
 
-func newDeepDag(t *testing.T) *Dag {
+func newDeepDag(t *testing.T, ctx context.Context) *Dag {
 	sw := safewrap.SafeWrap{}
 	deepChild := sw.WrapObject(map[string]interface{}{"deepChild": true})
 	child := sw.WrapObject(map[string]interface{}{"deepChild": deepChild.Cid(), "child": true})
 	root := sw.WrapObject(map[string]interface{}{"child": child.Cid(), "root": true})
 	require.Nil(t, sw.Err)
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-	dag, err := NewDagWithNodes(store, root, deepChild, child)
+	store, err := nodestore.MemoryStore(ctx)
+	require.Nil(t, err)
+	dag, err := NewDagWithNodes(ctx, store, root, deepChild, child)
 	require.Nil(t, err)
 	return dag
 }
 
-func newDeepAndWideDag(t *testing.T) *Dag {
+func newDeepAndWideDag(t *testing.T, ctx context.Context) *Dag {
 	sw := safewrap.SafeWrap{}
 	deepChild := sw.WrapObject(map[string]interface{}{"deepChild": true})
 	child1 := sw.WrapObject(map[string]interface{}{"deepChild1": deepChild.Cid(), "child1": true})
@@ -32,28 +33,34 @@ func newDeepAndWideDag(t *testing.T) *Dag {
 	root := sw.WrapObject(map[string]interface{}{"child1": child1.Cid(), "child2": child2.Cid(), "root": true})
 	require.Nil(t, sw.Err)
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-	dag, err := NewDagWithNodes(store, root, deepChild, child1, child2)
+	store, err := nodestore.MemoryStore(ctx)
+	require.Nil(t, err)
+	dag, err := NewDagWithNodes(ctx, store, root, deepChild, child1, child2)
 	require.Nil(t, err)
 	return dag
 }
 
 func TestDagNodes(t *testing.T) {
-	dag := newDeepDag(t)
-	nodes, err := dag.Nodes()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	dag := newDeepDag(t, ctx)
+	nodes, err := dag.Nodes(ctx)
 	assert.Nil(t, err)
 	assert.Len(t, nodes, 3)
 
-	dag = newDeepAndWideDag(t)
-	nodes, err = dag.Nodes()
+	dag = newDeepAndWideDag(t, ctx)
+	nodes, err = dag.Nodes(ctx)
 	assert.Nil(t, err)
 	// Removes uniques
 	assert.Len(t, nodes, 4)
 }
 
 func TestDagResolve(t *testing.T) {
-	dag := newDeepDag(t)
-	val, remain, err := dag.Resolve([]string{"child", "deepChild", "deepChild"})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	dag := newDeepDag(t, ctx)
+	val, remain, err := dag.Resolve(ctx, []string{"child", "deepChild", "deepChild"})
 	require.Nil(t, err)
 	assert.Len(t, remain, 0)
 	assert.Equal(t, true, val)
@@ -61,17 +68,20 @@ func TestDagResolve(t *testing.T) {
 
 // Test that the ResolveAt method can operate with a tip that need not be current.
 func TestDagResolveAt(t *testing.T) {
-	dag := newDeepDag(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	dag := newDeepDag(t, ctx)
 	oldTip := dag.Tip
-	dag, err := dag.Set([]string{"child", "value"}, true)
+	dag, err := dag.Set(ctx, []string{"child", "value"}, true)
 	require.Nil(t, err)
 
-	val, remain, err := dag.ResolveAt(oldTip, []string{"child", "deepChild", "deepChild"})
+	val, remain, err := dag.ResolveAt(ctx, oldTip, []string{"child", "deepChild", "deepChild"})
 	require.Nil(t, err)
 	require.Len(t, remain, 0)
 	require.Equal(t, true, val)
 
-	missingVal, remain, err := dag.ResolveAt(oldTip, []string{"child", "value"})
+	missingVal, remain, err := dag.ResolveAt(ctx, oldTip, []string{"child", "value"})
 	require.Nil(t, err)
 	require.Len(t, remain, 1)
 	require.Equal(t, remain, []string{"value"})
@@ -79,17 +89,22 @@ func TestDagResolveAt(t *testing.T) {
 }
 
 func TestOrderedNodesForPath(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	sw := safewrap.SafeWrap{}
 	deepChild := sw.WrapObject(map[string]interface{}{"deepChild": true})
 	child := sw.WrapObject(map[string]interface{}{"deepChild": deepChild.Cid(), "child": true})
 	root := sw.WrapObject(map[string]interface{}{"child": child.Cid(), "root": true})
 	require.Nil(t, sw.Err)
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-	dag, err := NewDagWithNodes(store, root, deepChild, child)
+	store, err := nodestore.MemoryStore(ctx)
 	require.Nil(t, err)
 
-	nodes, err := dag.orderedNodesForPath([]string{"child", "deepChild"})
+	dag, err := NewDagWithNodes(ctx, store, root, deepChild, child)
+	require.Nil(t, err)
+
+	nodes, err := dag.orderedNodesForPath(ctx, []string{"child", "deepChild"})
 	require.Nil(t, err)
 	require.Len(t, nodes, 3)
 
@@ -99,11 +114,14 @@ func TestOrderedNodesForPath(t *testing.T) {
 }
 
 func TestDagNodesForPath(t *testing.T) {
-	dag := newDeepDag(t)
-	nodes, err := dag.NodesForPath([]string{"child", "deepChild"})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	dag := newDeepDag(t, ctx)
+	nodes, err := dag.NodesForPath(ctx, []string{"child", "deepChild"})
 	require.Nil(t, err)
 	require.Len(t, nodes, 3)
-	allNodes, err := dag.Nodes()
+	allNodes, err := dag.Nodes(ctx)
 	require.Nil(t, err)
 	require.Len(t, allNodes, 3)
 
@@ -116,25 +134,27 @@ func TestDagNodesForPath(t *testing.T) {
 		require.Contains(t, nodeBytes, n.RawData())
 	}
 
-	dag = newDeepAndWideDag(t)
-	nodes, err = dag.NodesForPath([]string{"child2", "deepChild2"})
+	dag = newDeepAndWideDag(t, ctx)
+	nodes, err = dag.NodesForPath(ctx, []string{"child2", "deepChild2"})
 	require.Nil(t, err)
 	require.Len(t, nodes, 3)
 
-	dag = newDeepAndWideDag(t)
-	nodes, err = dag.NodesForPath([]string{"child2"})
+	dag = newDeepAndWideDag(t, ctx)
+	nodes, err = dag.NodesForPath(ctx, []string{"child2"})
 	require.Nil(t, err)
 	require.Len(t, nodes, 2)
 }
 
 func TestDagNodesForPathWithDecendants(t *testing.T) {
-	dag := newDeepAndWideDag(t)
-	nodes, err := dag.NodesForPathWithDecendants([]string{"child2", "deepChild2"})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	dag := newDeepAndWideDag(t, ctx)
+	nodes, err := dag.NodesForPathWithDecendants(ctx, []string{"child2", "deepChild2"})
 	require.Nil(t, err)
 	require.Len(t, nodes, 3)
 
-	dag = newDeepAndWideDag(t)
-	nodes2, err := dag.NodesForPathWithDecendants([]string{"child2"})
+	dag = newDeepAndWideDag(t, ctx)
+	nodes2, err := dag.NodesForPathWithDecendants(ctx, []string{"child2"})
 	require.Nil(t, err)
 	require.Len(t, nodes2, 3)
 
@@ -149,6 +169,8 @@ func TestDagNodesForPathWithDecendants(t *testing.T) {
 }
 
 func TestDagSet(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	sw := &safewrap.SafeWrap{}
 
 	child := sw.WrapObject(map[string]interface{}{
@@ -165,38 +187,40 @@ func TestDagSet(t *testing.T) {
 
 	assert.Nil(t, sw.Err)
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-	dag, err := NewDagWithNodes(store, root, child)
+	store, err := nodestore.MemoryStore(ctx)
 	require.Nil(t, err)
 
-	dag, err = dag.Set([]string{"test"}, "bob")
+	dag, err := NewDagWithNodes(ctx, store, root, child)
+	require.Nil(t, err)
+
+	dag, err = dag.Set(ctx, []string{"test"}, "bob")
 	assert.Nil(t, err)
 
-	val, _, err := dag.Resolve([]string{"test"})
+	val, _, err := dag.Resolve(ctx, []string{"test"})
 
 	assert.Nil(t, err)
 	assert.Equal(t, "bob", val)
 
 	// test top level sibling
-	dag, err = dag.Set([]string{"test2"}, "alice")
+	dag, err = dag.Set(ctx, []string{"test2"}, "alice")
 	assert.Nil(t, err)
 
-	val, _, err = dag.Resolve([]string{"test"})
+	val, _, err = dag.Resolve(ctx, []string{"test"})
 	assert.Nil(t, err)
 	assert.Equal(t, "bob", val)
 
-	val2, _, err := dag.Resolve([]string{"test2"})
+	val2, _, err := dag.Resolve(ctx, []string{"test2"})
 	assert.Nil(t, err)
 	assert.Equal(t, "alice", val2)
 
 	// test works with a CID
-	err = dag.AddNodes(unlinked)
+	err = dag.AddNodes(ctx, unlinked)
 	require.Nil(t, err)
 
-	dag, err = dag.Set([]string{"test"}, unlinked.Cid())
+	dag, err = dag.Set(ctx, []string{"test"}, unlinked.Cid())
 	assert.Nil(t, err)
 
-	val, _, err = dag.Resolve([]string{"test", "unlinked"})
+	val, _, err = dag.Resolve(ctx, []string{"test", "unlinked"})
 
 	assert.Nil(t, err)
 	assert.Equal(t, true, val)
@@ -204,51 +228,53 @@ func TestDagSet(t *testing.T) {
 	// test works in non-existant path
 
 	path := []string{"child", "non-existant-nested", "objects", "test"}
-	dag, err = dag.Set(path, "bob")
+	dag, err = dag.Set(ctx, path, "bob")
 	assert.Nil(t, err)
 
-	val, _, err = dag.Resolve(path)
+	val, _, err = dag.Resolve(ctx, path)
 
 	assert.Nil(t, err)
 	assert.Equal(t, "bob", val)
 
 	// Test sibling of existing path
 	siblingPath := []string{"child", "non-existant-nested", "objects", "siblingtest"}
-	dag, err = dag.Set(siblingPath, "sue")
+	dag, err = dag.Set(ctx, siblingPath, "sue")
 	assert.Nil(t, err)
 
 	// original sibling is still available
-	val, _, err = dag.Resolve(path)
+	val, _, err = dag.Resolve(ctx, path)
 	require.Nil(t, err)
 	assert.Equal(t, "bob", val)
 
-	siblingVal, _, err := dag.Resolve(siblingPath)
+	siblingVal, _, err := dag.Resolve(ctx, siblingPath)
 
 	assert.Nil(t, err)
 	assert.Equal(t, "sue", siblingVal)
 
 	// Test sibling of partially existing path
 	partiallyExistingPath := []string{"child", "non-existant-nested", "other-objects", "nestedtest"}
-	dag, err = dag.Set(partiallyExistingPath, "carol")
+	dag, err = dag.Set(ctx, partiallyExistingPath, "carol")
 	assert.Nil(t, err)
 
 	// original sibling is still available
-	val, _, err = dag.Resolve(path)
+	val, _, err = dag.Resolve(ctx, path)
 	assert.Nil(t, err)
 	assert.Equal(t, "bob", val)
 
 	// second sibling is still available
-	siblingVal, _, err = dag.Resolve(siblingPath)
+	siblingVal, _, err = dag.Resolve(ctx, siblingPath)
 	assert.Nil(t, err)
 	assert.Equal(t, "sue", siblingVal)
 
 	// check partially existing path set
-	partiallyExistingVal, _, err := dag.Resolve(partiallyExistingPath)
+	partiallyExistingVal, _, err := dag.Resolve(ctx, partiallyExistingPath)
 	assert.Nil(t, err)
 	assert.Equal(t, "carol", partiallyExistingVal)
 }
 
 func TestDagSetAsLink(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	sw := &safewrap.SafeWrap{}
 
 	child := sw.WrapObject(map[string]interface{}{
@@ -263,13 +289,15 @@ func TestDagSetAsLink(t *testing.T) {
 		"child": child.Cid(),
 	})
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-	dag, err := NewDagWithNodes(store, root, child)
+	store, err := nodestore.MemoryStore(ctx)
 	require.Nil(t, err)
 
-	dag, err = dag.SetAsLink([]string{"child", "grandchild", "key"}, unlinked)
+	dag, err := NewDagWithNodes(ctx, store, root, child)
+	require.Nil(t, err)
+
+	dag, err = dag.SetAsLink(ctx, []string{"child", "grandchild", "key"}, unlinked)
 	assert.Nil(t, err)
-	val, _, err := dag.Resolve([]string{"child", "grandchild", "key", "unlinked"})
+	val, _, err := dag.Resolve(ctx, []string{"child", "grandchild", "key", "unlinked"})
 
 	assert.Nil(t, err)
 	assert.Equal(t, true, val)
@@ -278,175 +306,186 @@ func TestDagSetAsLink(t *testing.T) {
 		"unlinked2": false,
 	}
 
-	dag, err = dag.SetAsLink([]string{"child", "grandchild", "key", "unlinkedsibling"}, unlinked2)
+	dag, err = dag.SetAsLink(ctx, []string{"child", "grandchild", "key", "unlinkedsibling"}, unlinked2)
 	assert.Nil(t, err)
 
-	val, _, err = dag.Resolve([]string{"child", "grandchild", "key", "unlinkedsibling", "unlinked2"})
+	val, _, err = dag.Resolve(ctx, []string{"child", "grandchild", "key", "unlinkedsibling", "unlinked2"})
 	assert.Nil(t, err)
 	assert.Equal(t, false, val)
 }
 
 func TestDagSetNestedAfterSet(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	sw := &safewrap.SafeWrap{}
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store, err := nodestore.MemoryStore(ctx)
+	require.Nil(t, err)
+
 	tip := sw.WrapObject(map[string]interface{}{})
-	dag, err := NewDagWithNodes(store, tip)
+	dag, err := NewDagWithNodes(ctx, store, tip)
 	require.Nil(t, err)
 
 	// random other key to ensure other data remains intact
-	dag, err = dag.Set([]string{"other"}, "hello")
+	dag, err = dag.Set(ctx, []string{"other"}, "hello")
 	assert.Nil(t, err)
 
 	// with string value
-	dag, err = dag.Set([]string{"test"}, "test-str")
+	dag, err = dag.Set(ctx, []string{"test"}, "test-str")
 	assert.Nil(t, err)
 
 	// make sure other key & value are still there
-	val, remaining, err := dag.Resolve([]string{"other"})
+	val, remaining, err := dag.Resolve(ctx, []string{"other"})
 	assert.Nil(t, err)
 	assert.Empty(t, remaining)
 	assert.Equal(t, "hello", val)
 
-	dag, err = dag.Set([]string{"test", "test-key"}, "test-str-2")
+	dag, err = dag.Set(ctx, []string{"test", "test-key"}, "test-str-2")
 	assert.Nil(t, err)
 
 	// make sure other key & value are still there
-	val, remaining, err = dag.Resolve([]string{"other"})
+	val, remaining, err = dag.Resolve(ctx, []string{"other"})
 	assert.Nil(t, err)
 	assert.Empty(t, remaining)
 	assert.Equal(t, "hello", val)
 
-	val, _, err = dag.Resolve([]string{"test", "test-key"})
+	val, _, err = dag.Resolve(ctx, []string{"test", "test-key"})
 	assert.Nil(t, err)
 	assert.Equal(t, "test-str-2", val)
 
 	// with int value
-	dag, err = dag.Set([]string{"test"}, 42)
+	dag, err = dag.Set(ctx, []string{"test"}, 42)
 	assert.Nil(t, err)
 
 	// make sure other key & value are still there
-	val, remaining, err = dag.Resolve([]string{"other"})
+	val, remaining, err = dag.Resolve(ctx, []string{"other"})
 	assert.Nil(t, err)
 	assert.Empty(t, remaining)
 	assert.Equal(t, "hello", val)
 
-	dag, err = dag.Set([]string{"test", "test-key"}, 43)
+	dag, err = dag.Set(ctx, []string{"test", "test-key"}, 43)
 	assert.Nil(t, err)
 
 	// make sure other key & value are still there
-	val, remaining, err = dag.Resolve([]string{"other"})
+	val, remaining, err = dag.Resolve(ctx, []string{"other"})
 	assert.Nil(t, err)
 	assert.Empty(t, remaining)
 	assert.Equal(t, "hello", val)
 
-	val, _, err = dag.Resolve([]string{"test", "test-key"})
+	val, _, err = dag.Resolve(ctx, []string{"test", "test-key"})
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(43), val)
 
 	// with multiple levels of non-existent path
-	dag, err = dag.Set([]string{"test"}, "test-str")
+	dag, err = dag.Set(ctx, []string{"test"}, "test-str")
 	assert.Nil(t, err)
 
 	// make sure other key & value are still there
-	val, remaining, err = dag.Resolve([]string{"other"})
+	val, remaining, err = dag.Resolve(ctx, []string{"other"})
 	assert.Nil(t, err)
 	assert.Empty(t, remaining)
 	assert.Equal(t, "hello", val)
 
-	dag, err = dag.Set([]string{"test", "down", "in", "the", "thing"}, "test-str-2")
+	dag, err = dag.Set(ctx, []string{"test", "down", "in", "the", "thing"}, "test-str-2")
 	assert.Nil(t, err)
 
 	// make sure other key & value are still there
-	val, remaining, err = dag.Resolve([]string{"other"})
+	val, remaining, err = dag.Resolve(ctx, []string{"other"})
 	assert.Nil(t, err)
 	assert.Empty(t, remaining)
 	assert.Equal(t, "hello", val)
 
-	val, _, err = dag.Resolve([]string{"test", "down", "in", "the", "thing"})
+	val, _, err = dag.Resolve(ctx, []string{"test", "down", "in", "the", "thing"})
 	assert.Nil(t, err)
 	assert.Equal(t, "test-str-2", val)
 }
 
 func TestDagSetAsLinkAfterSet(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	sw := &safewrap.SafeWrap{}
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store, err := nodestore.MemoryStore(ctx)
+	require.Nil(t, err)
 	tip := sw.WrapObject(map[string]interface{}{})
-	dag, err := NewDagWithNodes(store, tip)
+	dag, err := NewDagWithNodes(ctx, store, tip)
 	require.Nil(t, err)
 
 	// random other key to ensure other data remains intact
-	dag, err = dag.Set([]string{"other"}, "hello")
+	dag, err = dag.Set(ctx, []string{"other"}, "hello")
 	assert.Nil(t, err)
 
 	// with string value
-	dag, err = dag.Set([]string{"test"}, "test-str")
+	dag, err = dag.Set(ctx, []string{"test"}, "test-str")
 	assert.Nil(t, err)
 
 	// make sure other key & value are still there
-	val, remaining, err := dag.Resolve([]string{"other"})
+	val, remaining, err := dag.Resolve(ctx, []string{"other"})
 	assert.Nil(t, err)
 	assert.Empty(t, remaining)
 	assert.Equal(t, "hello", val)
 
-	dag, err = dag.SetAsLink([]string{"test"}, map[string]string{"test-key": "test-str-2"})
+	dag, err = dag.SetAsLink(ctx, []string{"test"}, map[string]string{"test-key": "test-str-2"})
 	assert.Nil(t, err)
 
-	val, _, err = dag.Resolve([]string{"test", "test-key"})
+	val, _, err = dag.Resolve(ctx, []string{"test", "test-key"})
 	assert.Nil(t, err)
 	assert.Equal(t, "test-str-2", val)
 
 	// make sure other key & value are still there
-	val, remaining, err = dag.Resolve([]string{"other"})
+	val, remaining, err = dag.Resolve(ctx, []string{"other"})
 	assert.Nil(t, err)
 	assert.Empty(t, remaining)
 	assert.Equal(t, "hello", val)
 
 	// with int value
-	dag, err = dag.Set([]string{"test"}, 42)
+	dag, err = dag.Set(ctx, []string{"test"}, 42)
 	assert.Nil(t, err)
 
-	dag, err = dag.SetAsLink([]string{"test"}, map[string]int{"test-key": 43})
+	dag, err = dag.SetAsLink(ctx, []string{"test"}, map[string]int{"test-key": 43})
 	assert.Nil(t, err)
 
-	val, _, err = dag.Resolve([]string{"test", "test-key"})
+	val, _, err = dag.Resolve(ctx, []string{"test", "test-key"})
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(43), val)
 
 	// make sure other key & value are still there
-	val, remaining, err = dag.Resolve([]string{"other"})
+	val, remaining, err = dag.Resolve(ctx, []string{"other"})
 	assert.Nil(t, err)
 	assert.Empty(t, remaining)
 	assert.Equal(t, "hello", val)
 
 	// with multiple levels of non-existent path
-	dag, err = dag.SetAsLink([]string{"test"}, map[string]string{
+	dag, err = dag.SetAsLink(ctx, []string{"test"}, map[string]string{
 		"foo": "bar",
 	})
 	assert.Nil(t, err)
 
 	// make sure other key & value are still there
-	val, remaining, err = dag.Resolve([]string{"other"})
+	val, remaining, err = dag.Resolve(ctx, []string{"other"})
 	assert.Nil(t, err)
 	assert.Empty(t, remaining)
 	assert.Equal(t, "hello", val)
 
-	dag, err = dag.Set([]string{"test", "down", "in", "the", "thing"}, "test-str-2")
+	dag, err = dag.Set(ctx, []string{"test", "down", "in", "the", "thing"}, "test-str-2")
 	assert.Nil(t, err)
 
-	val, _, err = dag.Resolve([]string{"test", "down", "in", "the", "thing"})
+	val, _, err = dag.Resolve(ctx, []string{"test", "down", "in", "the", "thing"})
 	assert.Nil(t, err)
 	assert.Equal(t, "test-str-2", val)
 
 	// make sure other key & value are still there
-	val, remaining, err = dag.Resolve([]string{"other"})
+	val, remaining, err = dag.Resolve(ctx, []string{"other"})
 	assert.Nil(t, err)
 	assert.Empty(t, remaining)
 	assert.Equal(t, "hello", val)
 }
 
 func TestDagInvalidSet(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	sw := &safewrap.SafeWrap{}
 
 	child := sw.WrapObject(map[string]interface{}{
@@ -459,11 +498,12 @@ func TestDagInvalidSet(t *testing.T) {
 
 	assert.Nil(t, sw.Err)
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-	dag, err := NewDagWithNodes(store, root, child)
+	store, err := nodestore.MemoryStore(ctx)
+	require.Nil(t, err)
+	dag, err := NewDagWithNodes(ctx, store, root, child)
 	require.Nil(t, err)
 
-	_, err = dag.Set([]string{"test"}, map[string]interface{}{
+	_, err = dag.Set(ctx, []string{"test"}, map[string]interface{}{
 		"child1": "1",
 		"child2": "2",
 	})
@@ -471,6 +511,9 @@ func TestDagInvalidSet(t *testing.T) {
 }
 
 func TestDagGet(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	sw := &safewrap.SafeWrap{}
 
 	child := sw.WrapObject(map[string]interface{}{
@@ -481,21 +524,35 @@ func TestDagGet(t *testing.T) {
 		"child": child.Cid(),
 	})
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-	dag, err := NewDagWithNodes(store, root, child)
+	notStored := sw.WrapObject(map[string]string{"test": "notinthedb"})
+
+	store, err := nodestore.MemoryStore(ctx)
 	require.Nil(t, err)
-	n, err := dag.Get(child.Cid())
+
+	dag, err := NewDagWithNodes(ctx, store, root, child)
+	require.Nil(t, err)
+	n, err := dag.Get(ctx, child.Cid())
 	require.Nil(t, err)
 	assert.Equal(t, child.Cid().String(), n.Cid().String())
+
+	// Getting an not-found node doesn't error
+	n, err = dag.Get(ctx, notStored.Cid())
+	require.Nil(t, err)
+	assert.Nil(t, n)
 }
 
 func TestDagDump(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	// Not really a test here, but do call it just to make sure no panics
-	dag := newDeepDag(t)
-	dag.Dump()
+	dag := newDeepDag(t,ctx)
+	t.Log(dag.Dump(ctx))
 }
 
 func TestDagWithNewTip(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	sw := &safewrap.SafeWrap{}
 
 	child := sw.WrapObject(map[string]interface{}{
@@ -506,18 +563,22 @@ func TestDagWithNewTip(t *testing.T) {
 		"child": child.Cid(),
 	})
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-	dag, err := NewDagWithNodes(store, root, child)
+	store, err := nodestore.MemoryStore(ctx)
+	require.Nil(t, err)
+
+	dag, err := NewDagWithNodes(ctx, store, root, child)
 	require.Nil(t, err)
 
 	newDag := dag.WithNewTip(child.Cid())
 	assert.Equal(t, newDag.Tip.String(), child.Cid().String())
-	nodes, err := newDag.Nodes()
+	nodes, err := newDag.Nodes(ctx)
 	require.Nil(t, err)
 	assert.Len(t, nodes, 1)
 }
 
 func TestDagUpdate(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	sw := &safewrap.SafeWrap{}
 
 	child := sw.WrapObject(map[string]interface{}{
@@ -535,20 +596,26 @@ func TestDagUpdate(t *testing.T) {
 	})
 
 	require.Nil(t, sw.Err)
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-	dag, err := NewDagWithNodes(store, root, intermediary, child)
+
+	store, err := nodestore.MemoryStore(ctx)
 	require.Nil(t, err)
 
-	dag, err = dag.Update([]string{"child1", "child2"}, map[string]interface{}{"name": "changed"})
+	dag, err := NewDagWithNodes(ctx, store, root, intermediary, child)
 	require.Nil(t, err)
 
-	val, remain, err := dag.Resolve([]string{"child1", "child2", "name"})
+	dag, err = dag.Update(ctx, []string{"child1", "child2"}, map[string]interface{}{"name": "changed"})
+	require.Nil(t, err)
+
+	val, remain, err := dag.Resolve(ctx, []string{"child1", "child2", "name"})
 	require.Nil(t, err)
 	assert.Len(t, remain, 0)
 	assert.Equal(t, "changed", val)
 }
 
 func TestDagDelete(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	sw := &safewrap.SafeWrap{}
 
 	child := sw.WrapObject(map[string]interface{}{
@@ -566,14 +633,15 @@ func TestDagDelete(t *testing.T) {
 	})
 
 	require.Nil(t, sw.Err)
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-	dag, err := NewDagWithNodes(store, root, intermediary, child)
+	store, err := nodestore.MemoryStore(ctx)
+	require.Nil(t, err)
+	dag, err := NewDagWithNodes(ctx, store, root, intermediary, child)
 	require.Nil(t, err)
 
-	dag, err = dag.Delete([]string{"child1", "child2"})
+	dag, err = dag.Delete(ctx, []string{"child1", "child2"})
 	require.Nil(t, err)
 
-	val, remain, err := dag.Resolve([]string{"child1"})
+	val, remain, err := dag.Resolve(ctx, []string{"child1"})
 	require.Nil(t, err)
 	assert.Len(t, remain, 0)
 
