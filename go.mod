@@ -28,4 +28,5 @@ require (
 	github.com/warpfork/go-wish v0.0.0-20190328234359-8b3e70f8e830 // indirect
 	golang.org/x/net v0.0.0-20190620200207-3b0461eec859 // indirect
 	golang.org/x/sys v0.0.0-20190626221950-04f50cda93cb // indirect
+	google.golang.org/appengine v1.4.0 // indirect
 )
