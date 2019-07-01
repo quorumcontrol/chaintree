@@ -89,14 +89,12 @@ func (d *Dag) CreateNode(ctx context.Context, obj interface{}) (format.Node, err
 }
 
 // Resolve takes a path (as a string slice) and returns the value, remaining path and any error.
-// It delegates to the underlying store's resolve.
 func (d *Dag) Resolve(ctx context.Context, path []string) (interface{}, []string, error) {
 	return d.ResolveAt(ctx, d.Tip, path)
 }
 
 // ResolveAt takes a tip and a path (as a string slice) and returns the value, remaining path
 // and any error.
-// It delegates to the underlying store's resolve.
 func (d *Dag) ResolveAt(ctx context.Context, tip cid.Cid, path []string) (val interface{}, remaining []string, err error) {
 	node, err := d.store.Get(ctx, tip)
 	if err != nil {
