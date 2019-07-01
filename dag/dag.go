@@ -20,17 +20,15 @@ type Dag struct {
 	Tip     cid.Cid
 	oldTips []cid.Cid
 	store   nodestore.DagStore
-	ctx     context.Context
 }
 
 type NodeMap map[cid.Cid]format.Node
 
 // NewDag takes a tip and a store and returns an initialized Dag
-func NewDag(ctx context.Context, tip cid.Cid, store nodestore.DagStore) *Dag {
+func NewDag(_ context.Context, tip cid.Cid, store nodestore.DagStore) *Dag {
 	return &Dag{
 		Tip:   tip,
 		store: store,
-		ctx:   ctx,
 	}
 }
 
@@ -39,7 +37,6 @@ func NewDagWithNodes(ctx context.Context, store nodestore.DagStore, nodes ...for
 	dag := &Dag{
 		Tip:   nodes[0].Cid(),
 		store: store,
-		ctx:   ctx,
 	}
 	err := dag.AddNodes(ctx, nodes...)
 	if err != nil {
