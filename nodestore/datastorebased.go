@@ -32,13 +32,7 @@ func MustMemoryStore(ctx context.Context) DagStore {
 func FromDatastoreOffline(ctx context.Context, ds datastore.Batching) (DagStore, error) {
 	bs := blockstore.NewBlockstore(ds)
 	bs = blockstore.NewIdStore(bs)
-	cachedbs, err := blockstore.CachedBlockstore(ctx, bs, blockstore.DefaultCacheOpts())
-	if err != nil {
-		return nil, err
-	}
-
-	bserv := blockservice.New(cachedbs, &nullExchange{}) //only do offline for now.
-
+	bserv := blockservice.New(bs, &nullExchange{}) //only do offline for now.
 	dags := merkledag.NewDAGService(bserv)
 	return dags, nil
 }
