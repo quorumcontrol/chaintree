@@ -200,6 +200,7 @@ func (ct *ChainTree) Tree(ctx context.Context) (*dag.Dag, error) {
 }
 
 func (ct *ChainTree) ProcessBlockImmutable(ctx context.Context, blockWithHeaders *BlockWithHeaders) (newChainTree *ChainTree, valid bool, err error) {
+	fmt.Println("PROCESSING BLOCK")
 	if blockWithHeaders == nil {
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: "must have a block to process"}
 	}
