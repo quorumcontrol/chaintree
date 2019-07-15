@@ -358,6 +358,7 @@ func (ct *ChainTree) ProcessBlockImmutable(ctx context.Context, blockWithHeaders
 // of the Chain Tree is updated and the block is appended to the chain part
 // of the Chain Tree
 func (ct *ChainTree) ProcessBlock(ctx context.Context, blockWithHeaders *BlockWithHeaders) (valid bool, err error) {
+	fmt.Println("ProcessBlock")
 	newChainTree, valid, err := ct.ProcessBlockImmutable(ctx, blockWithHeaders)
 	if err != nil || !valid {
 		return valid, err
