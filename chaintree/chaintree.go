@@ -210,7 +210,9 @@ func (ct *ChainTree) ProcessBlockImmutable(ctx context.Context, blockWithHeaders
 	}
 
 	// first validate the block
+	fmt.Printf("about to run validators: %+v\n", newChainTree.BlockValidators)
 	for _, validator := range newChainTree.BlockValidators {
+		fmt.Printf("running validator: %+v\n", validator)
 		valid, err := validator(newChainTree.Dag, blockWithHeaders)
 		if err != nil || !valid {
 			return nil, valid, err
