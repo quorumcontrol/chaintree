@@ -225,6 +225,7 @@ func TestBuildingUpAChain(t *testing.T) {
 		},
 	)
 	require.Nil(t, err)
+	startingTip := tree.Dag.Tip
 
 	txn, err := NewSetDataTransaction("down/in/the/thing", "hi")
 	require.Nil(t, err)
@@ -268,8 +269,17 @@ func TestBuildingUpAChain(t *testing.T) {
 	entry, remain, err := tree.Dag.Resolve(ctx, []string{"chain", "end"})
 	assert.Nil(t, err)
 	assert.Len(t, remain, 0)
-	t.Log("previousTip", entry.(map[string]interface{}), "block1Cid", block1Cid.String())
+	t.Log("previousBlock", entry.(map[string]interface{}), "block1Cid", block1Cid.String())
 	assert.True(t, entry.(map[string]interface{})["previousBlock"].(cid.Cid).Equals(block1Cid))
+
+	require.NotEqual(t, tree.Dag.Tip.String(), startingTip.String())
+	require.NotEqual(t, tree.root.cid.String(), startingTip.String())
+
+	// check `.At` can retrieve a previous state of chaintree
+	startingTree, err := tree.At(ctx, &startingTip)
+	require.Nil(t, err)
+	assert.Equal(t, startingTip.String(), startingTree.Dag.Tip.String())
+	assert.Equal(t, startingTip.String(), startingTree.root.cid.String())
 }
 
 func TestBlockProcessing(t *testing.T) {

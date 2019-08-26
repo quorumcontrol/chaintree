@@ -179,7 +179,7 @@ func (ct *ChainTree) At(ctx context.Context, tip *cid.Cid) (*ChainTree, error) {
 	}
 
 	return &ChainTree{
-		Dag:             ct.Dag,
+		Dag:             ct.Dag.WithNewTip(root.cid),
 		Transactors:     ct.Transactors,
 		BlockValidators: ct.BlockValidators,
 		Metadata:        ct.Metadata,
@@ -369,19 +369,12 @@ func (ct *ChainTree) getRoot(ctx context.Context) (*RootNode, error) {
 	if ct.root != nil && ct.root.cid.Equals(ct.Dag.Tip) {
 		return ct.root, nil
 	}
-	unmarshaledRoot, err := ct.Dag.Get(ctx, ct.Dag.Tip)
-	if unmarshaledRoot == nil || err != nil {
-		return nil, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error: missing root: %v", err)}
-	}
 
-	root := &RootNode{}
-
-	err = cbornode.DecodeInto(unmarshaledRoot.RawData(), root)
+	root, err := ct.getRootAt(ctx, ct.Dag.Tip)
 	if err != nil {
-		return nil, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error decoding root: %v", err)}
+		return nil, err
 	}
 
-	root.cid = ct.Dag.Tip
 	ct.root = root
 	return root, nil
 }
@@ -399,5 +392,6 @@ func (ct *ChainTree) getRootAt(ctx context.Context, tip cid.Cid) (*RootNode, err
 		return nil, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error decoding root: %v", err)}
 	}
 
+	root.cid = unmarshaledRoot.Cid()
 	return root, nil
 }
