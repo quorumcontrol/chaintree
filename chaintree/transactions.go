@@ -52,7 +52,7 @@ func NewEstablishTokenTransaction(name string, max uint64) (*transactions.Transa
 	}
 
 	return &transactions.Transaction{
-		Type: transactions.Transaction_ESTABLISHTOKEN,
+		Type:                  transactions.Transaction_ESTABLISHTOKEN,
 		EstablishTokenPayload: payload,
 	}, nil
 }
@@ -83,12 +83,12 @@ func NewSendTokenTransaction(id, name string, amount uint64, destination string)
 	}, nil
 }
 
-func NewReceiveTokenTransaction(sendTid string, tip []byte, sig *signatures.Signature, leaves [][]byte) (*transactions.Transaction, error) {
+func NewReceiveTokenTransaction(sendTid string, tip []byte, treeState *signatures.TreeState, leaves [][]byte) (*transactions.Transaction, error) {
 	payload := &transactions.ReceiveTokenPayload{
 		SendTokenTransactionId: sendTid,
-		Tip:       tip,
-		Signature: sig,
-		Leaves:    leaves,
+		Tip:                    tip,
+		TreeState:              treeState,
+		Leaves:                 leaves,
 	}
 
 	return &transactions.Transaction{
