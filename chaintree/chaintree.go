@@ -53,6 +53,7 @@ func init() {
 	typecaster.AddType(Chain{})
 	typecaster.AddType(BlockWithHeaders{})
 	typecaster.AddType(Block{})
+	typecaster.AddType(signatures.Ownership{})
 	typecaster.AddType(signatures.Signature{})
 	typecaster.AddType(transactions.Transaction{})
 	typecaster.AddType(transactions.SetDataPayload{})
