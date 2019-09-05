@@ -458,14 +458,20 @@ func TestTypecasts(t *testing.T) {
 	require.Nil(t, err)
 	require.Nil(t, remaining)
 
+	// var uncastBlock interface{}
+	// cbornode.DecodeInto(node.RawData(), &uncastBlock)
+
 	decodedBlock := &BlockWithHeaders{}
 	err = typecaster.ToType(uncastBlock, decodedBlock)
 	require.Nil(t, sw.Err)
 
-	// Passes:
+	// Fully Passes:
 	// decodedBlock = block
 
+	// Succeeds
 	assert.Equal(t, block.Height, decodedBlock.Height)
+	// Fails
 	assert.False(t, decodedBlock.PreviousTip.Equals(cid.Undef))
+	// Fails
 	assert.Equal(t, block.PreviousTip.String(), decodedBlock.PreviousTip.String())
 }
