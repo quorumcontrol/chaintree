@@ -11,6 +11,7 @@ import (
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
+	"github.com/quorumcontrol/chaintree/typecaster"
 	"github.com/quorumcontrol/messages/build/go/transactions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -429,4 +430,34 @@ func BenchmarkEncodeDecode(b *testing.B) {
 		_, _, err = chainTree.Dag.Resolve(ctx, []string{"tree", "down", "in", "the", "thing"})
 	}
 	require.Nil(b, err)
+}
+
+func TestTypecasts(t *testing.T) {
+	txn, err := NewSetDataTransaction("down/in/the/thing", "hi")
+	require.Nil(t, err)
+
+	someCid, err := cid.Decode("bafyreidybczi23cq2tows47wknyhttx3xg43mjg4xoimsotcvncbaciesi")
+	require.Nil(t, err)
+
+	block := &BlockWithHeaders{
+		Block: Block{
+			Transactions: []*transactions.Transaction{txn},
+			PreviousTip:  &someCid,
+			Height:       2,
+		},
+		Headers: map[string]interface{}{
+			"cool": "cool",
+		},
+	}
+
+	sw := &safewrap.SafeWrap{}
+	cast := sw.WrapObject(block)
+	require.Nil(t, sw.Err)
+
+	decodedBlock := &BlockWithHeaders{}
+	err = typecaster.ToType(cast, decodedBlock)
+	require.Nil(t, sw.Err)
+
+	assert.Equal(t, block.Height, decodedBlock.Height)
+	assert.Equal(t, block.PreviousTip, decodedBlock.PreviousTip)
 }
