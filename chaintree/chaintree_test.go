@@ -1,10 +1,10 @@
 package chaintree
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
-	"context"
 
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
@@ -46,7 +46,7 @@ func setData(_ string, tree *dag.Dag, transaction *transactions.Transaction) (ne
 }
 
 func TestChainTree_Id(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	sw := &safewrap.SafeWrap{}
 
@@ -82,7 +82,7 @@ func TestChainTree_Id(t *testing.T) {
 }
 
 func TestHeightValidation(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	sw := &safewrap.SafeWrap{}
@@ -195,7 +195,7 @@ func TestHeightValidation(t *testing.T) {
 }
 
 func TestBuildingUpAChain(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	sw := &safewrap.SafeWrap{}
@@ -284,7 +284,7 @@ func TestBuildingUpAChain(t *testing.T) {
 }
 
 func TestBlockProcessing(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	sw := &safewrap.SafeWrap{}
@@ -384,7 +384,7 @@ func TestBlockProcessing(t *testing.T) {
 
 func BenchmarkEncodeDecode(b *testing.B) {
 	sw := &safewrap.SafeWrap{}
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	tree := sw.WrapObject(map[string]string{
@@ -458,6 +458,10 @@ func TestTypecasts(t *testing.T) {
 	err = typecaster.ToType(cast, decodedBlock)
 	require.Nil(t, sw.Err)
 
+	// Passes:
+	// decodedBlock = block
+
 	assert.Equal(t, block.Height, decodedBlock.Height)
-	assert.Equal(t, block.PreviousTip, decodedBlock.PreviousTip)
+	require.NotNil(t, decodedBlock.PreviousTip)
+	assert.True(t, block.PreviousTip.Equals(*decodedBlock.PreviousTip))
 }
