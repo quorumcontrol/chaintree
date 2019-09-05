@@ -468,8 +468,14 @@ func TestTypecasts(t *testing.T) {
 	// Fully Passes:
 	// decodedBlock = block
 
+	blockAsMap, ok := uncastBlock.(map[string]interface{})
+	require.True(t, ok)
+
 	// Succeeds
 	assert.Equal(t, block.Height, decodedBlock.Height)
+	// Succeeds
+	assert.Equal(t, block.PreviousTip.String(), blockAsMap["previousTip"].(cid.Cid).String())
+
 	// Fails
 	assert.False(t, decodedBlock.PreviousTip.Equals(cid.Undef))
 	// Fails
