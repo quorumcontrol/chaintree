@@ -451,17 +451,21 @@ func TestTypecasts(t *testing.T) {
 	}
 
 	sw := &safewrap.SafeWrap{}
-	cast := sw.WrapObject(block)
+	node := sw.WrapObject(block)
 	require.Nil(t, sw.Err)
 
+	uncastBlock, remaining, err := node.Resolve([]string{})
+	require.Nil(t, err)
+	require.Nil(t, remaining)
+
 	decodedBlock := &BlockWithHeaders{}
-	err = typecaster.ToType(cast, decodedBlock)
+	err = typecaster.ToType(uncastBlock, decodedBlock)
 	require.Nil(t, sw.Err)
 
 	// Passes:
 	// decodedBlock = block
 
 	assert.Equal(t, block.Height, decodedBlock.Height)
-	require.NotNil(t, decodedBlock.PreviousTip)
-	assert.True(t, block.PreviousTip.Equals(*decodedBlock.PreviousTip))
+	assert.False(t, decodedBlock.PreviousTip.Equals(cid.Undef))
+	assert.Equal(t, block.PreviousTip.String(), decodedBlock.PreviousTip.String())
 }
