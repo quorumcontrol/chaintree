@@ -6,6 +6,7 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-merkledag"
+	"github.com/quorumcontrol/chaintree/cachedblockstore"
 
 	"github.com/ipfs/go-blockservice"
 	datastore "github.com/ipfs/go-datastore"
@@ -29,15 +30,35 @@ func MustMemoryStore(ctx context.Context) DagStore {
 	return ds
 }
 
+func FromDatastoreOfflineCached(ctx context.Context, ds datastore.Batching) (DagStore, error) {
+	bs := blockstoreFromDatastore(ds, true)
+	return dagstoreFromBlockstore(bs), nil
+}
+
 func FromDatastoreOffline(ctx context.Context, ds datastore.Batching) (DagStore, error) {
-	bs := blockstore.NewBlockstore(ds)
-	bs = blockstore.NewIdStore(bs)
+	bs := blockstoreFromDatastore(ds, false)
+	return dagstoreFromBlockstore(bs), nil
+}
+
+func dagstoreFromBlockstore(bs blockstore.Blockstore) DagStore {
 	// The reason this is writethrough is that the blockstore *also* does a check to see
 	// if the blocks exist, this is an expensive operation on any non-local storage (like s3).
 	// this `NewWriteThrough` is a convenient way to skip one of the checks
 	bserv := blockservice.NewWriteThrough(bs, &nullExchange{})
-	dags := merkledag.NewDAGService(bserv)
-	return dags, nil
+	return merkledag.NewDAGService(bserv)
+}
+
+func blockstoreFromDatastore(ds datastore.Batching, cached bool) blockstore.Blockstore {
+	bs := blockstore.NewBlockstore(ds)
+	bs = blockstore.NewIdStore(bs)
+	if cached {
+		wrapped, err := cachedblockstore.WrapInCache(bs)
+		if err != nil {
+			panic(err) // this only fails if for some reason the lru didn't initalize, which doesn't happen
+		}
+		return wrapped
+	}
+	return bs
 }
 
 type nullExchange struct {
