@@ -32,7 +32,10 @@ func MustMemoryStore(ctx context.Context) DagStore {
 func FromDatastoreOffline(ctx context.Context, ds datastore.Batching) (DagStore, error) {
 	bs := blockstore.NewBlockstore(ds)
 	bs = blockstore.NewIdStore(bs)
-	bserv := blockservice.New(bs, &nullExchange{}) //only do offline for now.
+	// The reason this is writethrough is that the blockstore *also* does a check to see
+	// if the blocks exist, this is an expensive operation on any non-local storage (like s3).
+	// this `NewWriteThrough` is a convenient way to skip one of the checks
+	bserv := blockservice.NewWriteThrough(bs, &nullExchange{})
 	dags := merkledag.NewDAGService(bserv)
 	return dags, nil
 }
