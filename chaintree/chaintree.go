@@ -294,7 +294,6 @@ func (ct *ChainTree) ProcessBlockImmutable(ctx context.Context, blockWithHeaders
 
 	// if this is the first block
 	if chain.End == nil {
-
 		if height := blockWithHeaders.Block.Height; height != 0 {
 			return nil, false, &ErrorCode{Code: ErrBadHeight, Memo: fmt.Sprintf("first block must have a height of 0, had: %d", height)}
 		}
