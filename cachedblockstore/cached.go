@@ -34,7 +34,11 @@ func (cbs *CachedBlockstore) Get(id cid.Cid) (blocks.Block, error) {
 	if ok {
 		return blckInter.(blocks.Block), nil
 	}
-	return cbs.Blockstore.Get(id)
+	blk, err := cbs.Blockstore.Get(id)
+	if err == nil {
+		cbs.cache.Add(blk.Cid(), blk)
+	}
+	return blk, err
 }
 
 func (cbs *CachedBlockstore) Has(id cid.Cid) (bool, error) {
@@ -46,13 +50,19 @@ func (cbs *CachedBlockstore) Has(id cid.Cid) (bool, error) {
 }
 
 func (cbs *CachedBlockstore) Put(block blocks.Block) error {
-	cbs.cache.Add(block.Cid(), block)
-	return cbs.Blockstore.Put(block)
+	err := cbs.Blockstore.Put(block)
+	if err == nil {
+		cbs.cache.Add(block.Cid(), block)
+	}
+	return err
 }
 
 func (cbs *CachedBlockstore) PutMany(blocks []blocks.Block) error {
-	for _, block := range blocks {
-		cbs.cache.Add(block.Cid(), block)
+	err := cbs.Blockstore.PutMany(blocks)
+	if err == nil {
+		for _, block := range blocks {
+			cbs.cache.Add(block.Cid(), block)
+		}
 	}
-	return cbs.Blockstore.PutMany(blocks)
+	return err
 }
