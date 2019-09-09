@@ -2,7 +2,12 @@ package dag
 
 import (
 	"context"
+	"math"
 	"testing"
+
+	"github.com/ipfs/go-cid"
+	cbornode "github.com/ipfs/go-ipld-cbor"
+	format "github.com/ipfs/go-ipld-format"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -10,6 +15,15 @@ import (
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
 )
+
+type dagTestStruct struct {
+	Height uint64 `refmt:"height" json:"height" cbor:"height"`
+	Child  *cid.Cid
+}
+
+func init() {
+	cbornode.RegisterCborType(dagTestStruct{})
+}
 
 func newDeepDag(t *testing.T, ctx context.Context) *Dag {
 	sw := safewrap.SafeWrap{}
@@ -53,6 +67,76 @@ func TestDagNodes(t *testing.T) {
 	assert.Nil(t, err)
 	// Removes uniques
 	assert.Len(t, nodes, 4)
+}
+
+// This test is asserting a weirdness just to show you what's going on with uint64
+// because we resolve into an empty interface{}, refmt now defaults to a int intead of an int64
+func TestUint64(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sw := safewrap.SafeWrap{}
+	// making a struct with the maximum uint64 size
+	child := sw.WrapObject(&dagTestStruct{Height: math.MaxUint64})
+	root := sw.WrapObject(map[string]interface{}{"child": child.Cid(), "root": true})
+	require.Nil(t, sw.Err)
+
+	store, err := nodestore.MemoryStore(ctx)
+	require.Nil(t, err)
+	dag, err := NewDagWithNodes(ctx, store, root, child)
+	require.Nil(t, err)
+
+	// resolving to an empty interface overflows the int and makes it a -1
+	val, remain, err := dag.Resolve(ctx, []string{"child", "height"})
+	require.Nil(t, err)
+	assert.Len(t, remain, 0)
+	assert.Equal(t, -1, val)
+
+	// however, you can resolve to a known type and it will resolve correctly
+	typed := &dagTestStruct{}
+	err = dag.ResolveInto(ctx, []string{"child"}, typed)
+	require.Nil(t, err)
+	assert.Equal(t, uint64(math.MaxUint64), typed.Height)
+}
+
+func TestResolveInto(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sw := safewrap.SafeWrap{}
+	store, err := nodestore.MemoryStore(ctx)
+	require.Nil(t, err)
+
+	// it works when the node is the root node
+	root := sw.WrapObject(&dagTestStruct{Height: 1234})
+	require.Nil(t, sw.Err)
+
+	dag, err := NewDagWithNodes(ctx, store, root)
+	require.Nil(t, err)
+	newRoot := &dagTestStruct{}
+	err = dag.ResolveInto(ctx, nil, newRoot)
+	require.Nil(t, err)
+	assert.Equal(t, uint64(1234), newRoot.Height)
+
+	// it works one level down (and with a uint64)
+	child := sw.WrapObject(&dagTestStruct{Height: math.MaxUint64})
+	root = sw.WrapObject(map[string]interface{}{"child": child.Cid(), "root": true})
+	require.Nil(t, sw.Err)
+
+	dag, err = NewDagWithNodes(ctx, store, root, child)
+	require.Nil(t, err)
+	newChild := &dagTestStruct{}
+	err = dag.ResolveInto(ctx, []string{"child"}, newChild)
+	require.Nil(t, err)
+	assert.Equal(t, uint64(math.MaxUint64), newChild.Height)
+
+	// it gives a not found when trying to use a link with a remain
+	err = dag.ResolveInto(ctx, []string{"child", "bob"}, newChild)
+	assert.Equal(t, format.ErrNotFound, err)
+
+	// it gives an error when trying to use a non-object
+	err = dag.ResolveInto(ctx, []string{"child", "child"}, newChild)
+	assert.Equal(t, "error the path did not resolve to a link", err.Error())
 }
 
 func TestDagResolve(t *testing.T) {
@@ -545,7 +629,7 @@ func TestDagDump(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	// Not really a test here, but do call it just to make sure no panics
-	dag := newDeepDag(t,ctx)
+	dag := newDeepDag(t, ctx)
 	t.Log(dag.Dump(ctx))
 }
 
