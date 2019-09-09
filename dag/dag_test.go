@@ -459,7 +459,7 @@ func TestDagSetNestedAfterSet(t *testing.T) {
 
 	val, _, err = dag.Resolve(ctx, []string{"test", "test-key"})
 	assert.Nil(t, err)
-	assert.Equal(t, uint64(43), val)
+	assert.Equal(t, 43, val)
 
 	// with multiple levels of non-existent path
 	dag, err = dag.Set(ctx, []string{"test"}, "test-str")
@@ -532,7 +532,7 @@ func TestDagSetAsLinkAfterSet(t *testing.T) {
 
 	val, _, err = dag.Resolve(ctx, []string{"test", "test-key"})
 	assert.Nil(t, err)
-	assert.Equal(t, uint64(43), val)
+	assert.Equal(t, 43, val)
 
 	// make sure other key & value are still there
 	val, remaining, err = dag.Resolve(ctx, []string{"other"})
