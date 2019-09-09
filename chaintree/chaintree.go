@@ -4,15 +4,20 @@ import (
 	"fmt"
 	"reflect"
 
+	logging "github.com/ipfs/go-log"
+
 	"context"
 
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/dag"
+	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/chaintree/typecaster"
 	"github.com/quorumcontrol/messages/build/go/signatures"
 	"github.com/quorumcontrol/messages/build/go/transactions"
 )
+
+var logger = logging.Logger("chaintree")
 
 const (
 	ErrUnknownTransactionType = 1
@@ -91,6 +96,16 @@ type RootNode struct {
 	Id     string   `refmt:"id"`
 	Height uint64   `refmt:"height" json:"height" cbor:"height"`
 	cid    cid.Cid
+}
+
+func (rn *RootNode) Copy() *RootNode {
+	return &RootNode{
+		Chain:  rn.Chain,
+		Tree:   rn.Tree,
+		Id:     rn.Id,
+		Height: rn.Height,
+		cid:    rn.cid,
+	}
 }
 
 type Block struct {
@@ -200,6 +215,10 @@ func (ct *ChainTree) Tree(ctx context.Context) (*dag.Dag, error) {
 }
 
 func (ct *ChainTree) ProcessBlockImmutable(ctx context.Context, blockWithHeaders *BlockWithHeaders) (newChainTree *ChainTree, valid bool, err error) {
+	ctx = logger.Start(ctx, "chaintree.ProcessBlockImmutable")
+	defer logger.Finish(ctx)
+	sw := &safewrap.SafeWrap{}
+
 	if blockWithHeaders == nil {
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: "must have a block to process"}
 	}
@@ -221,6 +240,8 @@ func (ct *ChainTree) ProcessBlockImmutable(ctx context.Context, blockWithHeaders
 	if err != nil {
 		return nil, false, err
 	}
+
+	root = root.Copy()
 
 	if root.Tree == nil {
 		return nil, false, &ErrorCode{Code: ErrInvalidTree, Memo: "error getting treeLink"}
@@ -245,20 +266,16 @@ func (ct *ChainTree) ProcessBlockImmutable(ctx context.Context, blockWithHeaders
 		}
 	}
 
-	unmarshaledTreeTip, err := newTree.Get(ctx, newTree.Tip)
-	if err != nil {
-		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting new tree tip: %v", err)}
+	root.Tree = &newTree.Tip
+	n := sw.WrapObject(root)
+	if sw.Err != nil {
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error wrapping root: %v", err)}
 	}
-	newTreeMap := make(map[string]interface{})
-	err = cbornode.DecodeInto(unmarshaledTreeTip.RawData(), &newTreeMap)
+	err = newChainTree.Dag.AddNodes(ctx, n)
 	if err != nil {
-		return nil, false, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error decoding new tree root into map: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error adding nodes: %v", err)}
 	}
-
-	newChainTree.Dag, err = newChainTree.Dag.SetAsLink(ctx, []string{TreeLabel}, newTreeMap)
-	if err != nil {
-		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error setting as link: %v", err)}
-	}
+	newChainTree.Dag = newChainTree.Dag.WithNewTip(n.Cid())
 
 	chainNode, err := newChainTree.Dag.Get(ctx, *root.Chain)
 	if err != nil {
@@ -277,6 +294,7 @@ func (ct *ChainTree) ProcessBlockImmutable(ctx context.Context, blockWithHeaders
 
 	// if this is the first block
 	if chain.End == nil {
+
 		if height := blockWithHeaders.Block.Height; height != 0 {
 			return nil, false, &ErrorCode{Code: ErrBadHeight, Memo: fmt.Sprintf("first block must have a height of 0, had: %d", height)}
 		}
@@ -355,31 +373,42 @@ func (ct *ChainTree) ProcessBlockImmutable(ctx context.Context, blockWithHeaders
 // of the Chain Tree is updated and the block is appended to the chain part
 // of the Chain Tree
 func (ct *ChainTree) ProcessBlock(ctx context.Context, blockWithHeaders *BlockWithHeaders) (valid bool, err error) {
+	ctx = logger.Start(ctx, "chaintree.ProcessBlock")
+
 	newChainTree, valid, err := ct.ProcessBlockImmutable(ctx, blockWithHeaders)
 	if err != nil || !valid {
+		logger.FinishWithErr(ctx, err)
 		return valid, err
 	}
 
 	ct.Dag = newChainTree.Dag
-
+	logger.Finish(ctx)
 	return true, nil
 }
 
 func (ct *ChainTree) getRoot(ctx context.Context) (*RootNode, error) {
+	ctx = logger.Start(ctx, "chaintree.getRoot")
+
 	if ct.root != nil && ct.root.cid.Equals(ct.Dag.Tip) {
+		logger.Finish(ctx)
 		return ct.root, nil
 	}
 
 	root, err := ct.getRootAt(ctx, ct.Dag.Tip)
 	if err != nil {
+		logger.FinishWithErr(ctx, err)
 		return nil, err
 	}
 
 	ct.root = root
+	logger.Finish(ctx)
 	return root, nil
 }
 
 func (ct *ChainTree) getRootAt(ctx context.Context, tip cid.Cid) (*RootNode, error) {
+	ctx = logger.Start(ctx, "chaintree.getRootAt")
+	defer logger.Finish(ctx)
+
 	unmarshaledRoot, err := ct.Dag.Get(ctx, tip)
 	if unmarshaledRoot == nil || err != nil {
 		return nil, &ErrorCode{Code: ErrInvalidTree, Memo: fmt.Sprintf("error: invalid tip or missing root: %v", err)}
