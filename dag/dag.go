@@ -233,7 +233,7 @@ func (d *Dag) nodeAndDescendants(ctx context.Context, node format.Node, collecto
 			continue
 		}
 		linkNode, err := d.store.Get(ctx, link.Cid)
-		if err != nil {
+		if err != nil && err != format.ErrNotFound {
 			return fmt.Errorf("error getting link: %v", err)
 		}
 		if linkNode == nil {
@@ -450,7 +450,7 @@ func (d *Dag) dumpNode(ctx context.Context, node format.Node, isLink bool) inter
 	if err := cbornode.DecodeInto(node.RawData(), &nodeData); err != nil {
 		panic(err)
 	}
-	
+
 	switch nodeData.(type) {
 	case map[interface{}]interface{}:
 		nodeMap := nodeData.(map[interface{}]interface{})
