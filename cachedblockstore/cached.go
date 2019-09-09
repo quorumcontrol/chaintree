@@ -1,16 +1,12 @@
 package cachedblockstore
 
 import (
-	logging "github.com/ipfs/go-log"
-
 	lru "github.com/hashicorp/golang-lru"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"golang.org/x/xerrors"
 )
-
-var logger = logging.Logger("nodestore")
 
 type CachedBlockstore struct {
 	blockstore.Blockstore
