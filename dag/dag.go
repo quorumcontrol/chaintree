@@ -279,7 +279,7 @@ func (d *Dag) nodeAndDescendants(ctx context.Context, node format.Node, collecto
 			continue
 		}
 		linkNode, err := d.store.Get(ctx, link.Cid)
-		if err != nil {
+		if err != nil && err != format.ErrNotFound {
 			return fmt.Errorf("error getting link: %v", err)
 		}
 		if linkNode == nil {
