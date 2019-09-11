@@ -24,7 +24,7 @@ func TestFromDatastoreOfflineCached(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	store := dsync.MutexWrap(datastore.NewMapDatastore())
-	ds, err := FromDatastoreOfflineCached(ctx, store)
+	ds, err := FromDatastoreOfflineCached(ctx, store, 100)
 	require.Nil(t, err)
 	require.NotNil(t, ds)
 }
