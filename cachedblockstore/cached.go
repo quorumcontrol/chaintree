@@ -13,8 +13,8 @@ type CachedBlockstore struct {
 	cache *lru.Cache
 }
 
-func WrapInCache(bs blockstore.Blockstore) (*CachedBlockstore, error) {
-	cache, err := lru.New(10000)
+func WrapInCache(bs blockstore.Blockstore, size int) (*CachedBlockstore, error) {
+	cache, err := lru.New(size)
 	if err != nil {
 		return nil, xerrors.Errorf("error creating cache: %w", err)
 	}

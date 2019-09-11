@@ -30,13 +30,13 @@ func MustMemoryStore(ctx context.Context) DagStore {
 	return ds
 }
 
-func FromDatastoreOfflineCached(ctx context.Context, ds datastore.Batching) (DagStore, error) {
-	bs := blockstoreFromDatastore(ds, true)
+func FromDatastoreOfflineCached(ctx context.Context, ds datastore.Batching, cachesize int) (DagStore, error) {
+	bs := blockstoreFromDatastore(ds, cachesize)
 	return dagstoreFromBlockstore(bs), nil
 }
 
 func FromDatastoreOffline(ctx context.Context, ds datastore.Batching) (DagStore, error) {
-	bs := blockstoreFromDatastore(ds, false)
+	bs := blockstoreFromDatastore(ds, -1)
 	return dagstoreFromBlockstore(bs), nil
 }
 
@@ -48,11 +48,11 @@ func dagstoreFromBlockstore(bs blockstore.Blockstore) DagStore {
 	return merkledag.NewDAGService(bserv)
 }
 
-func blockstoreFromDatastore(ds datastore.Batching, cached bool) blockstore.Blockstore {
+func blockstoreFromDatastore(ds datastore.Batching, cachesize int) blockstore.Blockstore {
 	bs := blockstore.NewBlockstore(ds)
 	bs = blockstore.NewIdStore(bs)
-	if cached {
-		wrapped, err := cachedblockstore.WrapInCache(bs)
+	if cachesize > 0 {
+		wrapped, err := cachedblockstore.WrapInCache(bs, cachesize)
 		if err != nil {
 			panic(err) // this only fails if for some reason the lru didn't initalize, which doesn't happen
 		}

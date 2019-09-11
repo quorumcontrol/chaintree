@@ -17,7 +17,7 @@ import (
 
 func TestGetWhenKeyNotPresent(t *testing.T) {
 	underlying := blockstore.NewBlockstore(dsync.MutexWrap(ds.NewMapDatastore()))
-	bs, err := WrapInCache(underlying)
+	bs, err := WrapInCache(underlying, 100)
 	if err != nil {
 		t.Error(err)
 	}
@@ -34,7 +34,7 @@ func TestGetWhenKeyNotPresent(t *testing.T) {
 
 func TestGetWhenKeyIsNil(t *testing.T) {
 	underlying := blockstore.NewBlockstore(dsync.MutexWrap(ds.NewMapDatastore()))
-	bs, err := WrapInCache(underlying)
+	bs, err := WrapInCache(underlying, 100)
 	if err != nil {
 		t.Error(err)
 	}
@@ -46,7 +46,7 @@ func TestGetWhenKeyIsNil(t *testing.T) {
 
 func TestPutThenGetBlock(t *testing.T) {
 	underlying := blockstore.NewBlockstore(dsync.MutexWrap(ds.NewMapDatastore()))
-	bs, err := WrapInCache(underlying)
+	bs, err := WrapInCache(underlying, 100)
 	if err != nil {
 		t.Error(err)
 	}
