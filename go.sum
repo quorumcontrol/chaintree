@@ -130,6 +130,8 @@ github.com/ipfs/go-ipfs-util v0.0.1 h1:Wz9bL2wB2YBJqggkA4dD7oSmqB4cAnpNbGrlHJulv
 github.com/ipfs/go-ipfs-util v0.0.1/go.mod h1:spsl5z8KUnrve+73pOhSVZND1SIxPW5RyBCNzQxlJBc=
 github.com/ipfs/go-ipld-cbor v0.0.2 h1:amzFztBQQQ69UA5+f7JRfoXF/z2l//MGfEDHVkS20+s=
 github.com/ipfs/go-ipld-cbor v0.0.2/go.mod h1:wTBtrQZA3SoFKMVkp6cn6HMRteIB1VsmHA0AQFOn7Nc=
+github.com/ipfs/go-ipld-cbor v0.0.3 h1:ENsxvybwkmke7Z/QJOmeJfoguj6GH3Y0YOaGrfy9Q0I=
+github.com/ipfs/go-ipld-cbor v0.0.3/go.mod h1:wTBtrQZA3SoFKMVkp6cn6HMRteIB1VsmHA0AQFOn7Nc=
 github.com/ipfs/go-ipld-cbor v1.5.1-0.20190302174746-59d816225550 h1:pqfOE+MCGm6quxZkpMHjbsyX+9uZ9FfHZ/Fskvk31qQ=
 github.com/ipfs/go-ipld-cbor v1.5.1-0.20190302174746-59d816225550/go.mod h1:RXHr8s4k0NE0TKhnrxqZC9M888QfsBN9rhS5NjfKzY8=
 github.com/ipfs/go-ipld-format v0.0.1 h1:HCu4eB/Gh+KD/Q0M8u888RFkorTWNIL3da4oc5dwc80=
@@ -386,6 +388,8 @@ github.com/polydawn/refmt v0.0.0-20190408063855-01bf1e26dd14 h1:2m16U/rLwVaRdz7A
 github.com/polydawn/refmt v0.0.0-20190408063855-01bf1e26dd14/go.mod h1:uIp+gprXxxrWSjjklXD+mN4wed/tMfjMMmN/9+JsA9o=
 github.com/polydawn/refmt v0.0.0-20190807000000-3d65705ee9f12dc0dfcc0dc6cf9666e97b93f339 h1:zX5xrCBFjAVX9BNp0JR5NxcJxIZAO8d2IvHGdlMvxYQ=
 github.com/polydawn/refmt v0.0.0-20190807000000-3d65705ee9f12dc0dfcc0dc6cf9666e97b93f339/go.mod h1:uIp+gprXxxrWSjjklXD+mN4wed/tMfjMMmN/9+JsA9o=
+github.com/polydawn/refmt v0.0.0-20190807091052-3d65705ee9f1 h1:CskT+S6Ay54OwxBGB0R3Rsx4Muto6UnEYTyKJbyRIAI=
+github.com/polydawn/refmt v0.0.0-20190807091052-3d65705ee9f1/go.mod h1:uIp+gprXxxrWSjjklXD+mN4wed/tMfjMMmN/9+JsA9o=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190530182608-30c127bffefb h1:x/0eUSPARsrbdV1R/3vJWIT8P3EhUaF1AIYPu9L4TKg=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190530182608-30c127bffefb h1:x/0eUSPARsrbdV1R/3vJWIT8P3EhUaF1AIYPu9L4TKg=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190530182608-30c127bffefb/go.mod h1:b8jDN8PulcGcRJ2pQc0lbC3tPaOspGHoBIbPxfB7Jqg=

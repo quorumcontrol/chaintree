@@ -1,10 +1,10 @@
 package chaintree
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
-	"context"
 
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
@@ -45,7 +45,7 @@ func setData(_ string, tree *dag.Dag, transaction *transactions.Transaction) (ne
 }
 
 func TestChainTree_Id(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	sw := &safewrap.SafeWrap{}
 
@@ -81,7 +81,7 @@ func TestChainTree_Id(t *testing.T) {
 }
 
 func TestHeightValidation(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	sw := &safewrap.SafeWrap{}
@@ -149,7 +149,7 @@ func TestHeightValidation(t *testing.T) {
 		require.True(t, valid)
 		height, _, err := tree.Dag.Resolve(ctx, []string{"height"})
 		require.Nil(t, err)
-		assert.Equal(t, uint64(0), height)
+		assert.Equal(t, 0, height)
 
 		// next fail with a zero
 		txn2, err := NewSetDataTransaction("down/in/the/thing", "different")
@@ -188,13 +188,13 @@ func TestHeightValidation(t *testing.T) {
 
 		height, _, err = tree.Dag.Resolve(ctx, []string{"height"})
 		require.Nil(t, err)
-		assert.Equal(t, uint64(1), height)
+		assert.Equal(t, 1, height)
 	})
 
 }
 
 func TestBuildingUpAChain(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	sw := &safewrap.SafeWrap{}
@@ -283,7 +283,7 @@ func TestBuildingUpAChain(t *testing.T) {
 }
 
 func TestBlockProcessing(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	sw := &safewrap.SafeWrap{}
@@ -383,7 +383,7 @@ func TestBlockProcessing(t *testing.T) {
 
 func BenchmarkEncodeDecode(b *testing.B) {
 	sw := &safewrap.SafeWrap{}
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	tree := sw.WrapObject(map[string]string{

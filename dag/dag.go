@@ -85,6 +85,52 @@ func (d *Dag) CreateNode(ctx context.Context, obj interface{}) (format.Node, err
 	return n, d.store.Add(ctx, n)
 }
 
+func (d *Dag) ResolveInto(ctx context.Context, path []string, obj interface{}) error {
+	var initialPath []string
+	var lastKey string
+	switch {
+	case len(path) == 0:
+		// do nothing, the nils above are ok
+	case len(path) == 1:
+		lastKey = path[0]
+	default:
+		initialPath = path[0 : len(path)-1]
+		lastKey = path[len(path)-1]
+	}
+	if lastKey == "" {
+		n, err := d.store.Get(ctx, d.Tip)
+		if err != nil {
+			return fmt.Errorf("error getting tip: %v", err)
+		}
+		return cbornode.DecodeInto(n.RawData(), obj)
+	}
+	// otherwise we get a map and use the last key
+	val, remain, err := d.Resolve(ctx, initialPath)
+	if err != nil {
+		return fmt.Errorf("error getting initialPath: %v", err)
+	}
+	if len(remain) > 0 {
+		return format.ErrNotFound
+	}
+	mapped, ok := val.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("error the path you specify must resolve to an object with links")
+	}
+	cidInter, ok := mapped[lastKey]
+	if !ok {
+		return format.ErrNotFound
+	}
+	id, ok := cidInter.(cid.Cid)
+	if !ok {
+		return fmt.Errorf("error the path did not resolve to a link")
+	}
+	n, err := d.store.Get(ctx, id)
+	if err != nil {
+		return fmt.Errorf("error getting cid: %v", err)
+	}
+	return cbornode.DecodeInto(n.RawData(), obj)
+}
+
 // Resolve takes a path (as a string slice) and returns the value, remaining path and any error.
 func (d *Dag) Resolve(ctx context.Context, path []string) (interface{}, []string, error) {
 	return d.ResolveAt(ctx, d.Tip, path)
