@@ -32,7 +32,8 @@ func (cbs *CachedBlockstore) DeleteBlock(id cid.Cid) error {
 func (cbs *CachedBlockstore) Get(id cid.Cid) (blocks.Block, error) {
 	blckInter, ok := cbs.cache.Get(id)
 	if ok {
-		return blckInter.(blocks.Block), nil
+		blk := blckInter.(blocks.Block)
+		return blocks.NewBlockWithCid(blk.RawData(), blk.Cid())
 	}
 	blk, err := cbs.Blockstore.Get(id)
 	if err == nil {
