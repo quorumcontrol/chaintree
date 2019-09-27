@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	cid "github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipld-cbor"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	multihash "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -52,4 +52,30 @@ func TestSafeWrap_WrapObject(t *testing.T) {
 	wrappedCbor := sw.WrapObject(cbor)
 	require.Nil(t, sw.Err)
 	assert.Equal(t, cbor, wrappedCbor)
+}
+
+func TestSafeWrap_Decode(t *testing.T) {
+	sw := &SafeWrap{}
+
+	for _, test := range []struct {
+		description string
+		obj         interface{}
+	}{
+		{
+			description: "an object with an empty cid",
+			obj:         &objWithNilPointers{Other: "something"},
+		},
+		{
+			description: "a large uint64",
+			obj:         uint64(12348347582345823458),
+		},
+	} {
+		node := sw.WrapObject(test.obj)
+		require.Nil(t, sw.Err)
+
+		new := sw.Decode(node.RawData())
+		assert.Nil(t, sw.Err, test.description)
+		assert.True(t, node.Cid().Equals(new.Cid()))
+	}
+
 }

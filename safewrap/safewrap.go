@@ -1,7 +1,9 @@
 package safewrap
 
 import (
-	"github.com/ipfs/go-ipld-cbor"
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	multihash "github.com/multiformats/go-multihash"
 )
 
@@ -38,7 +40,20 @@ func (sf *SafeWrap) Decode(data []byte) *cbornode.Node {
 		return nil
 	}
 
-	node, err := cbornode.Decode(data, multihash.SHA2_256, -1)
+	hash, err := multihash.Sum(data, multihash.SHA2_256, -1)
+	if err != nil {
+		sf.Err = err
+		return nil
+	}
+	c := cid.NewCidV1(cid.DagCBOR, hash)
+
+	blk, err := blocks.NewBlockWithCid(data, c)
+	if err != nil {
+		sf.Err = err
+		return nil
+	}
+
+	node, err := cbornode.DecodeBlock(blk)
 	sf.Err = err
-	return node
+	return node.(*cbornode.Node)
 }
