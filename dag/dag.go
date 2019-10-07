@@ -18,7 +18,7 @@ import (
 // Dag is a convenience wrapper around a node store for setting and pruning
 type Dag struct {
 	Tip   cid.Cid
-	store nodestore.DagStore
+	Store nodestore.DagStore
 }
 
 type NodeMap map[cid.Cid]format.Node
@@ -27,7 +27,7 @@ type NodeMap map[cid.Cid]format.Node
 func NewDag(_ context.Context, tip cid.Cid, store nodestore.DagStore) *Dag {
 	return &Dag{
 		Tip:   tip,
-		store: store,
+		Store: store,
 	}
 }
 
@@ -35,7 +35,7 @@ func NewDag(_ context.Context, tip cid.Cid, store nodestore.DagStore) *Dag {
 func NewDagWithNodes(ctx context.Context, store nodestore.DagStore, nodes ...format.Node) (*Dag, error) {
 	dag := &Dag{
 		Tip:   nodes[0].Cid(),
-		store: store,
+		Store: store,
 	}
 	err := dag.AddNodes(ctx, nodes...)
 	if err != nil {
@@ -47,7 +47,7 @@ func NewDagWithNodes(ctx context.Context, store nodestore.DagStore, nodes ...for
 // AddNodes takes cbornodes and adds them to the underlying storage
 func (d *Dag) AddNodes(ctx context.Context, nodes ...format.Node) error {
 	for _, node := range nodes {
-		err := d.store.Add(ctx, node)
+		err := d.Store.Add(ctx, node)
 		if err != nil {
 			return fmt.Errorf("error storing node (%s): %v", node.Cid().String(), err)
 		}
@@ -59,13 +59,13 @@ func (d *Dag) AddNodes(ctx context.Context, nodes ...format.Node) error {
 func (d *Dag) WithNewTip(tip cid.Cid) *Dag {
 	return &Dag{
 		Tip:   tip,
-		store: d.store,
+		Store: d.Store,
 	}
 }
 
 // Get takes a CID and returns the cbornode
 func (d *Dag) Get(ctx context.Context, id cid.Cid) (format.Node, error) {
-	n, err := d.store.Get(ctx, id)
+	n, err := d.Store.Get(ctx, id)
 	if err == format.ErrNotFound {
 		return nil, nil
 	}
@@ -80,7 +80,7 @@ func (d *Dag) CreateNode(ctx context.Context, obj interface{}) (format.Node, err
 	if sw.Err != nil {
 		return nil, fmt.Errorf("error wrapping object: %v", sw.Err)
 	}
-	return n, d.store.Add(ctx, n)
+	return n, d.Store.Add(ctx, n)
 }
 
 func (d *Dag) ResolveInto(ctx context.Context, path []string, obj interface{}) error {
@@ -96,7 +96,7 @@ func (d *Dag) ResolveInto(ctx context.Context, path []string, obj interface{}) e
 		lastKey = path[len(path)-1]
 	}
 	if lastKey == "" {
-		n, err := d.store.Get(ctx, d.Tip)
+		n, err := d.Store.Get(ctx, d.Tip)
 		if err != nil {
 			return fmt.Errorf("error getting tip: %v", err)
 		}
@@ -122,7 +122,7 @@ func (d *Dag) ResolveInto(ctx context.Context, path []string, obj interface{}) e
 	if !ok {
 		return fmt.Errorf("error the path did not resolve to a link")
 	}
-	n, err := d.store.Get(ctx, id)
+	n, err := d.Store.Get(ctx, id)
 	if err != nil {
 		return fmt.Errorf("error getting cid: %v", err)
 	}
@@ -137,7 +137,7 @@ func (d *Dag) Resolve(ctx context.Context, path []string) (interface{}, []string
 // ResolveAt takes a tip and a path (as a string slice) and returns the value, remaining path
 // and any error.
 func (d *Dag) ResolveAt(ctx context.Context, tip cid.Cid, path []string) (val interface{}, remaining []string, err error) {
-	node, err := d.store.Get(ctx, tip)
+	node, err := d.Store.Get(ctx, tip)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error getting node (%s): %v", tip.String(), err)
 	}
@@ -170,7 +170,7 @@ func (d *Dag) ResolveAt(ctx context.Context, tip cid.Cid, path []string) (val in
 
 	switch val := val.(type) {
 	case *format.Link:
-		linkNode, err := d.store.Get(ctx, val.Cid)
+		linkNode, err := d.Store.Get(ctx, val.Cid)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error getting linked node (%s): %v", linkNode.Cid().String(), err)
 		}
@@ -247,7 +247,7 @@ func (d *Dag) orderedNodesForPath(ctx context.Context, path []string) ([]format.
 
 // Nodes returns all the nodes in an entire tree from the Tip out
 func (d *Dag) Nodes(ctx context.Context) ([]format.Node, error) {
-	root, err := d.store.Get(ctx, d.Tip)
+	root, err := d.Store.Get(ctx, d.Tip)
 	if err != nil {
 		return nil, fmt.Errorf("error getting root: %v", err)
 	}
@@ -276,7 +276,7 @@ func (d *Dag) nodeAndDescendants(ctx context.Context, node format.Node, collecto
 		if ok {
 			continue
 		}
-		linkNode, err := d.store.Get(ctx, link.Cid)
+		linkNode, err := d.Store.Get(ctx, link.Cid)
 		if err != nil && err != format.ErrNotFound {
 			return fmt.Errorf("error getting link: %v", err)
 		}
@@ -499,14 +499,14 @@ func (d *Dag) dumpNode(ctx context.Context, node format.Node, isLink bool) inter
 		for k, v := range nodeMap {
 			switch v := v.(type) {
 			case cid.Cid:
-				node, _ := d.store.Get(ctx, v)
+				node, _ := d.Store.Get(ctx, v)
 				if node == nil {
 					nodeMap[k] = fmt.Sprintf("non existant link: %s", v.String())
 				} else {
 					nodeMap[k] = d.dumpNode(ctx, node, true)
 				}
 			case *cid.Cid:
-				node, _ := d.store.Get(ctx, *v)
+				node, _ := d.Store.Get(ctx, *v)
 				if node == nil {
 					nodeMap[k] = fmt.Sprintf("non existant link: %s", v.String())
 				} else {
@@ -527,7 +527,7 @@ func (d *Dag) dumpNode(ctx context.Context, node format.Node, isLink bool) inter
 
 // Dump dumps the current DAG out as a string for debugging
 func (d *Dag) Dump(ctx context.Context) string {
-	rootNode, _ := d.store.Get(ctx, d.Tip)
+	rootNode, _ := d.Store.Get(ctx, d.Tip)
 	nodes, _ := d.Nodes(ctx)
 	nodeStrings := make([]string, len(nodes))
 	for i, node := range nodes {
