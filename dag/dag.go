@@ -65,6 +65,13 @@ func (d *Dag) WithNewTip(tip cid.Cid) *Dag {
 	}
 }
 
+func (d *Dag) WithNewStore(store nodestore.DagStore) *Dag {
+	return &Dag{
+		Tip:   d.Tip,
+		store: store,
+	}
+}
+
 // Get takes a CID and returns the cbornode
 func (d *Dag) Get(ctx context.Context, id cid.Cid) (format.Node, error) {
 	n, err := d.store.Get(ctx, id)

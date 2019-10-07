@@ -150,6 +150,16 @@ func TestDagResolve(t *testing.T) {
 	assert.Equal(t, true, val)
 }
 
+func TestDagWithNewStore(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	dag := newDeepDag(t, ctx)
+	newStore := nodestore.MustMemoryStore(ctx)
+	newDag := dag.WithNewStore(newStore)
+	require.Equal(t, newStore, newDag.store)
+	require.Equal(t, dag.Tip.String(), newDag.Tip.String())
+}
+
 // Test that the ResolveAt method can operate with a tip that need not be current.
 func TestDagResolveAt(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
