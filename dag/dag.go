@@ -17,9 +17,8 @@ import (
 
 // Dag is a convenience wrapper around a node store for setting and pruning
 type Dag struct {
-	Tip     cid.Cid
-	oldTips []cid.Cid
-	store   nodestore.DagStore
+	Tip   cid.Cid
+	store nodestore.DagStore
 }
 
 type NodeMap map[cid.Cid]format.Node
@@ -59,9 +58,8 @@ func (d *Dag) AddNodes(ctx context.Context, nodes ...format.Node) error {
 // WithNewTip returns a new Dag, but with the Tip set to the argument
 func (d *Dag) WithNewTip(tip cid.Cid) *Dag {
 	return &Dag{
-		Tip:     tip,
-		store:   d.store,
-		oldTips: append(d.oldTips, d.Tip),
+		Tip:   tip,
+		store: d.store,
 	}
 }
 
@@ -366,7 +364,7 @@ func isComplexObj(val interface{}) bool {
 }
 
 // Set sets a value at a path and returns a new dag with a new tip that reflects
-// the new state (and adds the old tip to oldTips)
+// the new state
 func (d *Dag) Set(ctx context.Context, pathAndKey []string, val interface{}) (*Dag, error) {
 	if isComplexObj(val) {
 		return nil, fmt.Errorf("can not set complex objects, use asLink=true: %v", val)
@@ -375,7 +373,7 @@ func (d *Dag) Set(ctx context.Context, pathAndKey []string, val interface{}) (*D
 }
 
 // SetAsLink sets a value at a path and returns a new dag with a new tip that reflects
-// the new state (and adds the old tip to oldTips)
+// the new state
 func (d *Dag) SetAsLink(ctx context.Context, pathAndKey []string, val interface{}) (*Dag, error) {
 	return d.set(ctx, pathAndKey, val, true)
 }
@@ -485,8 +483,6 @@ func (d *Dag) set(ctx context.Context, pathAndKey []string, val interface{}, asL
 	if err != nil {
 		return nil, fmt.Errorf("error updating DAG: %v", err)
 	}
-
-	newDag.oldTips = append(d.oldTips, newDag.Tip)
 
 	return newDag, nil
 }
