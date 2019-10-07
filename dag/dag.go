@@ -65,6 +65,22 @@ func (d *Dag) WithNewTip(tip cid.Cid) *Dag {
 	}
 }
 
+func (d *Dag) StartTrackingGets() {
+	d.store = wrapStoreForRefCounting(d.store)
+}
+
+func (d *Dag) StopTrackingGets() []cid.Cid {
+	wrapped := d.store.(*storeWrapper)
+	d.store = wrapped.DagStore
+	touched := make([]cid.Cid, len(wrapped.touched))
+	i := 0
+	for k := range wrapped.touched {
+		touched[i] = k
+		i++
+	}
+	return touched
+}
+
 // Get takes a CID and returns the cbornode
 func (d *Dag) Get(ctx context.Context, id cid.Cid) (format.Node, error) {
 	n, err := d.store.Get(ctx, id)

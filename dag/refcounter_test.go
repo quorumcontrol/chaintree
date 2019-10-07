@@ -22,12 +22,9 @@ func TestRefCounter(t *testing.T) {
 	tip := sw.WrapObject(map[string]interface{}{"hi": "hi"})
 	graph, err := NewDagWithNodes(ctx, store, tip)
 	require.Nil(t, err)
-	counter := RefCountDag(graph)
+	graph.StartTrackingGets()
 
-	_, _, err = counter.Resolve(ctx, []string{"/"})
+	_, _, err = graph.Resolve(ctx, []string{"/"})
 
-	assert.Len(t, counter.Touched, 1)
-
-	unwrapped := counter.Unwrap()
-	assert.Equal(t, counter.Dag.Tip.String(), unwrapped.Tip.String())
+	assert.Len(t, graph.StopTrackingGets(), 1)
 }
