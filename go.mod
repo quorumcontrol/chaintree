@@ -24,7 +24,7 @@ require (
 	github.com/libp2p/go-libp2p-swarm v0.1.1 // indirect
 	github.com/multiformats/go-multihash v0.0.5
 	github.com/polydawn/refmt v0.0.0-20190807091052-3d65705ee9f1
-	github.com/quorumcontrol/messages/build/go v0.0.0-20190530182608-30c127bffefb
+	github.com/quorumcontrol/messages/build/go v0.0.0-20190916172743-fed64641cd55
 	github.com/smartystreets/assertions v1.0.0 // indirect
 	github.com/smartystreets/goconvey v0.0.0-20190330032615-68dc04aab96a // indirect
 	github.com/stretchr/testify v1.3.0
