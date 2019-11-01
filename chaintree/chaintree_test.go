@@ -8,6 +8,7 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
+	format "github.com/ipfs/go-ipld-format"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
@@ -429,4 +430,88 @@ func BenchmarkEncodeDecode(b *testing.B) {
 		_, _, err = chainTree.Dag.Resolve(ctx, []string{"tree", "down", "in", "the", "thing"})
 	}
 	require.Nil(b, err)
+}
+
+func TestNodes(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sw := &safewrap.SafeWrap{}
+
+	treeNode := sw.WrapObject(map[string]string{
+		"hithere": "hothere",
+	})
+
+	emptyChain := sw.WrapObject(make(map[string]string))
+
+	root := sw.WrapObject(map[string]interface{}{
+		"chain": emptyChain.Cid(),
+		"tree":  treeNode.Cid(),
+		"id":    "did:tupelo:thistree",
+	})
+
+	externalTree := sw.WrapObject(map[string]interface{}{
+		"shouldNotBeIncluded": "true",
+	})
+	externalRoot := sw.WrapObject(map[string]interface{}{
+		"chain": emptyChain.Cid(),
+		"tree":  externalTree.Cid(),
+		"id":    "did:tupelo:externaltree",
+	})
+	assert.Nil(t, sw.Err)
+	allNodes := []format.Node{root, emptyChain, treeNode, externalRoot, externalTree}
+
+	store := nodestore.MustMemoryStore(ctx)
+	dag, err := dag.NewDagWithNodes(ctx, store, allNodes...)
+	require.Nil(t, err)
+
+	tree, err := NewChainTree(
+		ctx,
+		dag,
+		[]BlockValidatorFunc{},
+		map[transactions.Transaction_Type]TransactorFunc{
+			transactions.Transaction_SETDATA: setData,
+		},
+	)
+	require.Nil(t, err)
+
+	txn, err := NewSetDataTransaction("down/in/the/thing", "hi")
+	require.Nil(t, err)
+	block := &BlockWithHeaders{
+		Block: Block{
+			PreviousTip:  nil,
+			Height:       0,
+			Transactions: []*transactions.Transaction{txn},
+		},
+	}
+
+	valid, err := tree.ProcessBlock(ctx, block)
+	require.Nil(t, err)
+	require.True(t, valid)
+
+	txn2, err := NewSetDataTransaction("down/in/the/thing", externalRoot.Cid())
+	require.Nil(t, err)
+	block2 := &BlockWithHeaders{
+		Block: Block{
+			PreviousTip:  &tree.Dag.Tip,
+			Height:       1,
+			Transactions: []*transactions.Transaction{txn2},
+		},
+	}
+
+	valid, err = tree.ProcessBlock(ctx, block2)
+	require.Nil(t, err)
+	require.True(t, valid)
+
+	chaintreeNodes, err := tree.Nodes(ctx)
+	require.Nil(t, err)
+	assert.NotContains(t, chaintreeNodes, externalRoot)
+	assert.NotContains(t, chaintreeNodes, externalTree)
+	require.Len(t, chaintreeNodes, 14) // emptyChain is also unlinked
+
+	dagNodes, err := tree.Dag.Nodes(ctx)
+	require.Nil(t, err)
+	assert.Contains(t, dagNodes, externalRoot)
+	assert.Contains(t, dagNodes, externalTree)
+	require.Len(t, dagNodes, 17)
 }
