@@ -11,7 +11,7 @@ import (
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
-	"github.com/quorumcontrol/messages/build/go/transactions"
+	"github.com/quorumcontrol/messages/build/go/v2/transactions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
