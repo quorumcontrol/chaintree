@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/quorumcontrol/chaintree/safewrap"
-	"github.com/quorumcontrol/messages/build/go/v2/signatures"
-	"github.com/quorumcontrol/messages/build/go/v2/transactions"
+	"github.com/quorumcontrol/messages/v2/build/go/signatures"
+	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 )
 
 func NewSetOwnershipTransaction(keyAddrs []string) (*transactions.Transaction, error) {

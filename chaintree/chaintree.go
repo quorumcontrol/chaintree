@@ -12,8 +12,8 @@ import (
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/chaintree/typecaster"
-	"github.com/quorumcontrol/messages/build/go/v2/signatures"
-	"github.com/quorumcontrol/messages/build/go/v2/transactions"
+	"github.com/quorumcontrol/messages/v2/build/go/signatures"
+	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 )
 
 var logger = logging.Logger("chaintree")
