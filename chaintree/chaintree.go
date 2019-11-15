@@ -2,7 +2,6 @@ package chaintree
 
 import (
 	"fmt"
-	"reflect"
 
 	logging "github.com/ipfs/go-log"
 
@@ -13,8 +12,8 @@ import (
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/chaintree/typecaster"
-	"github.com/quorumcontrol/messages/build/go/signatures"
-	"github.com/quorumcontrol/messages/build/go/transactions"
+	"github.com/quorumcontrol/messages/v2/build/go/signatures"
+	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 )
 
 var logger = logging.Logger("chaintree")
@@ -37,7 +36,7 @@ func init() {
 	cbornode.RegisterCborType(Chain{})
 	cbornode.RegisterCborType(BlockWithHeaders{})
 	cbornode.RegisterCborType(Block{})
-	cbornode.RegisterCborType(signatures.PublicKey{})
+	cbornode.RegisterCborType(signatures.Ownership{})
 	cbornode.RegisterCborType(signatures.Signature{})
 	cbornode.RegisterCborType(transactions.Transaction{})
 	cbornode.RegisterCborType(transactions.SetDataPayload{})
@@ -49,20 +48,12 @@ func init() {
 	cbornode.RegisterCborType(transactions.ReceiveTokenPayload{})
 	cbornode.RegisterCborType(transactions.TokenPayload{})
 	cbornode.RegisterCborType(transactions.StakePayload{})
-	// protobuf generated types have internal fields with `struct{}` values
-	// and cannot be marshalled without registering that type first
-	// structs are commonly registered across other repos, so ensure it
-	// hasn't already been registered
-	structRtid := reflect.ValueOf(reflect.TypeOf(struct{}{})).Pointer()
-	if _, ok := cbornode.CborAtlas.Get(structRtid); !ok {
-		cbornode.RegisterCborType(struct{}{})
-	}
 
 	typecaster.AddType(RootNode{})
 	typecaster.AddType(Chain{})
 	typecaster.AddType(BlockWithHeaders{})
 	typecaster.AddType(Block{})
-	typecaster.AddType(signatures.PublicKey{})
+	typecaster.AddType(signatures.Ownership{})
 	typecaster.AddType(signatures.Signature{})
 	typecaster.AddType(transactions.Transaction{})
 	typecaster.AddType(transactions.SetDataPayload{})
