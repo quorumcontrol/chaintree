@@ -37,6 +37,7 @@ func init() {
 	cbornode.RegisterCborType(BlockWithHeaders{})
 	cbornode.RegisterCborType(Block{})
 	cbornode.RegisterCborType(signatures.Ownership{})
+	cbornode.RegisterCborType(signatures.PublicKey{})
 	cbornode.RegisterCborType(signatures.Signature{})
 	cbornode.RegisterCborType(transactions.Transaction{})
 	cbornode.RegisterCborType(transactions.SetDataPayload{})
@@ -54,6 +55,7 @@ func init() {
 	typecaster.AddType(BlockWithHeaders{})
 	typecaster.AddType(Block{})
 	typecaster.AddType(signatures.Ownership{})
+	typecaster.AddType(signatures.PublicKey{})
 	typecaster.AddType(signatures.Signature{})
 	typecaster.AddType(transactions.Transaction{})
 	typecaster.AddType(transactions.SetDataPayload{})
@@ -64,10 +66,6 @@ func init() {
 	typecaster.AddType(transactions.SendTokenPayload{})
 	typecaster.AddType(transactions.ReceiveTokenPayload{})
 	typecaster.AddType(transactions.TokenPayload{})
-	// protobuf generated types have internal fields that `struct{}` and
-	// cannot be cast without registering that type first
-	typecaster.AddType(struct{}{})
-
 	typecaster.AddType(cid.Cid{})
 }
 
