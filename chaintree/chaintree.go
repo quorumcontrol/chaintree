@@ -9,6 +9,8 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
+	format "github.com/ipfs/go-ipld-format"
+
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/chaintree/typecaster"
@@ -86,6 +88,9 @@ type RootNode struct {
 	Height uint64   `refmt:"height" json:"height" cbor:"height"`
 	cid    cid.Cid
 }
+
+// Keep this equal to the number of cids saved for a root node, currently Chain and Tree
+const rootNodeNumLinks = 2
 
 func (rn *RootNode) Copy() *RootNode {
 	return &RootNode{
@@ -372,6 +377,44 @@ func (ct *ChainTree) ProcessBlock(ctx context.Context, blockWithHeaders *BlockWi
 	ct.Dag = newChainTree.Dag
 	logger.Finish(ctx)
 	return true, nil
+}
+
+// Nodes returns all the nodes in an entire tree from the Tip out, stopping
+// at the boundary of any grafted trees
+func (ct *ChainTree) Nodes(ctx context.Context) ([]format.Node, error) {
+	root, err := ct.getRoot(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	thisChainTreeFilter := func(node format.Node) bool {
+		// its this chaintree's root node, definitely want it
+		if node.Cid().Equals(root.cid) {
+			return true
+		}
+
+		// Now attempt to filter out any other chaintree root nodes
+		// Links count matches, this _could_ be a root node
+		if len(node.Links()) == rootNodeNumLinks {
+			childNode := &RootNode{}
+			err := cbornode.DecodeInto(node.RawData(), childNode)
+			// probably an error casting because its not a root node
+			if err != nil {
+				return true
+			}
+
+			// If the ids of this root node match, its a relevant node
+			if root.Id == childNode.Id {
+				return true
+			}
+
+			// This appears to be the root node of another chaintree
+			return false
+		}
+		return true
+	}
+
+	return ct.Dag.FilteredNodes(ctx, thisChainTreeFilter)
 }
 
 func (ct *ChainTree) getRoot(ctx context.Context) (*RootNode, error) {

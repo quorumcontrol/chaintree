@@ -15,6 +15,8 @@ import (
 	"github.com/quorumcontrol/chaintree/safewrap"
 )
 
+var allNodesFilter = func(_ format.Node) bool { return true }
+
 // Dag is a convenience wrapper around a node store for setting and pruning
 type Dag struct {
 	Tip   cid.Cid
@@ -195,7 +197,7 @@ func (d *Dag) NodesForPathWithDecendants(ctx context.Context, path []string) ([]
 		collector[n.Cid()] = n
 	}
 
-	err = d.nodeAndDescendants(ctx, lastNode, collector)
+	err = d.nodeAndDescendants(ctx, lastNode, collector, allNodesFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -247,13 +249,25 @@ func (d *Dag) orderedNodesForPath(ctx context.Context, path []string) ([]format.
 
 // Nodes returns all the nodes in an entire tree from the Tip out
 func (d *Dag) Nodes(ctx context.Context) ([]format.Node, error) {
+	return d.FilteredNodes(ctx, allNodesFilter)
+}
+
+// FilteredNodes returns all the nodes in an entire tree from the Tip out
+// the filterFunc will reject nodes and all its decscendants if "false"
+// is returned
+func (d *Dag) FilteredNodes(ctx context.Context, filterFunc func(format.Node) bool) ([]format.Node, error) {
 	root, err := d.Store.Get(ctx, d.Tip)
 	if err != nil {
 		return nil, fmt.Errorf("error getting root: %v", err)
 	}
 	collector := NodeMap{}
 
-	err = d.nodeAndDescendants(ctx, root, collector)
+	skip := !filterFunc(root)
+	if skip {
+		return []format.Node{}, nil
+	}
+
+	err = d.nodeAndDescendants(ctx, root, collector, filterFunc)
 	if err != nil {
 		return nil, fmt.Errorf("error getting dec: %v", err)
 	}
@@ -267,7 +281,7 @@ func (d *Dag) Nodes(ctx context.Context) ([]format.Node, error) {
 	return nodes, nil
 }
 
-func (d *Dag) nodeAndDescendants(ctx context.Context, node format.Node, collector NodeMap) error {
+func (d *Dag) nodeAndDescendants(ctx context.Context, node format.Node, collector NodeMap, filterFunc func(format.Node) bool) error {
 	collector[node.Cid()] = node
 
 	links := node.Links()
@@ -284,9 +298,13 @@ func (d *Dag) nodeAndDescendants(ctx context.Context, node format.Node, collecto
 			// it's OK to omit certain parts of the tree in e.g. send_token payloads
 			continue
 		}
-		err = d.nodeAndDescendants(ctx, linkNode, collector)
-		if err != nil {
-			return fmt.Errorf("error getting child nodes: %v", err)
+
+		shouldContinue := filterFunc(linkNode)
+		if shouldContinue {
+			err = d.nodeAndDescendants(ctx, linkNode, collector, filterFunc)
+			if err != nil {
+				return fmt.Errorf("error getting child nodes: %v", err)
+			}
 		}
 	}
 

@@ -32,4 +32,5 @@ require (
 	golang.org/x/net v0.0.0-20190620200207-3b0461eec859 // indirect
 	golang.org/x/sys v0.0.0-20190626221950-04f50cda93cb // indirect
 	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7
+	google.golang.org/appengine v1.4.0 // indirect
 )
