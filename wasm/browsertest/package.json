@@ -1,0 +1,23 @@
+{
+  "name": "browsertest",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "parcel main.wasm index.html",
+    "build": "parcel build main.wasm index.html"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "babel-polyfill": "^6.26.0",
+    "chai": "^4.2.0",
+    "mocha": "^6.2.2",
+    "parcel-bundler": "^1.12.4",
+    "typescript": "^3.7.2"
+  },
+  "browserslist": [
+    "last 2 Chrome versions"
+  ]
+}
