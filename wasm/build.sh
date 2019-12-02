@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-GOOS=js GOARCH=wasm go build -o browsertest/main.wasm
+GOPRIVATE=github.com/quorumcontrol GOOS=js GOARCH=wasm go build -o browsertest/main.wasm
