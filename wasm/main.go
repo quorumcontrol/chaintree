@@ -2,15 +2,16 @@ package main
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/quorumcontrol/chaintree/chaintree"
-	_ "github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
-	_ "github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
+	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 
-	_ "github.com/quorumcontrol/chaintree/safewrap"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 )
 
@@ -24,7 +25,7 @@ func main() {
 	defer cancel()
 	sw := &safewrap.SafeWrap{}
 
-	tree := sw.WrapObject(map[string]string{
+	dataTree := sw.WrapObject(map[string]string{
 		"hithere": "hothere",
 	})
 
@@ -32,7 +33,7 @@ func main() {
 
 	root := sw.WrapObject(map[string]interface{}{
 		"chain": chain.Cid(),
-		"tree":  tree.Cid(),
+		"tree":  dataTree.Cid(),
 		"id":    "test",
 	})
 
@@ -46,11 +47,11 @@ func main() {
 	if store == nil {
 		panic("root nil")
 	}
-	graph, err := dag.NewDagWithNodes(ctx, store, root, tree, chain)
+	graph, err := dag.NewDagWithNodes(ctx, store, root, dataTree, chain)
 	if err != nil {
 		panic(err)
 	}
-	_, err = chaintree.NewChainTree(
+	tree, err := chaintree.NewChainTree(
 		ctx,
 		graph,
 		nil,
@@ -60,4 +61,53 @@ func main() {
 		panic(err)
 	}
 
+	var height uint64
+	height = 0
+
+	tx, err := chaintree.NewSetDataTransaction("/test", true)
+	if err != nil {
+		panic(err)
+	}
+
+	unsignedBlock := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			Height:       height,
+			PreviousTip:  nil,
+			Transactions: []*transactions.Transaction{tx},
+		},
+	}
+
+	treeKey, err := crypto.GenerateKey()
+	if err != nil {
+		panic(err)
+	}
+
+	blockWithHeaders, err := consensus.SignBlock(unsignedBlock, treeKey)
+	if err != nil {
+		panic(fmt.Errorf("error signing: %v", err))
+	}
+
+	valid, err := tree.ProcessBlock(ctx, blockWithHeaders)
+	if !valid || err != nil {
+		panic(fmt.Errorf("error processing block (valid: %t): %v", valid, err))
+	}
+
+	go fmt.Println("go is the best")
+
+}
+
+func getRoot(ct *chaintree.ChainTree) (*chaintree.RootNode, error) {
+	ctx := context.TODO()
+	unmarshaledRoot, err := ct.Dag.Get(ctx, ct.Dag.Tip)
+	if unmarshaledRoot == nil || err != nil {
+		return nil, fmt.Errorf("error,missing root: %v", err)
+	}
+
+	root := &chaintree.RootNode{}
+
+	err = cbornode.DecodeInto(unmarshaledRoot.RawData(), root)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding root: %v", err)
+	}
+	return root, nil
 }
