@@ -83,11 +83,12 @@ func NewSendTokenTransaction(id, name string, amount uint64, destination string)
 	}, nil
 }
 
-func NewReceiveTokenTransaction(sendTid string, tip []byte, proof *gossip.Proof) (*transactions.Transaction, error) {
+func NewReceiveTokenTransaction(sendTid string, tip []byte, proof *gossip.Proof, leaves [][]byte) (*transactions.Transaction, error) {
 	payload := &transactions.ReceiveTokenPayload{
 		SendTokenTransactionId: sendTid,
 		Tip:                    tip,
 		Proof:                  proof,
+		Leaves:                 leaves,
 	}
 
 	return &transactions.Transaction{
