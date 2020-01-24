@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/quorumcontrol/chaintree/safewrap"
-	"github.com/quorumcontrol/messages/v2/build/go/signatures"
+	"github.com/quorumcontrol/messages/v2/build/go/gossip"
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 )
 
@@ -83,11 +83,11 @@ func NewSendTokenTransaction(id, name string, amount uint64, destination string)
 	}, nil
 }
 
-func NewReceiveTokenTransaction(sendTid string, tip []byte, treeState *signatures.TreeState, leaves [][]byte) (*transactions.Transaction, error) {
+func NewReceiveTokenTransaction(sendTid string, tip []byte, proof *gossip.Proof, leaves [][]byte) (*transactions.Transaction, error) {
 	payload := &transactions.ReceiveTokenPayload{
 		SendTokenTransactionId: sendTid,
 		Tip:                    tip,
-		TreeState:              treeState,
+		Proof:                  proof,
 		Leaves:                 leaves,
 	}
 
