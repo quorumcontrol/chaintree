@@ -12,6 +12,7 @@ import (
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/chaintree/typecaster"
+	"github.com/quorumcontrol/messages/v2/build/go/gossip"
 	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 )
@@ -49,6 +50,7 @@ func init() {
 	cbornode.RegisterCborType(transactions.ReceiveTokenPayload{})
 	cbornode.RegisterCborType(transactions.TokenPayload{})
 	cbornode.RegisterCborType(transactions.StakePayload{})
+	cbornode.RegisterCborType(gossip.Proof{})
 
 	typecaster.AddType(RootNode{})
 	typecaster.AddType(Chain{})
@@ -67,6 +69,8 @@ func init() {
 	typecaster.AddType(transactions.ReceiveTokenPayload{})
 	typecaster.AddType(transactions.TokenPayload{})
 	typecaster.AddType(cid.Cid{})
+	typecaster.AddType(gossip.Proof{})
+
 }
 
 type CodedError interface {
