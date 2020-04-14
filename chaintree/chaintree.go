@@ -1,20 +1,20 @@
 package chaintree
 
 import (
+	"context"
 	"fmt"
 
 	logging "github.com/ipfs/go-log"
 
-	"context"
-
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
-	"github.com/quorumcontrol/chaintree/dag"
-	"github.com/quorumcontrol/chaintree/safewrap"
-	"github.com/quorumcontrol/chaintree/typecaster"
 	"github.com/quorumcontrol/messages/v2/build/go/gossip"
 	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
+
+	"github.com/quorumcontrol/chaintree/dag"
+	"github.com/quorumcontrol/chaintree/safewrap"
+	"github.com/quorumcontrol/chaintree/typecaster"
 )
 
 var logger = logging.Logger("chaintree")
@@ -70,7 +70,6 @@ func init() {
 	typecaster.AddType(transactions.TokenPayload{})
 	typecaster.AddType(cid.Cid{})
 	typecaster.AddType(gossip.Proof{})
-
 }
 
 type CodedError interface {
@@ -100,6 +99,8 @@ func (rn *RootNode) Copy() *RootNode {
 		cid:    rn.cid,
 	}
 }
+
+type Path []string
 
 type Block struct {
 	PreviousTip  *cid.Cid                    `refmt:"previousTip,omitempty" json:"previousTip,omitempty" cbor:"previousTip,omitempty"`
