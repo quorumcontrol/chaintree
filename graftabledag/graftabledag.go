@@ -75,7 +75,7 @@ func containsPrefix(haystack []chaintree.Path, needle chaintree.Path) bool {
 			if e != p[i] {
 				break
 			}
-			return true
+			return true //nolint
 		}
 	}
 	return false
