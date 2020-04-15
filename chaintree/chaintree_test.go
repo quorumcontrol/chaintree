@@ -27,7 +27,7 @@ func hasCoolHeader(_ *dag.Dag, blockWithHeaders *BlockWithHeaders) (valid bool, 
 func setData(_ string, tree *dag.Dag, transaction *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr CodedError) {
 	payload, err := transaction.EnsureSetDataPayload()
 	if err != nil {
-		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("not a SetData transaction")}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: "not a SetData transaction"}
 	}
 
 	var val interface{}

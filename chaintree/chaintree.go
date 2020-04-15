@@ -322,7 +322,7 @@ func (ct *ChainTree) ProcessBlockImmutable(ctx context.Context, blockWithHeaders
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting end node: %v", err)}
 	}
 	if endNode == nil {
-		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("missing end node in chain tree")}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: "missing end node in chain tree"}
 	}
 
 	lastEntry := &BlockWithHeaders{}
