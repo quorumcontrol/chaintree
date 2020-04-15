@@ -66,9 +66,22 @@ func (gd *GraftedDag) getChaintreeDag(ctx context.Context, did string) (*dag.Dag
 	return chainTree.Dag, nil
 }
 
-// TODO: Does this need loop detection? It's OK to go through the same chaintree more than
-//  once, just not the same chaintree+path.
-func (gd *GraftedDag) resolveRecursively(ctx context.Context, path chaintree.Path, d *dag.Dag) (value interface{}, remaining chaintree.Path, err error) {
+// containsPrefix is used for loop detection (these are DAGs after all).
+// If any element of haystack has needle as a prefix (including all elements
+// matching), this returns true; false otherwise.
+func containsPrefix(haystack []chaintree.Path, needle chaintree.Path) bool {
+	for _, p := range haystack {
+		for i, e := range needle {
+			if e != p[i] {
+				break
+			}
+			return true
+		}
+	}
+	return false
+}
+
+func (gd *GraftedDag) resolveRecursively(ctx context.Context, path chaintree.Path, d *dag.Dag, seen []chaintree.Path) (value interface{}, remaining chaintree.Path, err error) {
 	value, remaining, err = d.Resolve(ctx, path)
 	if err != nil {
 		return value, remaining, err
@@ -103,6 +116,12 @@ func (gd *GraftedDag) resolveRecursively(ctx context.Context, path chaintree.Pat
 	}
 
 	for _, didPath := range didPaths {
+		if containsPrefix(seen, didPath) {
+			return nil, nil, fmt.Errorf("loop detected; some or all of %v was already visited in this resolution", didPath)
+		}
+
+		seen = append(seen, didPath)
+
 		did := didPath[0]
 
 		var nextDag *dag.Dag
@@ -114,7 +133,7 @@ func (gd *GraftedDag) resolveRecursively(ctx context.Context, path chaintree.Pat
 		nextPath := append(didPath[1:], remaining...)
 
 		if len(nextPath) > 0 {
-			value, remaining, err = gd.resolveRecursively(ctx, nextPath, nextDag)
+			value, remaining, err = gd.resolveRecursively(ctx, nextPath, nextDag, seen)
 			if err != nil {
 				return value, remaining, err
 			}
@@ -139,7 +158,8 @@ func (gd *GraftedDag) resolveRecursively(ctx context.Context, path chaintree.Pat
 // GlobalResolve works like dag.Resolve but will resolve across multiple chaintrees
 // when it encounters string values that start with `did:tupelo:` (i.e. chaintree DIDs).
 func (gd *GraftedDag) GlobalResolve(ctx context.Context, path chaintree.Path) (value interface{}, remaining chaintree.Path, err error) {
-	return gd.resolveRecursively(ctx, path, gd.origin)
+	seen := make([]chaintree.Path, 0)
+	return gd.resolveRecursively(ctx, path, gd.origin, seen)
 }
 
 func (gd *GraftedDag) OriginDag() *dag.Dag {
