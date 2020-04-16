@@ -66,10 +66,10 @@ func (gd *GraftedDag) getChaintreeDag(ctx context.Context, did string) (*dag.Dag
 	return chainTree.Dag, nil
 }
 
-// containsPrefix is used for loop detection (these are DAGs after all).
+// PathsContainPrefix is used for loop detection (these are DAGs after all).
 // If any element of haystack has needle as a prefix (including all elements
 // matching), this returns true; false otherwise.
-func containsPrefix(haystack []chaintree.Path, needle chaintree.Path) bool {
+func PathsContainPrefix(haystack []chaintree.Path, needle chaintree.Path) bool {
 	for _, p := range haystack {
 		for i, e := range needle {
 			if e != p[i] {
@@ -116,8 +116,8 @@ func (gd *GraftedDag) resolveRecursively(ctx context.Context, path chaintree.Pat
 	}
 
 	for _, didPath := range didPaths {
-		if containsPrefix(seen, didPath) {
-			return nil, nil, fmt.Errorf("loop detected; some or all of %v was already visited in this resolution", didPath)
+		if PathsContainPrefix(seen, didPath) {
+			return nil, nil, fmt.Errorf("loop detected; some or all of %v was already visited in this resolution", strings.Join(didPath, "/"))
 		}
 
 		seen = append(seen, didPath)
