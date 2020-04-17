@@ -204,10 +204,7 @@ func TestGraftedDag_GlobalResolve(t *testing.T) {
 	val, remaining, err := gd.GlobalResolve(ctx, path)
 	require.Nil(t, err)
 	require.Empty(t, remaining)
-
-	v, ok := val.(bool)
-	assert.True(t, ok)
-	assert.True(t, v)
+	assert.Equal(t, val, []interface{}{true})
 }
 
 func TestGraftedDag_GlobalResolve_LoopDetection(t *testing.T) {

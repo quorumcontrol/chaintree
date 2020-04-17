@@ -89,9 +89,12 @@ func (gd *GraftedDag) resolveRecursively(ctx context.Context, path chaintree.Pat
 
 	didPaths := make([]chaintree.Path, 0)
 	values := make([]interface{}, 0)
+	returnSingle := false
 
 	switch v := value.(type) {
 	case string:
+		returnSingle = true
+
 		if strings.HasPrefix(v, "did:tupelo:") {
 			didPath := strings.Split(v, "/")
 			didPaths = append(didPaths, didPath)
@@ -111,6 +114,8 @@ func (gd *GraftedDag) resolveRecursively(ctx context.Context, path chaintree.Pat
 				values = append(values, val)
 			}
 		}
+	case nil:
+		// noop
 	default:
 		values = append(values, v)
 	}
@@ -143,10 +148,10 @@ func (gd *GraftedDag) resolveRecursively(ctx context.Context, path chaintree.Pat
 		values = append(values, value)
 	}
 
-	switch len(values) {
-	case 1:
+	switch {
+	case returnSingle:
 		value = values[0]
-	case 0:
+	case len(values) == 0:
 		value = nil
 	default:
 		value = values
