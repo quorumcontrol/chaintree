@@ -172,7 +172,7 @@ func (d *Dag) ResolveAt(ctx context.Context, tip cid.Cid, path []string) (val in
 	case *format.Link:
 		linkNode, err := d.Store.Get(ctx, val.Cid)
 		if err != nil {
-			return nil, nil, fmt.Errorf("error getting linked node (%s): %v", linkNode.Cid().String(), err)
+			return nil, nil, fmt.Errorf("error getting linked node (%s) at path %v: %v", val.Cid, path, err)
 		}
 		if linkNode != nil {
 			return d.ResolveAt(ctx, linkNode.Cid(), remaining)

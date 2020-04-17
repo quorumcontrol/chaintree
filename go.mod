@@ -26,10 +26,7 @@ require (
 	github.com/polydawn/refmt v0.0.0-20190807091052-3d65705ee9f1
 	github.com/quorumcontrol/messages/v2 v2.1.3-0.20200123172240-224b207a9631
 	github.com/smartystreets/assertions v1.0.0 // indirect
-	github.com/smartystreets/goconvey v0.0.0-20190330032615-68dc04aab96a // indirect
-	github.com/stretchr/testify v1.3.0
+	github.com/stretchr/testify v1.4.0
 	github.com/warpfork/go-wish v0.0.0-20190328234359-8b3e70f8e830 // indirect
-	golang.org/x/net v0.0.0-20190620200207-3b0461eec859 // indirect
-	golang.org/x/sys v0.0.0-20190626221950-04f50cda93cb // indirect
-	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7
+	golang.org/x/xerrors v0.0.0-20191011141410-1b5146add898
 )
