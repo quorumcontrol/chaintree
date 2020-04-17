@@ -88,20 +88,17 @@ func (gd *GraftedDag) resolveRecursively(ctx context.Context, path chaintree.Pat
 	}
 
 	didPaths := make([]chaintree.Path, 0)
-	values := make([]interface{}, 0)
-	returnSingle := false
 
 	switch v := value.(type) {
 	case string:
-		returnSingle = true
-
 		if strings.HasPrefix(v, "did:tupelo:") {
 			didPath := strings.Split(v, "/")
 			didPaths = append(didPaths, didPath)
 		} else {
-			values = append(values, v)
+			value = v
 		}
 	case []interface{}:
+		values := make([]interface{}, len(v))
 		for _, val := range v {
 			if sv, ok := val.(string); ok {
 				if strings.HasPrefix(sv, "did:tupelo:") {
@@ -114,10 +111,9 @@ func (gd *GraftedDag) resolveRecursively(ctx context.Context, path chaintree.Pat
 				values = append(values, val)
 			}
 		}
-	case nil:
-		// noop
+		value = values
 	default:
-		values = append(values, v)
+		value = v
 	}
 
 	for _, didPath := range didPaths {
@@ -137,24 +133,23 @@ func (gd *GraftedDag) resolveRecursively(ctx context.Context, path chaintree.Pat
 
 		nextPath := append(didPath[1:], remaining...)
 
+		var graftedVal interface{}
+
 		if len(nextPath) > 0 {
-			value, remaining, err = gd.resolveRecursively(ctx, nextPath, nextDag, seen)
+			graftedVal, remaining, err = gd.resolveRecursively(ctx, nextPath, nextDag, seen)
 			if err != nil {
 				return value, remaining, err
 			}
 		} else {
-			value = nextDag
+			graftedVal = nextDag
 		}
-		values = append(values, value)
-	}
 
-	switch {
-	case returnSingle:
-		value = values[0]
-	case len(values) == 0:
-		value = nil
-	default:
-		value = values
+		switch v := value.(type) {
+		case interface{}:
+			value = graftedVal
+		case []interface{}:
+			value = append(v, graftedVal)
+		}
 	}
 
 	return value, remaining, nil
