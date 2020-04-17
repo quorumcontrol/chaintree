@@ -65,13 +65,17 @@ func newGraftedDag(t *testing.T, ctx context.Context) (gd *GraftedDag, graftedPa
 	sw := safewrap.SafeWrap{}
 
 	// DAG 1
-	deepChild := sw.WrapObject(map[string]interface{}{"deepChild": true})
-	child1 := sw.WrapObject(map[string]interface{}{"deepChild1": deepChild.Cid(), "child1": true})
-	child2 := sw.WrapObject(map[string]interface{}{"deepChild2": deepChild.Cid(), "child2": true})
+	deepChild := sw.WrapObject(map[string]interface{}{"deepChildBoolVal": true, "deepChildStrVal": "deepStr", "deepChildIntVal": 1805092908})
+	child1 := sw.WrapObject(map[string]interface{}{"deepChild": deepChild.Cid(), "child1": true, "otherVal": "stringTest"})
+	child2 := sw.WrapObject(map[string]interface{}{"deepChild": deepChild.Cid(), "child2": true, "otherVal": 42})
 	chain := sw.WrapObject(map[string]interface{}{})
 	data := sw.WrapObject(map[string]interface{}{
 		"child1": child1.Cid(),
 		"child2": child2.Cid(),
+		"children": []interface{}{
+			child1.Cid(),
+			child2.Cid(),
+		},
 	})
 	tree := sw.WrapObject(map[string]interface{}{
 		"data": data.Cid(),
@@ -91,10 +95,33 @@ func newGraftedDag(t *testing.T, ctx context.Context) (gd *GraftedDag, graftedPa
 
 	// DAG 2
 	randomValue := sw.WrapObject(map[string]interface{}{"random": "thingy"})
-	graftPoint := sw.WrapObject(map[string]interface{}{"graft": did1 + "/tree/data/child1/deepChild1"})
+	graftPoint := sw.WrapObject(map[string]interface{}{"graft": did1 + "/tree/data/child1/deepChild"})
 	data2 := sw.WrapObject(map[string]interface{}{
-		"child1": randomValue.Cid(),
-		"child2": graftPoint.Cid(),
+		"child1":          randomValue.Cid(),
+		"child2":          graftPoint.Cid(),
+		"graftedChildren": did1 + "/tree/data/children",
+		"graftedSlice": []string{
+			did1 + "/tree/data/child2/otherVal",
+			did1 + "/tree/data/child1/otherVal",
+			did1 + "/tree/data/child2/otherVal",
+		},
+		"mixedSlice": []interface{}{
+			"mixedString",
+			did1 + "/tree/data/child1/otherVal",
+			true,
+			did1 + "/tree/data/child2/otherVal",
+		},
+		"stringSlice": []string{
+			"test1",
+			"test2",
+			"test1",
+		},
+		"stringSliceLen1": []string{
+			"testSingle",
+		},
+		"boolSlice": []bool{
+			true, true, false,
+		},
 	})
 	tree2 := sw.WrapObject(map[string]interface{}{
 		"data": data2.Cid(),
@@ -114,7 +141,7 @@ func newGraftedDag(t *testing.T, ctx context.Context) (gd *GraftedDag, graftedPa
 	gd, err = New(dag2, dg)
 	require.Nil(t, err)
 
-	graftedPath = chaintree.Path{"tree", "data", "child2", "graft", "deepChild"}
+	graftedPath = chaintree.Path{"tree", "data", "child2", "graft", "deepChildBoolVal"}
 
 	return gd, graftedPath
 }
@@ -123,14 +150,14 @@ func newGraftedDagWithLoop(t *testing.T, ctx context.Context) (gd *GraftedDag, g
 	sw := safewrap.SafeWrap{}
 
 	// DAG 1
-	deepChild := sw.WrapObject(map[string]interface{}{"deepChild": true})
-	child1 := sw.WrapObject(map[string]interface{}{"deepChild1": deepChild.Cid(), "child1": true})
-	child2 := sw.WrapObject(map[string]interface{}{"deepChild2": deepChild.Cid(), "child2": true})
+	deepChild := sw.WrapObject(map[string]interface{}{"deepChildBoolVal": true, "deepChildStrVal": "deepStr", "deepChildIntVal": 1805092908})
+	child1 := sw.WrapObject(map[string]interface{}{"deepChild": deepChild.Cid(), "child1": true})
+	child2 := sw.WrapObject(map[string]interface{}{"deepChild": deepChild.Cid(), "child2": true})
 	chain := sw.WrapObject(map[string]interface{}{})
 	data := sw.WrapObject(map[string]interface{}{
 		"child1": child1.Cid(),
 		"child2": child2.Cid(),
-		"loop": "did:tupelo:imachaintreethree/tree/data/loop",
+		"loop":   "did:tupelo:imachaintreethree/tree/data/loop",
 	})
 	tree := sw.WrapObject(map[string]interface{}{
 		"data": data.Cid(),
@@ -150,11 +177,11 @@ func newGraftedDagWithLoop(t *testing.T, ctx context.Context) (gd *GraftedDag, g
 
 	// DAG 2
 	randomValue := sw.WrapObject(map[string]interface{}{"random": "thingy"})
-	graftPoint := sw.WrapObject(map[string]interface{}{"graft": did1 + "/tree/data/child1/deepChild1"})
+	graftPoint := sw.WrapObject(map[string]interface{}{"graft": did1 + "/tree/data/child1/deepChild"})
 	data2 := sw.WrapObject(map[string]interface{}{
 		"child1": randomValue.Cid(),
 		"child2": graftPoint.Cid(),
-		"loop": "did:tupelo:imachaintree/tree/data/loop",
+		"loop":   "did:tupelo:imachaintree/tree/data/loop",
 	})
 	tree2 := sw.WrapObject(map[string]interface{}{
 		"data": data2.Cid(),
@@ -205,6 +232,87 @@ func TestGraftedDag_GlobalResolve(t *testing.T) {
 	require.Nil(t, err)
 	require.Empty(t, remaining)
 	assert.Equal(t, val, true)
+}
+
+func TestGraftedDag_GlobalResolveTypes(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	gd, _ := newGraftedDag(t, ctx)
+
+	var (
+		val       interface{}
+		remaining chaintree.Path
+		err       error
+		path      chaintree.Path
+	)
+
+	// direct value string slice
+	path = chaintree.Path{"tree", "data", "stringSlice"}
+	val, remaining, err = gd.GlobalResolve(ctx, path)
+	require.Nil(t, err)
+	require.Empty(t, remaining)
+	assert.Equal(t, []interface{}{"test1", "test2", "test1"}, val)
+
+	// direct value string slice, len 1
+	path = chaintree.Path{"tree", "data", "stringSliceLen1"}
+	val, remaining, err = gd.GlobalResolve(ctx, path)
+	require.Nil(t, err)
+	require.Empty(t, remaining)
+	assert.Equal(t, []interface{}{"testSingle"}, val)
+
+	// direct value bool slice
+	path = chaintree.Path{"tree", "data", "boolSlice"}
+	val, remaining, err = gd.GlobalResolve(ctx, path)
+	require.Nil(t, err)
+	require.Empty(t, remaining)
+	assert.Equal(t, []interface{}{true, true, false}, val)
+
+	// grafted single bool val
+	path = chaintree.Path{"tree", "data", "child2", "graft", "deepChildBoolVal"}
+	val, remaining, err = gd.GlobalResolve(ctx, path)
+	require.Nil(t, err)
+	require.Empty(t, remaining)
+	assert.Equal(t, true, val)
+
+	// grafted map of different types
+	path = chaintree.Path{"tree", "data", "child2", "graft"}
+	val, remaining, err = gd.GlobalResolve(ctx, path)
+	require.Nil(t, err)
+	require.Empty(t, remaining)
+	assert.Equal(t, map[string]interface{}{
+		"deepChildBoolVal": true,
+		"deepChildIntVal":  1805092908,
+		"deepChildStrVal":  "deepStr",
+	}, val)
+
+	// grafted index access
+	path = chaintree.Path{"tree", "data", "graftedChildren", "0", "otherVal"}
+	val, remaining, err = gd.GlobalResolve(ctx, path)
+	require.Nil(t, err)
+	require.Empty(t, remaining)
+	assert.Equal(t, "stringTest", val)
+
+	// grafted index access
+	path = chaintree.Path{"tree", "data", "graftedChildren", "1", "otherVal"}
+	val, remaining, err = gd.GlobalResolve(ctx, path)
+	require.Nil(t, err)
+	require.Empty(t, remaining)
+	assert.Equal(t, 42, val)
+
+	// grafted array access, should maintain order
+	path = chaintree.Path{"tree", "data", "graftedSlice"}
+	val, remaining, err = gd.GlobalResolve(ctx, path)
+	require.Nil(t, err)
+	require.Empty(t, remaining)
+	assert.Equal(t, []interface{}{42, "stringTest", 42}, val)
+
+	// mixed grafted / non grafted values
+	path = chaintree.Path{"tree", "data", "mixedSlice"}
+	val, remaining, err = gd.GlobalResolve(ctx, path)
+	require.Nil(t, err)
+	require.Empty(t, remaining)
+	assert.Equal(t, []interface{}{"mixedString", "stringTest", true, 42}, val)
 }
 
 func TestGraftedDag_GlobalResolve_LoopDetection(t *testing.T) {

@@ -67,18 +67,46 @@ func (gd *GraftedDag) getChaintreeDag(ctx context.Context, did string) (*dag.Dag
 }
 
 // PathsContainPrefix is used for loop detection (these are DAGs after all).
-// If any element of haystack has needle as a prefix (including all elements
-// matching), this returns true; false otherwise.
+// If any element of haystack has needle as a prefix, or if any haystack item is a
+// prefix of needle, then this returns true, otherwise false.
 func PathsContainPrefix(haystack []chaintree.Path, needle chaintree.Path) bool {
 	for _, p := range haystack {
-		for i, e := range needle {
-			if e != p[i] {
+		var prefixLen int
+		if len(p) < len(needle) {
+			prefixLen = len(p)
+		} else {
+			prefixLen = len(needle)
+		}
+
+		for i := 0; i < prefixLen; i++ {
+			if needle[i] != p[i] {
 				break
 			}
-			return true //nolint
+
+			if i == (prefixLen - 1) {
+				return true
+			}
 		}
 	}
 	return false
+}
+
+func (gd *GraftedDag) resolveGraftedVal(ctx context.Context, didPath chaintree.Path, parentRemaining chaintree.Path, seen []chaintree.Path) (value interface{}, remaining chaintree.Path, err error) {
+	did := didPath[0]
+
+	var nextDag *dag.Dag
+	nextDag, err = gd.getChaintreeDag(ctx, did)
+	if err != nil {
+		return value, remaining, err
+	}
+
+	nextPath := append(didPath[1:], parentRemaining...)
+
+	if len(nextPath) > 0 {
+		return gd.resolveRecursively(ctx, nextPath, nextDag, seen)
+	}
+
+	return nextDag, remaining, err
 }
 
 func (gd *GraftedDag) resolveRecursively(ctx context.Context, path chaintree.Path, d *dag.Dag, seen []chaintree.Path) (value interface{}, remaining chaintree.Path, err error) {
@@ -87,69 +115,48 @@ func (gd *GraftedDag) resolveRecursively(ctx context.Context, path chaintree.Pat
 		return value, remaining, err
 	}
 
-	didPaths := make([]chaintree.Path, 0)
+	nextSeen := seen
 
 	switch v := value.(type) {
 	case string:
 		if strings.HasPrefix(v, "did:tupelo:") {
 			didPath := strings.Split(v, "/")
-			didPaths = append(didPaths, didPath)
+			if PathsContainPrefix(seen, didPath) {
+				return nil, nil, fmt.Errorf("loop detected; some or all of %v was already visited in this resolution", strings.Join(didPath, "/"))
+			}
+			nextSeen = append(nextSeen, didPath)
+			value, remaining, err = gd.resolveGraftedVal(ctx, didPath, remaining, nextSeen)
+			if err != nil || len(remaining) > 0 {
+				return value, remaining, err
+			}
 		} else {
 			value = v
 		}
 	case []interface{}:
 		values := make([]interface{}, len(v))
-		for _, val := range v {
+		for i, val := range v {
 			if sv, ok := val.(string); ok {
 				if strings.HasPrefix(sv, "did:tupelo:") {
 					didPath := strings.Split(sv, "/")
-					didPaths = append(didPaths, didPath)
+					if PathsContainPrefix(seen, didPath) {
+						return nil, nil, fmt.Errorf("loop detected; some or all of %v was already visited in this resolution", strings.Join(didPath, "/"))
+					}
+					nextSeen = append(nextSeen, didPath)
+					graftedVal, remaining, err := gd.resolveGraftedVal(ctx, didPath, remaining, nextSeen)
+					if err != nil || len(remaining) > 0 {
+						return value, remaining, err
+					}
+					values[i] = graftedVal
 				} else {
-					values = append(values, sv)
+					values[i] = sv
 				}
 			} else {
-				values = append(values, val)
+				values[i] = val
 			}
 		}
 		value = values
 	default:
 		value = v
-	}
-
-	for _, didPath := range didPaths {
-		if PathsContainPrefix(seen, didPath) {
-			return nil, nil, fmt.Errorf("loop detected; some or all of %v was already visited in this resolution", strings.Join(didPath, "/"))
-		}
-
-		seen = append(seen, didPath)
-
-		did := didPath[0]
-
-		var nextDag *dag.Dag
-		nextDag, err = gd.getChaintreeDag(ctx, did)
-		if err != nil {
-			return value, remaining, err
-		}
-
-		nextPath := append(didPath[1:], remaining...)
-
-		var graftedVal interface{}
-
-		if len(nextPath) > 0 {
-			graftedVal, remaining, err = gd.resolveRecursively(ctx, nextPath, nextDag, seen)
-			if err != nil {
-				return value, remaining, err
-			}
-		} else {
-			graftedVal = nextDag
-		}
-
-		switch v := value.(type) {
-		case interface{}:
-			value = graftedVal
-		case []interface{}:
-			value = append(v, graftedVal)
-		}
 	}
 
 	return value, remaining, nil
