@@ -12,6 +12,8 @@ import (
 	"github.com/quorumcontrol/chaintree/dag"
 )
 
+var TipNotFound = fmt.Errorf("no tip found for DID")
+
 type GraftableDag interface {
 	GlobalResolve(ctx context.Context, path chaintree.Path) (value interface{}, remaining chaintree.Path, err error)
 	OriginDag() *dag.Dag
@@ -47,7 +49,7 @@ func New(origin *dag.Dag, dagGetter DagGetter) (*GraftedDag, error) {
 func (gd *GraftedDag) getChaintreeDag(ctx context.Context, did string) (*dag.Dag, error) {
 	tip, err := gd.dagGetter.GetTip(ctx, did)
 	if err != nil {
-		return nil, fmt.Errorf("could not get tip for %s: %w", did, err)
+		return nil, TipNotFound
 	}
 
 	if uncastDag, ok := gd.dagCache.Get(tip); ok {
@@ -126,7 +128,11 @@ func (gd *GraftedDag) resolveRecursively(ctx context.Context, path chaintree.Pat
 			}
 			nextSeen = append(nextSeen, didPath)
 			value, remaining, err = gd.resolveGraftedVal(ctx, didPath, remaining, nextSeen)
-			if err != nil || len(remaining) > 0 {
+			if err == TipNotFound {
+				// set value to DID itself because we want to support precomputed DIDs
+				// whose chaintrees don't yet exist
+				value = v
+			} else if err != nil || len(remaining) > 0 {
 				return value, remaining, err
 			}
 		} else {
@@ -143,7 +149,12 @@ func (gd *GraftedDag) resolveRecursively(ctx context.Context, path chaintree.Pat
 					}
 					nextSeen = append(nextSeen, didPath)
 					graftedVal, remaining, err := gd.resolveGraftedVal(ctx, didPath, remaining, nextSeen)
-					if err != nil || len(remaining) > 0 {
+					if err == TipNotFound {
+						// set value to DID itself and continue because we want to support
+						// precomputed DIDs whose chaintrees don't yet exist
+						values[i] = sv
+						continue
+					} else if err != nil || len(remaining) > 0 {
 						return value, remaining, err
 					}
 					values[i] = graftedVal

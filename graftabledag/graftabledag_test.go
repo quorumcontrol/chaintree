@@ -326,3 +326,41 @@ func TestGraftedDag_GlobalResolve_LoopDetection(t *testing.T) {
 	require.NotNil(t, err)
 	require.True(t, strings.HasPrefix(err.Error(), "loop detected"))
 }
+
+func TestGraftedDag_GlobalResolve_BeforeChaintreeExists(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sw := safewrap.SafeWrap{}
+
+	chain := sw.WrapObject(map[string]interface{}{})
+	data := sw.WrapObject(map[string]interface{}{
+		"precomputed": "did:tupelo:doesnotexistyet/thingy",
+	})
+	tree := sw.WrapObject(map[string]interface{}{
+		"data": data.Cid(),
+	})
+	did1 := "did:tupelo:imachaintree"
+	root := sw.WrapObject(map[string]interface{}{
+		"id":    did1,
+		"chain": chain.Cid(),
+		"tree":  tree.Cid(),
+	})
+	require.Nil(t, sw.Err)
+
+	store, err := nodestore.MemoryStore(ctx)
+	require.Nil(t, err)
+
+	d, err := dag.NewDagWithNodes(ctx, store, root, chain, tree, data)
+	require.Nil(t, err)
+
+	dg := newDagGetter(t, ctx, d)
+
+	gd, err := New(d, dg)
+	require.Nil(t, err)
+
+	val, remaining, err := gd.GlobalResolve(ctx, chaintree.Path{"tree", "data", "precomputed"})
+	assert.Nil(t, err)
+	assert.Equal(t, "did:tupelo:doesnotexistyet/thingy", val)
+	assert.Empty(t, remaining)
+}
