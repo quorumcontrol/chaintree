@@ -28,7 +28,7 @@ func (tdg *TestDagGetter) GetTip(_ context.Context, did string) (*cid.Cid, error
 		return &d.Tip, nil
 	}
 
-	return nil, fmt.Errorf("no tip found for %s", did)
+	return nil, chaintree.ErrTipNotFound
 }
 
 func (tdg *TestDagGetter) GetLatest(ctx context.Context, did string) (*chaintree.ChainTree, error) {

@@ -19,6 +19,10 @@ import (
 
 var logger = logging.Logger("chaintree")
 
+// this is not a coded error because it's meant to be returned by
+// consumers of this library
+var ErrTipNotFound = fmt.Errorf("tip not found")
+
 const (
 	ErrUnknownTransactionType = 1
 	ErrRetryableError         = 2
