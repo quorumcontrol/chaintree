@@ -9,7 +9,7 @@ require (
 	github.com/ipfs/go-bitswap v0.1.5 // indirect
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.1
-	github.com/ipfs/go-cid v0.0.2
+	github.com/ipfs/go-cid v0.0.3
 	github.com/ipfs/go-datastore v0.0.5
 	github.com/ipfs/go-ipfs-blockstore v0.0.1
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
@@ -22,7 +22,7 @@ require (
 	github.com/libp2p/go-libp2p v0.2.0 // indirect
 	github.com/libp2p/go-libp2p-peerstore v0.1.2-0.20190621130618-cfa9bb890c1a // indirect
 	github.com/libp2p/go-libp2p-swarm v0.1.1 // indirect
-	github.com/multiformats/go-multihash v0.0.5
+	github.com/multiformats/go-multihash v0.0.8
 	github.com/polydawn/refmt v0.0.0-20190807091052-3d65705ee9f1
 	github.com/quorumcontrol/messages/v2 v2.1.3-0.20200123172240-224b207a9631
 	github.com/smartystreets/assertions v1.0.0 // indirect
